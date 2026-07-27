@@ -16,7 +16,17 @@ locals {
 
 resource "local_file" "hostinger_zone" {
   filename        = "${path.module}/hostinger-zone.json"
-  content         = jsonencode({ overwrite = true, zone = local.dns_records })
+  content = jsonencode({
+    overwrite = true
+    zone = [
+      for record in local.dns_records : {
+        name    = record.name
+        type    = record.type
+        ttl     = record.ttl
+        records = [{ content = record.value }]
+      }
+    ]
+  })
   file_permission = "0600"
 }
 
