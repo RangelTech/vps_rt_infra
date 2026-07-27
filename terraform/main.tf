@@ -24,40 +24,40 @@ resource "local_file" "compose_env" {
     postgres_version        = var.postgres_version
     postgres_db             = var.postgres_db
     postgres_admin_user     = var.postgres_admin_user
-    postgres_admin_password = var.postgres_admin_password
+    postgres_admin_password = replace(var.postgres_admin_password, "$", "$$")
 
     pgbouncer_version        = var.pgbouncer_version
     pgbouncer_admin_user     = var.pgbouncer_admin_user
-    pgbouncer_admin_password = var.pgbouncer_admin_password
+    pgbouncer_admin_password = replace(var.pgbouncer_admin_password, "$", "$$")
 
     redis_version  = var.redis_version
-    redis_password = var.redis_password
+    redis_password = replace(var.redis_password, "$", "$$")
 
     minio_version       = var.minio_version
     minio_root_user     = var.minio_root_user
-    minio_root_password = var.minio_root_password
+    minio_root_password = replace(var.minio_root_password, "$", "$$")
 
     pgadmin_version  = var.pgadmin_version
     pgadmin_email    = var.pgadmin_email
-    pgadmin_password = var.pgadmin_password
+    pgadmin_password = replace(var.pgadmin_password, "$", "$$")
 
     grafana_version        = var.grafana_version
     grafana_admin_user     = var.grafana_admin_user
-    grafana_admin_password = var.grafana_admin_password
+    grafana_admin_password = replace(var.grafana_admin_password, "$", "$$")
 
     uptime_kuma_version  = var.uptime_kuma_version
     uptime_kuma_user     = var.uptime_kuma_user
-    uptime_kuma_password = var.uptime_kuma_password
+    uptime_kuma_password = replace(var.uptime_kuma_password, "$", "$$")
 
     traefik_version = var.traefik_version
     # Docker Compose's .env parser treats "$" as the start of a variable
-    # reference, so literal "$" characters inside the htpasswd hash (e.g.
-    # from `htpasswd -nB`) must be escaped as "$$" before landing in .env.
+    # reference, so any literal "$" inside values rendered into `.env` must be
+    # escaped as "$$" before landing on disk.
     traefik_basic_auth = replace(var.traefik_basic_auth, "$", "$$")
 
     code_server_version       = var.code_server_version
-    code_server_password      = var.code_server_password
-    code_server_sudo_password = var.code_server_sudo_password
+    code_server_password      = replace(var.code_server_password, "$", "$$")
+    code_server_sudo_password = replace(var.code_server_sudo_password, "$", "$$")
 
     prometheus_version    = var.prometheus_version
     loki_version          = var.loki_version
@@ -68,9 +68,11 @@ resource "local_file" "compose_env" {
     ninerouter_package = var.ninerouter_package
     ninerouter_port    = var.ninerouter_port
 
-    restic_repository  = var.restic_repository
-    restic_password    = var.restic_password
-    restic_environment = var.restic_environment
+    restic_repository = replace(var.restic_repository, "$", "$$")
+    restic_password   = replace(var.restic_password, "$", "$$")
+    restic_environment = {
+      for key, value in var.restic_environment : key => replace(value, "$", "$$")
+    }
   })
 
   file_permission = "0600"
