@@ -141,7 +141,7 @@ def build_tfvars(values: Dict[str, str]) -> str:
         '',
         'traefik_version          = "3.1"',
         'postgres_version         = "16.4"',
-        'pgbouncer_version        = "1.21.0"',
+        'pgbouncer_version        = "1.21.0-p2"',
         'redis_version            = "7.4"',
         'minio_version            = "RELEASE.2024-10-13T13-34-11Z"',
         'pgadmin_version          = "8.12"',

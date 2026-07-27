@@ -90,7 +90,7 @@ variable "postgres_version" {
 variable "pgbouncer_version" {
   description = "PgBouncer (edoburu/pgbouncer) image tag"
   type        = string
-  default     = "1.21.0"
+  default     = "1.21.0-p2"
 }
 
 variable "redis_version" {
