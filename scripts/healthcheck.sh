@@ -19,9 +19,12 @@ check() {
   fi
 }
 
-check "9route"       "https://9route.${ROOT_DOMAIN}"
-check "Grafana"       "https://grafana.${ROOT_DOMAIN}/api/health"
-check "MinIO"          "https://storage.${ROOT_DOMAIN}/minio/health/live"
-check "pgAdmin"         "https://pgadmin.${ROOT_DOMAIN}/misc/ping"
-check "Uptime Kuma"      "https://uptime.${ROOT_DOMAIN}"
-check "Traefik dashboard" "https://traefik.${ROOT_DOMAIN}"
+check "9route"            "https://9route.${ROOT_DOMAIN}"
+check "Grafana"            "https://grafana.${ROOT_DOMAIN}/api/health"
+check "MinIO"              "https://storage.${ROOT_DOMAIN}/minio/health/live"
+check "pgAdmin"            "https://pgadmin.${ROOT_DOMAIN}/misc/ping"
+check "Uptime Kuma"        "https://uptime.${ROOT_DOMAIN}"
+check "Traefik dashboard"  "https://traefik.${ROOT_DOMAIN}"
+check "VS Code Server"     "https://code.${ROOT_DOMAIN}"
+check "Prometheus"         "https://prometheus.${ROOT_DOMAIN}/-/healthy"
+check "Loki"               "https://logs.${ROOT_DOMAIN}/ready"

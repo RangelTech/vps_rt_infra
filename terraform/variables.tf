@@ -69,6 +69,100 @@ variable "timezone" {
   default     = "America/Sao_Paulo"
 }
 
+# ---------------------------------------------------------------------------
+# Service versions - edit these to upgrade/downgrade a service, then run
+# `terraform apply` (or trigger the `Terraform Apply` GitHub Actions workflow)
+# to render a new compose/.env and redeploy the stack.
+# ---------------------------------------------------------------------------
+
+variable "traefik_version" {
+  description = "Traefik image tag"
+  type        = string
+  default     = "3.1"
+}
+
+variable "postgres_version" {
+  description = "PostgreSQL image tag"
+  type        = string
+  default     = "16.4"
+}
+
+variable "pgbouncer_version" {
+  description = "PgBouncer (edoburu/pgbouncer) image tag"
+  type        = string
+  default     = "1.21.0"
+}
+
+variable "redis_version" {
+  description = "Redis image tag"
+  type        = string
+  default     = "7.4"
+}
+
+variable "minio_version" {
+  description = "MinIO image tag"
+  type        = string
+  default     = "RELEASE.2024-10-13T13-34-11Z"
+}
+
+variable "pgadmin_version" {
+  description = "pgAdmin4 image tag"
+  type        = string
+  default     = "8.12"
+}
+
+variable "grafana_version" {
+  description = "Grafana image tag"
+  type        = string
+  default     = "11.2.0"
+}
+
+variable "uptime_kuma_version" {
+  description = "Uptime Kuma image tag"
+  type        = string
+  default     = "1.23.13"
+}
+
+variable "code_server_version" {
+  description = "linuxserver/code-server image tag"
+  type        = string
+  default     = "4.103.2"
+}
+
+variable "prometheus_version" {
+  description = "Prometheus image tag"
+  type        = string
+  default     = "v2.54.1"
+}
+
+variable "loki_version" {
+  description = "Grafana Loki image tag"
+  type        = string
+  default     = "3.1.1"
+}
+
+variable "promtail_version" {
+  description = "Grafana Promtail image tag"
+  type        = string
+  default     = "3.1.1"
+}
+
+variable "node_exporter_version" {
+  description = "Prometheus node-exporter image tag"
+  type        = string
+  default     = "v1.8.2"
+}
+
+variable "cadvisor_version" {
+  description = "cAdvisor image tag"
+  type        = string
+  default     = "v0.49.1"
+}
+
+# ---------------------------------------------------------------------------
+# Service credentials
+# ---------------------------------------------------------------------------
+
 variable "postgres_db" {
   type    = string
   default = "platform"
@@ -141,6 +235,18 @@ variable "uptime_kuma_password" {
 
 variable "traefik_basic_auth" {
   description = "Basic auth line in htpasswd format for Traefik-protected admin routes"
+  type        = string
+  sensitive   = true
+}
+
+variable "code_server_password" {
+  description = "Login password for VS Code Server (code-server)"
+  type        = string
+  sensitive   = true
+}
+
+variable "code_server_sudo_password" {
+  description = "sudo password inside the code-server container"
   type        = string
   sensitive   = true
 }

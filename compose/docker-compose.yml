@@ -129,6 +129,9 @@ services:
     image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
     restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
@@ -163,6 +166,117 @@ services:
       - traefik.http.routers.uptime.tls.certresolver=letsencrypt
       - traefik.http.routers.uptime.middlewares=security-headers@file
       - traefik.http.services.uptime.loadbalancer.server.port=3001
+
+  code-server:
+    image: lscr.io/linuxserver/code-server:${CODE_SERVER_VERSION}
+    container_name: code-server
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: ${TIMEZONE}
+      PASSWORD: ${CODE_SERVER_PASSWORD}
+      SUDO_PASSWORD: ${CODE_SERVER_SUDO_PASSWORD}
+      DEFAULT_WORKSPACE: /workspace
+    volumes:
+      - ../:/workspace
+      - ../data/code-server:/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.code-server.rule=Host(`code.${ROOT_DOMAIN}`)
+      - traefik.http.routers.code-server.entrypoints=websecure
+      - traefik.http.routers.code-server.tls.certresolver=letsencrypt
+      - traefik.http.routers.code-server.middlewares=security-headers@file
+      - traefik.http.services.code-server.loadbalancer.server.port=8443
+
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION}
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ../configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../data/prometheus:/prometheus
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prometheus.rule=Host(`prometheus.${ROOT_DOMAIN}`)
+      - traefik.http.routers.prometheus.entrypoints=websecure
+      - traefik.http.routers.prometheus.tls.certresolver=letsencrypt
+      - traefik.http.routers.prometheus.middlewares=admin-auth@docker,security-headers@file
+      - traefik.http.services.prometheus.loadbalancer.server.port=9090
+      - traefik.http.middlewares.admin-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
+
+  loki:
+    image: grafana/loki:${LOKI_VERSION}
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ../configs/loki/config.yml:/etc/loki/config.yml:ro
+      - ../data/loki:/loki
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.loki.rule=Host(`logs.${ROOT_DOMAIN}`)
+      - traefik.http.routers.loki.entrypoints=websecure
+      - traefik.http.routers.loki.tls.certresolver=letsencrypt
+      - traefik.http.routers.loki.middlewares=admin-auth@docker,security-headers@file
+      - traefik.http.services.loki.loadbalancer.server.port=3100
+      - traefik.http.middlewares.admin-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
+
+  promtail:
+    image: grafana/promtail:${PROMTAIL_VERSION}
+    container_name: promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ../configs/promtail/config.yml:/etc/promtail/config.yml:ro
+      - ../data/promtail:/tmp
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+    depends_on:
+      - loki
+
+  node-exporter:
+    image: prom/node-exporter:${NODE_EXPORTER_VERSION}
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - internal
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:${CADVISOR_VERSION}
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - internal
 
   ninerouter:
     build:

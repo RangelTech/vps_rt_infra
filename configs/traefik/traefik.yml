@@ -16,6 +16,15 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+  metrics:
+    address: ":8080"
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
 
 providers:
   docker:

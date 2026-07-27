@@ -17,49 +17,59 @@ locals {
 resource "local_file" "compose_env" {
   filename = "${path.module}/../compose/.env"
   content = templatefile("${path.module}/../compose/.env.tftpl", {
-    root_domain               = var.root_domain
-    letsencrypt_email         = var.letsencrypt_email
-    timezone                  = var.timezone
+    root_domain       = var.root_domain
+    letsencrypt_email = var.letsencrypt_email
+    timezone          = var.timezone
 
-    postgres_version          = "16.4"
-    postgres_db               = var.postgres_db
-    postgres_admin_user       = var.postgres_admin_user
-    postgres_admin_password   = var.postgres_admin_password
+    postgres_version        = var.postgres_version
+    postgres_db             = var.postgres_db
+    postgres_admin_user     = var.postgres_admin_user
+    postgres_admin_password = var.postgres_admin_password
 
-    pgbouncer_version         = "1.21.0"
-    pgbouncer_admin_user      = var.pgbouncer_admin_user
-    pgbouncer_admin_password  = var.pgbouncer_admin_password
+    pgbouncer_version        = var.pgbouncer_version
+    pgbouncer_admin_user     = var.pgbouncer_admin_user
+    pgbouncer_admin_password = var.pgbouncer_admin_password
 
-    redis_version             = "7.4"
-    redis_password             = var.redis_password
+    redis_version  = var.redis_version
+    redis_password = var.redis_password
 
-    minio_version              = "RELEASE.2024-10-13T13-34-11Z"
-    minio_root_user             = var.minio_root_user
-    minio_root_password         = var.minio_root_password
+    minio_version       = var.minio_version
+    minio_root_user     = var.minio_root_user
+    minio_root_password = var.minio_root_password
 
-    pgadmin_version              = "8.12"
-    pgadmin_email                 = var.pgadmin_email
-    pgadmin_password              = var.pgadmin_password
+    pgadmin_version  = var.pgadmin_version
+    pgadmin_email    = var.pgadmin_email
+    pgadmin_password = var.pgadmin_password
 
-    grafana_version               = "11.2.0"
-    grafana_admin_user            = var.grafana_admin_user
-    grafana_admin_password        = var.grafana_admin_password
+    grafana_version        = var.grafana_version
+    grafana_admin_user     = var.grafana_admin_user
+    grafana_admin_password = var.grafana_admin_password
 
-    uptime_kuma_version            = "1.23.13"
-    uptime_kuma_user                = var.uptime_kuma_user
-    uptime_kuma_password            = var.uptime_kuma_password
+    uptime_kuma_version  = var.uptime_kuma_version
+    uptime_kuma_user     = var.uptime_kuma_user
+    uptime_kuma_password = var.uptime_kuma_password
 
-    traefik_version                  = "3.1"
+    traefik_version = var.traefik_version
     # Docker Compose's .env parser treats "$" as the start of a variable
     # reference, so literal "$" characters inside the htpasswd hash (e.g.
     # from `htpasswd -nB`) must be escaped as "$$" before landing in .env.
-    traefik_basic_auth               = replace(var.traefik_basic_auth, "$", "$$")
+    traefik_basic_auth = replace(var.traefik_basic_auth, "$", "$$")
 
-    ninerouter_package                = var.ninerouter_package
-    ninerouter_port                    = var.ninerouter_port
+    code_server_version       = var.code_server_version
+    code_server_password      = var.code_server_password
+    code_server_sudo_password = var.code_server_sudo_password
 
-    restic_repository                   = var.restic_repository
-    restic_password                      = var.restic_password
+    prometheus_version    = var.prometheus_version
+    loki_version          = var.loki_version
+    promtail_version      = var.promtail_version
+    node_exporter_version = var.node_exporter_version
+    cadvisor_version      = var.cadvisor_version
+
+    ninerouter_package = var.ninerouter_package
+    ninerouter_port    = var.ninerouter_port
+
+    restic_repository = var.restic_repository
+    restic_password   = var.restic_password
   })
 
   file_permission = "0600"
@@ -98,11 +108,20 @@ resource "null_resource" "deploy_stack" {
   depends_on = [null_resource.bootstrap, local_file.compose_env]
 
   triggers = {
-    compose_sha        = filesha256("${path.module}/../compose/docker-compose.yml")
-    env_sha             = local_file.compose_env.content_sha256
-    traefik_static_sha  = filesha256("${path.module}/../configs/traefik/traefik.yml")
-    traefik_dynamic_sha = filesha256("${path.module}/../configs/traefik/dynamic.yml")
+    compose_sha             = filesha256("${path.module}/../compose/docker-compose.yml")
+    env_sha                 = local_file.compose_env.content_sha256
+    traefik_static_sha      = filesha256("${path.module}/../configs/traefik/traefik.yml")
+    traefik_dynamic_sha     = filesha256("${path.module}/../configs/traefik/dynamic.yml")
+    grafana_postgres_sha    = filesha256("${path.module}/../configs/grafana/provisioning/datasources/postgres.yml")
+    grafana_prometheus_sha  = filesha256("${path.module}/../configs/grafana/provisioning/datasources/prometheus.yml")
+    grafana_loki_sha        = filesha256("${path.module}/../configs/grafana/provisioning/datasources/loki.yml")
+    prometheus_config_sha   = filesha256("${path.module}/../configs/prometheus/prometheus.yml")
+    loki_config_sha         = filesha256("${path.module}/../configs/loki/config.yml")
+    promtail_config_sha     = filesha256("${path.module}/../configs/promtail/config.yml")
     ninerouter_dockerfile_sha = filesha256("${path.module}/../apps/9route/Dockerfile")
+    backup_postgres_sha     = filesha256("${path.module}/../scripts/backup-postgres.sh")
+    backup_minio_sha        = filesha256("${path.module}/../scripts/backup-minio.sh")
+    healthcheck_sha         = filesha256("${path.module}/../scripts/healthcheck.sh")
   }
 
   connection {
@@ -149,9 +168,10 @@ resource "null_resource" "deploy_stack" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x ${local.remote_base_dir}/scripts/*.sh",
+      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,grafana,uptime-kuma,code-server,prometheus,loki,promtail,backups}",
       "cd ${local.remote_base_dir}/compose && docker compose build ninerouter",
       "cd ${local.remote_base_dir}/compose && docker compose pull --ignore-buildable",
-      "cd ${local.remote_base_dir}/compose && docker compose up -d",
+      "cd ${local.remote_base_dir}/compose && docker compose up -d --remove-orphans",
       "sudo ${local.remote_base_dir}/scripts/install-backup-cron.sh",
     ]
   }
