@@ -6,6 +6,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "5432:5432"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -63,6 +64,13 @@ services:
       IGNORE_STARTUP_PARAMETERS: extra_float_digits
     networks:
       - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.tcp.routers.pgbouncer.rule=HostSNI(`*`)
+      - traefik.tcp.routers.pgbouncer.entrypoints=postgres
+      - traefik.tcp.routers.pgbouncer.service=pgbouncer
+      - traefik.tcp.services.pgbouncer.loadbalancer.server.port=5432
 
   redis:
     image: redis:${REDIS_VERSION}

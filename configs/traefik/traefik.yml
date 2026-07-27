@@ -16,6 +16,8 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+  postgres:
+    address: ":5432"
   metrics:
     address: ":8080"
 
