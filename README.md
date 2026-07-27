@@ -39,14 +39,35 @@ gerencia o DNS. Ver [`terraform/main.tf`](terraform/main.tf).
 
 ## Pré-requisitos antes do primeiro `terraform apply`
 
-1. Trocar a senha root da Contabo (veio por e-mail) e/ou gerar um par de chaves SSH dedicado
-   para o Terraform/GitHub Actions.
-2. Preencher `terraform/terraform.tfvars` (nunca commitar) ou exportar variáveis `TF_VAR_*`
-   com os dados de `secrets/contabo-vps.json` e `secrets/api_key_hostinger.json` (fora deste
-   repo, na pasta `secrets/` do workspace principal).
-3. Confirmar o pacote/imagem exato do 9route (pendente — ver seção "Pendências").
-4. Confirmar qual PAT do GitHub será usado para criar o repositório remoto pessoal
-   `vps_rt_infra` (pendente — ver seção "Pendências").
+1. Gerar um par de chaves SSH dedicado (ex.: `ssh-keygen -t ed25519 -f ~/.ssh/vps_rt_infra_ed25519`)
+   — a chave pública vai em `public_ssh_key` e a privada em `ssh_private_key_path`
+   (`terraform.tfvars`) e no secret `VPS_SSH_PRIVATE_KEY` do GitHub Actions. A senha root da
+   Contabo (`secrets/contabo-vps.json`, fora deste repo) é usada só na primeira conexão de
+   bootstrap; depois disso o acesso deve migrar 100% para chave.
+2. Copiar `terraform/terraform.tfvars.example` para `terraform/terraform.tfvars` (nunca
+   commitar — já está no `.gitignore`) e preencher com os dados reais de
+   `secrets/contabo-vps.json` e `secrets/api_key_hostinger.json` (workspace principal, fora
+   deste repo), gerando senhas fortes para cada serviço.
+3. Registrar os mesmos valores como secrets do repositório GitHub (`Settings > Secrets and
+   variables > Actions`) para os workflows `terraform-plan.yml` / `terraform-apply.yml` /
+   `deploy-vps.yml` funcionarem: `VPS_HOST`, `VPS_DEPLOY_USER`, `VPS_SSH_PRIVATE_KEY`,
+   `VPS_INITIAL_SSH_PASSWORD`, `VPS_PUBLIC_SSH_KEY`, `HOSTINGER_API_KEY`,
+   `POSTGRES_ADMIN_PASSWORD`, `PGBOUNCER_ADMIN_PASSWORD`, `REDIS_PASSWORD`,
+   `MINIO_ROOT_PASSWORD`, `PGADMIN_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`,
+   `UPTIME_KUMA_PASSWORD`, `TRAEFIK_BASIC_AUTH`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`.
+4. Definir um destino externo de backup (restic) — ver item 3 em "Pendências" abaixo.
+
+## 9route e repositório GitHub — resolvidos
+
+- **Pacote do 9route**: confirmado como `9router@0.5.40` (instalação global via
+  `npm i -g 9router`, ver [`9router.bat`](../9router.bat)). Já configurado como default de
+  `ninerouter_package` em [`terraform/variables.tf`](terraform/variables.tf) e usado pelo
+  [`apps/9route/Dockerfile`](apps/9route/Dockerfile).
+- **PAT do GitHub**: usado o PAT classic de [`../secrets/github-dev.md`](../secrets/github-dev.md)
+  (conta pessoal `LucasRangelSSouza`, escopos `repo, workflow`) para criar este repositório.
+- **Repositório remoto**: criado como privado em
+  <https://github.com/LucasRangelSSouza/vps_rt_infra>, com este scaffold já commitado e
+  enviado (`git push`) para a branch `main`.
 
 ## Estrutura
 
@@ -109,16 +130,12 @@ apenas dentro da rede interna do Docker Compose ou por túnel SSH/Tailscale quan
 
 ## Pendências para fechar o plano
 
-1. **Nome exato do pacote/imagem do 9route** — hoje ele roda local via `9router` (CLI global,
-   ver [`9router.bat`](../9router.bat)). O Dockerfile em
-   [`apps/9route/Dockerfile`](apps/9route/Dockerfile) está parametrizado com um build-arg
-   `NINEROUTER_PACKAGE`, mas precisa do nome real do pacote npm (ou do repositório fonte) para
-   ser finalizado.
-2. **PAT do GitHub para o repositório pessoal** — por padrão usaríamos o PAT em
-   [`../secrets/github-dev.md`](../secrets/github-dev.md), mas ele é um PAT classic da conta
-   `LucasRangelSSouza` com escopo `repo, workflow` já usado para os repositórios da org Eduk.
-   Confirmar se deve ser reaproveitado ou se um PAT pessoal dedicado deve ser gerado antes de
-   criar o repositório remoto `vps_rt_infra` (conta pessoal, fora da org Eduk).
-3. **Destino externo de backup** (fora da própria VPS) — este scaffold usa `restic`, mas precisa
+1. **Destino externo de backup** (fora da própria VPS) — este scaffold usa `restic`, mas precisa
    de um repositório de destino (ex.: Backblaze B2, outro provedor de object storage) e das
-   credenciais correspondentes antes do primeiro backup real.
+   credenciais correspondentes (`restic_repository`, `restic_password`,
+   `restic_environment`) antes do primeiro backup real.
+2. **Trocar/desativar a senha root da Contabo** após o primeiro bootstrap bem-sucedido, já que
+   o acesso definitivo passa a ser via `deploy_user` + chave SSH.
+3. **Primeiro `terraform apply` real** — ainda não executado (sem `terraform` instalado
+   localmente neste ambiente); rodar localmente com Terraform instalado ou via o workflow
+   `terraform-apply.yml` depois de preencher `terraform.tfvars`/secrets do GitHub.
