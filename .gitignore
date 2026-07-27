@@ -15,6 +15,13 @@ compose/.env
 *.key
 userlist.txt
 !userlist.txt.example
+secrets-bootstrap-summary.txt
+
+# Generated logs / diagnostics
+run-*-logs/
+ssh_diag_out.txt
+_diag_ssh.py
+_diag_ssh2.py
 
 # OS / editor
 .DS_Store

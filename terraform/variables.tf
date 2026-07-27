@@ -48,7 +48,7 @@ variable "public_ssh_key" {
 variable "ssh_private_key_path" {
   description = "Local path to the private key matching public_ssh_key, used by Terraform to connect as deploy_user after bootstrap"
   type        = string
-  default     = "~/.ssh/vps_rt_infra_ed25519"
+  default     = "C:/Users/lucas.rangel/.ssh/vps_rt_infra_ed25519_v2"
 }
 
 variable "hostinger_api_key" {

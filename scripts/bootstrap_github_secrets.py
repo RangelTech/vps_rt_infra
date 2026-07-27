@@ -38,8 +38,8 @@ REPO_ROOT = Path(os.environ.get("VPS_INFRA_DIR", SCRIPT_DIR.parent))
 WORKSPACE_ROOT = REPO_ROOT.parent
 SECRETS_DIR = Path(os.environ.get("SECRETS_DIR", WORKSPACE_ROOT / "secrets"))
 TFVARS_PATH = REPO_ROOT / "terraform" / "terraform.tfvars"
-SSH_PUBLIC_KEY_PATH = Path(os.environ.get("VPS_SSH_PUBLIC_KEY_PATH", Path.home() / ".ssh" / "vps_rt_infra_ed25519.pub"))
-SSH_PRIVATE_KEY_PATH = Path(os.environ.get("VPS_SSH_PRIVATE_KEY_PATH", Path.home() / ".ssh" / "vps_rt_infra_ed25519"))
+SSH_PUBLIC_KEY_PATH = Path(os.environ.get("VPS_SSH_PUBLIC_KEY_PATH", Path.home() / ".ssh" / "vps_rt_infra_ed25519_v2.pub"))
+SSH_PRIVATE_KEY_PATH = Path(os.environ.get("VPS_SSH_PRIVATE_KEY_PATH", Path.home() / ".ssh" / "vps_rt_infra_ed25519_v2"))
 
 API_ROOT = f"https://api.github.com/repos/{OWNER}/{REPO}"
 ALPHABET = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
@@ -166,9 +166,6 @@ def build_tfvars(values: Dict[str, str]) -> str:
         '  AWS_ACCESS_KEY_ID     = "CHANGE_ME"',
         '  AWS_SECRET_ACCESS_KEY = "CHANGE_ME"',
         '}',
-        '',
-        '# Convenience only: the plain admin password behind TRAEFIK_BASIC_AUTH is',
-        f'# {values["TRAEFIK_BASIC_AUTH_PASSWORD"]}',
     ]
     return "\n".join(lines) + "\n"
 
@@ -246,31 +243,6 @@ def main() -> None:
     for secret_name in upload_names:
         put_secret(token, key_id, public_key_b64, secret_name, values[secret_name])
         print(f"Uploaded GitHub secret: {secret_name}")
-
-    summary_path = REPO_ROOT / "secrets-bootstrap-summary.txt"
-    summary_path.write_text(
-        "\n".join(
-            [
-                f"Repository: {OWNER}/{REPO}",
-                f"TF vars file: {TFVARS_PATH}",
-                f"SSH public key: {SSH_PUBLIC_KEY_PATH}",
-                f"SSH private key: {SSH_PRIVATE_KEY_PATH}",
-                "",
-                "Service endpoints root:",
-                f"- 9route: https://9route.{ROOT_DOMAIN}",
-                f"- Grafana: https://grafana.{ROOT_DOMAIN}",
-                f"- VS Code Server: https://code.{ROOT_DOMAIN}",
-                f"- Prometheus: https://prometheus.{ROOT_DOMAIN}",
-                f"- Loki: https://logs.{ROOT_DOMAIN}",
-                "",
-                "The plain Traefik admin password used to generate TRAEFIK_BASIC_AUTH is:",
-                values["TRAEFIK_BASIC_AUTH_PASSWORD"],
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    print(f"Wrote {summary_path}")
 
 
 if __name__ == "__main__":

@@ -85,11 +85,19 @@ resource "null_resource" "bootstrap" {
     server_ip            = var.server_ip
   }
 
+  # The bootstrap step runs against a Contabo VPS where `deploy_user` does not
+  # exist yet. Root access is provisioned via Contabo's "Reset credentials ->
+  # SSH Key" panel action, which installs `public_ssh_key` into
+  # /root/.ssh/authorized_keys and disables root password auth. So bootstrap
+  # authenticates as root using the same private key later used for
+  # deploy_user (bootstrap.sh creates deploy_user + its own authorized_keys
+  # during this run). All later resources (deploy_stack) switch to
+  # deploy_user + private_key once bootstrap has provisioned them.
   connection {
     type        = "ssh"
     host        = var.server_ip
     port        = var.ssh_port
-    user        = var.deploy_user
+    user        = var.initial_ssh_user
     private_key = file(var.ssh_private_key_path)
     timeout     = "3m"
   }
@@ -102,7 +110,7 @@ resource "null_resource" "bootstrap" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/bootstrap.sh",
-      "sudo DEPLOY_USER='${var.deploy_user}' PUBLIC_SSH_KEY='${var.public_ssh_key}' TIMEZONE='${var.timezone}' REMOTE_BASE_DIR='${local.remote_base_dir}' /tmp/bootstrap.sh",
+      "DEPLOY_USER='${var.deploy_user}' PUBLIC_SSH_KEY='${var.public_ssh_key}' TIMEZONE='${var.timezone}' REMOTE_BASE_DIR='${local.remote_base_dir}' /tmp/bootstrap.sh",
     ]
   }
 }
