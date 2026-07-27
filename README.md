@@ -116,9 +116,16 @@ Volume relevante:
 
 Datasources provisionados automaticamente em:
 
-- [`configs/grafana/provisioning/datasources/postgres.yml`](configs/grafana/provisioning/datasources/postgres.yml:1)
-- [`configs/grafana/provisioning/datasources/prometheus.yml`](configs/grafana/provisioning/datasources/prometheus.yml:1)
-- [`configs/grafana/provisioning/datasources/loki.yml`](configs/grafana/provisioning/datasources/loki.yml:1)
+- [`configs/grafana/provisioning/datasources/postgres.yml`](configs/grafana/provisioning/datasources/postgres.yml:1) — usa `uid: postgres-platform`, aponta pro pgbouncer e resolve `${POSTGRES_DB}`/`${POSTGRES_ADMIN_USER}`/`${POSTGRES_ADMIN_PASSWORD}` a partir das env vars do próprio container `grafana` (ver [`compose/docker-compose.yml`](compose/docker-compose.yml:143))
+- [`configs/grafana/provisioning/datasources/prometheus.yml`](configs/grafana/provisioning/datasources/prometheus.yml:1) — `uid: prometheus`
+- [`configs/grafana/provisioning/datasources/loki.yml`](configs/grafana/provisioning/datasources/loki.yml:1) — `uid: loki`
+
+Dashboard provisionado automaticamente (pasta "General", editável na UI):
+
+- Provider: [`configs/grafana/provisioning/dashboards/dashboards.yml`](configs/grafana/provisioning/dashboards/dashboards.yml:1)
+- Dashboard: [`configs/grafana/provisioning/dashboards/json/platform-observability.json`](configs/grafana/provisioning/dashboards/json/platform-observability.json:1) — "Platform Observability", com CPU/memória/disco do host (node-exporter), CPU/memória por container (cAdvisor), status dos scrape targets, conexões/atividade do Postgres e logs de erro recentes (Loki)
+
+Para adicionar novos dashboards, basta colocar o `.json` exportado do Grafana dentro de `configs/grafana/provisioning/dashboards/json/` — o provider já varre essa pasta a cada 30s.
 
 ## Onde editar cada coisa
 
@@ -314,11 +321,24 @@ O modelo atual usa restic para backup externo.
 - Postgres: [`scripts/backup-postgres.sh`](scripts/backup-postgres.sh:1)
 - MinIO: [`scripts/backup-minio.sh`](scripts/backup-minio.sh:1)
 
-Ainda depende de:
+Depende de três valores, todos wired ponta a ponta (GitHub secret -> `TF_VAR_*` -> `terraform.tfvars`/`main.tf` -> `compose/.env`):
 
-- `RESTIC_REPOSITORY`
-- `RESTIC_PASSWORD`
-- variáveis auxiliares em `restic_environment`
+- `RESTIC_REPOSITORY` (ex.: `s3:https://s3.us-east-1.amazonaws.com/bucket/prefix`)
+- `RESTIC_PASSWORD` (senha de criptografia do repositório restic)
+- `restic_environment` (map opcional com credenciais do backend, ex.: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`), expandido linha a linha em `compose/.env`
+
+Enquanto `RESTIC_REPOSITORY`/`RESTIC_PASSWORD` não apontarem para um backend real, os scripts de backup detectam isso e pulam o upload (não falham).
+
+Para configurar as credenciais do backend restic via [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py:1), crie `secrets/restic-backend.json` (fora do repo, mesmo padrão de `secrets/contabo-vps.json`) com o formato:
+
+```json
+{
+  "AWS_ACCESS_KEY_ID": "...",
+  "AWS_SECRET_ACCESS_KEY": "..."
+}
+```
+
+O script lê esse arquivo (se existir), grava o map em `terraform/terraform.tfvars` e faz upload do secret `RESTIC_ENVIRONMENT_JSON` no GitHub, que o workflow `terraform-apply.yml` repassa como `TF_VAR_restic_environment`.
 
 ## Estado atual do projeto
 

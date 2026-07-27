@@ -56,6 +56,7 @@ jobs:
           TF_VAR_code_server_sudo_password: ${{ secrets.CODE_SERVER_SUDO_PASSWORD }}
           TF_VAR_restic_repository: ${{ secrets.RESTIC_REPOSITORY }}
           TF_VAR_restic_password: ${{ secrets.RESTIC_PASSWORD }}
+          TF_VAR_restic_environment: ${{ secrets.RESTIC_ENVIRONMENT_JSON || '{}' }}
         run: terraform apply -auto-approve
 
       - name: Show outputs

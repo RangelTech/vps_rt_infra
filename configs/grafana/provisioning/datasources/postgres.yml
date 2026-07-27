@@ -2,6 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: Postgres (platform)
+    uid: postgres-platform
     type: postgres
     access: proxy
     url: pgbouncer:6432

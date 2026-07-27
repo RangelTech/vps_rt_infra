@@ -73,9 +73,23 @@ def read_required_file(path: Path, label: str) -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
+def load_restic_environment() -> Dict[str, str]:
+    """Optional S3-compatible backend auth for restic (e.g. AWS_ACCESS_KEY_ID /
+    AWS_SECRET_ACCESS_KEY), read from secrets/restic-backend.json if present.
+    Returns an empty map when the file does not exist yet, so backups simply
+    stay skipped (see scripts/backup-postgres.sh) until it is configured.
+    """
+    path = SECRETS_DIR / "restic-backend.json"
+    if not path.exists():
+        return {}
+    data = load_json(path)
+    return {str(k): str(v) for k, v in data.items()}
+
+
 def build_secret_values() -> Dict[str, str]:
     contabo = load_json(SECRETS_DIR / "contabo-vps.json")
     hostinger = load_json(SECRETS_DIR / "api_key_hostinger.json")
+    restic_environment = load_restic_environment()
 
     github_token = require_env("GITHUB_TOKEN")
     _ = github_token  # explicit required check for clearer failure mode
@@ -104,6 +118,7 @@ def build_secret_values() -> Dict[str, str]:
         "CODE_SERVER_SUDO_PASSWORD": random_password(),
         "RESTIC_REPOSITORY": "s3:https://s3.us-east-1.amazonaws.com/your-backup-bucket/vps-rt",
         "RESTIC_PASSWORD": random_password(),
+        "RESTIC_ENVIRONMENT_JSON": json.dumps(restic_environment),
         "TRAEFIK_BASIC_AUTH_PASSWORD": traefik_admin_password,
     }
     return values
@@ -162,11 +177,15 @@ def build_tfvars(values: Dict[str, str]) -> str:
         '',
         f'restic_repository        = "{escape_hcl(values["RESTIC_REPOSITORY"])}"',
         f'restic_password          = "{escape_hcl(values["RESTIC_PASSWORD"])}"',
-        'restic_environment = {',
-        '  AWS_ACCESS_KEY_ID     = "CHANGE_ME"',
-        '  AWS_SECRET_ACCESS_KEY = "CHANGE_ME"',
-        '}',
     ]
+    restic_environment = json.loads(values["RESTIC_ENVIRONMENT_JSON"])
+    if restic_environment:
+        lines.append('restic_environment = {')
+        for key, value in restic_environment.items():
+            lines.append(f'  {key} = "{escape_hcl(value)}"')
+        lines.append('}')
+    else:
+        lines.append('restic_environment = {}')
     return "\n".join(lines) + "\n"
 
 
@@ -238,6 +257,7 @@ def main() -> None:
         "CODE_SERVER_SUDO_PASSWORD",
         "RESTIC_REPOSITORY",
         "RESTIC_PASSWORD",
+        "RESTIC_ENVIRONMENT_JSON",
     ]
 
     for secret_name in upload_names:

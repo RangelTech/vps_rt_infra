@@ -68,8 +68,9 @@ resource "local_file" "compose_env" {
     ninerouter_package = var.ninerouter_package
     ninerouter_port    = var.ninerouter_port
 
-    restic_repository = var.restic_repository
-    restic_password   = var.restic_password
+    restic_repository  = var.restic_repository
+    restic_password    = var.restic_password
+    restic_environment = var.restic_environment
   })
 
   file_permission = "0600"
