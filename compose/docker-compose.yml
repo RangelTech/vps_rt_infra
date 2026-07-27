@@ -98,6 +98,7 @@ services:
       - public
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.minio-api.rule=Host(`storage.${ROOT_DOMAIN}`)
       - traefik.http.routers.minio-api.entrypoints=websecure
       - traefik.http.routers.minio-api.tls.certresolver=letsencrypt
@@ -126,6 +127,7 @@ services:
       - public
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.pgadmin.rule=Host(`pgadmin.${ROOT_DOMAIN}`)
       - traefik.http.routers.pgadmin.entrypoints=websecure
       - traefik.http.routers.pgadmin.tls.certresolver=letsencrypt
@@ -156,6 +158,7 @@ services:
       - public
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.grafana.rule=Host(`grafana.${ROOT_DOMAIN}`)
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.tls.certresolver=letsencrypt
@@ -219,6 +222,7 @@ services:
       - public
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.prometheus.rule=Host(`prometheus.${ROOT_DOMAIN}`)
       - traefik.http.routers.prometheus.entrypoints=websecure
       - traefik.http.routers.prometheus.tls.certresolver=letsencrypt
@@ -239,6 +243,7 @@ services:
       - public
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.loki.rule=Host(`logs.${ROOT_DOMAIN}`)
       - traefik.http.routers.loki.entrypoints=websecure
       - traefik.http.routers.loki.tls.certresolver=letsencrypt
@@ -305,6 +310,7 @@ services:
       - internal
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.ninerouter.rule=Host(`9route.${ROOT_DOMAIN}`)
       - traefik.http.routers.ninerouter.entrypoints=websecure
       - traefik.http.routers.ninerouter.tls.certresolver=letsencrypt
