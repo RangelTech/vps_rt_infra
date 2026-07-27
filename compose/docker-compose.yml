@@ -313,7 +313,9 @@ services:
 
 networks:
   internal:
+    name: internal
     driver: bridge
     internal: true
   public:
+    name: public
     driver: bridge

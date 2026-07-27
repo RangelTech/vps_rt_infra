@@ -39,7 +39,13 @@ providers:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: "${LETSENCRYPT_EMAIL}"
+      # NOTE: Traefik's static config file (traefik.yml) is bind-mounted
+      # read-only and is NOT processed through Docker Compose's ${VAR}
+      # substitution (that substitution only applies to the compose YAML
+      # itself). So this must be a real, hardcoded value rather than
+      # "${LETSENCRYPT_EMAIL}", or ACME registration fails with
+      # urn:ietf:params:acme:error:invalidContact.
+      email: "lucas.rangel@outlook.com"
       storage: /letsencrypt/acme.json
       httpChallenge:
         entryPoint: web
