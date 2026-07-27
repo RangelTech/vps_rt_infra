@@ -139,7 +139,7 @@ def build_tfvars(values: Dict[str, str]) -> str:
         'letsencrypt_email        = "lucas.rangel@outlook.com"',
         f'timezone                 = "{TIMEZONE}"',
         '',
-        'traefik_version          = "3.1"',
+        'traefik_version          = "v3.7.9"',
         'postgres_version         = "16.4"',
         'pgbouncer_version        = "1.21.0-p2"',
         'redis_version            = "7.4"',

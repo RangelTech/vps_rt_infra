@@ -182,7 +182,9 @@ resource "null_resource" "deploy_stack" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x ${local.remote_base_dir}/scripts/*.sh",
-      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,grafana,uptime-kuma,code-server,prometheus,loki,promtail,backups}",
+      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,grafana,uptime-kuma,code-server,prometheus,loki,promtail,backups,9router}",
+      "chmod 700 ${local.remote_base_dir}/data/postgres ${local.remote_base_dir}/data/redis ${local.remote_base_dir}/data/minio ${local.remote_base_dir}/data/pgadmin ${local.remote_base_dir}/data/traefik ${local.remote_base_dir}/data/uptime-kuma ${local.remote_base_dir}/data/code-server ${local.remote_base_dir}/data/promtail || true",
+      "chmod 777 ${local.remote_base_dir}/data/grafana ${local.remote_base_dir}/data/prometheus ${local.remote_base_dir}/data/loki ${local.remote_base_dir}/data/9router || true",
       "cd ${local.remote_base_dir}/compose && docker compose build ninerouter",
       "cd ${local.remote_base_dir}/compose && docker compose pull --ignore-buildable",
       "cd ${local.remote_base_dir}/compose && docker compose up -d --remove-orphans",

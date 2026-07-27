@@ -290,19 +290,16 @@ services:
       - internal
 
   ninerouter:
-    build:
-      context: ../apps/9route
-      dockerfile: Dockerfile
-      args:
-        NINEROUTER_PACKAGE: ${NINEROUTER_PACKAGE}
+    image: decolua/9router:latest
     container_name: ninerouter
     restart: unless-stopped
     environment:
       PORT: ${NINEROUTER_PORT}
-      NINEROUTER_HOME: /data
+      HOSTNAME: 0.0.0.0
+      DATA_DIR: /app/data
       TZ: ${TIMEZONE}
     volumes:
-      - ../data/9router:/data
+      - ../data/9router:/app/data
     networks:
       - public
       - internal

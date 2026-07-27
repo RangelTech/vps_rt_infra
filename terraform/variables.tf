@@ -78,7 +78,7 @@ variable "timezone" {
 variable "traefik_version" {
   description = "Traefik image tag"
   type        = string
-  default     = "3.1"
+  default     = "v3.7.9"
 }
 
 variable "postgres_version" {
