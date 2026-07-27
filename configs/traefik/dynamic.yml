@@ -1,0 +1,21 @@
+## Dynamic Traefik configuration
+## Protects the Traefik dashboard, pgAdmin and MinIO console with basic auth.
+## The htpasswd line is injected via TRAEFIK_BASIC_AUTH in compose/.env and
+## consumed as a Docker label on each service instead of here, this file is
+## reserved for extra middlewares/TLS options shared across routers.
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12

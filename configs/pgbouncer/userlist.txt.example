@@ -1,0 +1,7 @@
+; PgBouncer userlist. Rename to userlist.txt (never commit the real one) and
+; fill with `"user" "md5<hash>"` entries generated from the Postgres users.
+;
+; Generate a hash with:
+;   echo -n "<password><username>" | md5sum
+;   -> value goes as "md5<hash>"
+"platform_admin" "md5CHANGE_ME"

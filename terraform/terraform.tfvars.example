@@ -1,0 +1,37 @@
+server_ip                = "66.94.101.153"
+server_ipv6              = "2605:a144:2346:8840:0000:0000:0000:0001/64"
+root_domain              = "rangeltech.net"
+ssh_port                 = 22
+initial_ssh_user         = "root"
+initial_ssh_password     = "CHANGE_ME"
+deploy_user              = "deploy"
+public_ssh_key           = "ssh-ed25519 AAAA... your-key"
+hostinger_api_key        = "CHANGE_ME"
+letsencrypt_email        = "lucas.rangel@outlook.com"
+timezone                 = "America/Sao_Paulo"
+
+postgres_db              = "platform"
+postgres_admin_user      = "platform_admin"
+postgres_admin_password  = "CHANGE_ME"
+pgbouncer_admin_user     = "pgbouncer_admin"
+pgbouncer_admin_password = "CHANGE_ME"
+redis_password           = "CHANGE_ME"
+minio_root_user          = "minioadmin"
+minio_root_password      = "CHANGE_ME"
+pgadmin_email            = "lucas.rangel@outlook.com"
+pgadmin_password         = "CHANGE_ME"
+grafana_admin_user       = "admin"
+grafana_admin_password   = "CHANGE_ME"
+uptime_kuma_user         = "admin"
+uptime_kuma_password     = "CHANGE_ME"
+traefik_basic_auth       = "admin:$apr1$example$xxxxxxxxxxxxxxxxxxxxxx"
+
+ninerouter_package       = "9router@0.5.40"
+ninerouter_port          = 20128
+
+restic_repository        = "s3:https://s3.us-east-1.amazonaws.com/your-backup-bucket/vps-rt"
+restic_password          = "CHANGE_ME"
+restic_environment = {
+  AWS_ACCESS_KEY_ID     = "CHANGE_ME"
+  AWS_SECRET_ACCESS_KEY = "CHANGE_ME"
+}

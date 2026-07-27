@@ -1,0 +1,158 @@
+# Contabo delivers the VPS already provisioned (bought manually through the customer
+# panel), so this module does not create a compute instance. Instead it treats the
+# existing server as a target and:
+#   1. bootstraps the OS (docker, firewall, fail2ban, deploy user, hardening);
+#   2. uploads the Docker Compose stack + configs + 9route app;
+#   3. renders the runtime .env from Terraform variables;
+#   4. starts the stack with `docker compose up -d`.
+#
+# Re-running `terraform apply` re-uploads changed files and restarts the stack,
+# giving us reproducible, idempotent configuration management without recreating
+# the underlying VPS.
+
+locals {
+  remote_base_dir = "/opt/platform"
+}
+
+resource "local_file" "compose_env" {
+  filename = "${path.module}/../compose/.env"
+  content = templatefile("${path.module}/../compose/.env.tftpl", {
+    root_domain               = var.root_domain
+    letsencrypt_email         = var.letsencrypt_email
+    timezone                  = var.timezone
+
+    postgres_version          = "16.4"
+    postgres_db               = var.postgres_db
+    postgres_admin_user       = var.postgres_admin_user
+    postgres_admin_password   = var.postgres_admin_password
+
+    pgbouncer_version         = "1.21.0"
+    pgbouncer_admin_user      = var.pgbouncer_admin_user
+    pgbouncer_admin_password  = var.pgbouncer_admin_password
+
+    redis_version             = "7.4"
+    redis_password             = var.redis_password
+
+    minio_version              = "RELEASE.2024-10-13T13-34-11Z"
+    minio_root_user             = var.minio_root_user
+    minio_root_password         = var.minio_root_password
+
+    pgadmin_version              = "8.12"
+    pgadmin_email                 = var.pgadmin_email
+    pgadmin_password              = var.pgadmin_password
+
+    grafana_version               = "11.2.0"
+    grafana_admin_user            = var.grafana_admin_user
+    grafana_admin_password        = var.grafana_admin_password
+
+    uptime_kuma_version            = "1.23.13"
+    uptime_kuma_user                = var.uptime_kuma_user
+    uptime_kuma_password            = var.uptime_kuma_password
+
+    traefik_version                  = "3.1"
+    # Docker Compose's .env parser treats "$" as the start of a variable
+    # reference, so literal "$" characters inside the htpasswd hash (e.g.
+    # from `htpasswd -nB`) must be escaped as "$$" before landing in .env.
+    traefik_basic_auth               = replace(var.traefik_basic_auth, "$", "$$")
+
+    ninerouter_package                = var.ninerouter_package
+    ninerouter_port                    = var.ninerouter_port
+
+    restic_repository                   = var.restic_repository
+    restic_password                      = var.restic_password
+  })
+
+  file_permission = "0600"
+}
+
+resource "null_resource" "bootstrap" {
+  triggers = {
+    bootstrap_script_sha = filesha256("${path.module}/../cloud-init/bootstrap.sh")
+    deploy_user          = var.deploy_user
+    public_key           = var.public_ssh_key
+  }
+
+  connection {
+    type     = "ssh"
+    host     = var.server_ip
+    port     = var.ssh_port
+    user     = var.initial_ssh_user
+    password = var.initial_ssh_password
+    timeout  = "3m"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../cloud-init/bootstrap.sh"
+    destination = "/root/bootstrap.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /root/bootstrap.sh",
+      "DEPLOY_USER='${var.deploy_user}' PUBLIC_SSH_KEY='${var.public_ssh_key}' TIMEZONE='${var.timezone}' REMOTE_BASE_DIR='${local.remote_base_dir}' /root/bootstrap.sh",
+    ]
+  }
+}
+
+resource "null_resource" "deploy_stack" {
+  depends_on = [null_resource.bootstrap, local_file.compose_env]
+
+  triggers = {
+    compose_sha        = filesha256("${path.module}/../compose/docker-compose.yml")
+    env_sha             = local_file.compose_env.content_sha256
+    traefik_static_sha  = filesha256("${path.module}/../configs/traefik/traefik.yml")
+    traefik_dynamic_sha = filesha256("${path.module}/../configs/traefik/dynamic.yml")
+    ninerouter_dockerfile_sha = filesha256("${path.module}/../apps/9route/Dockerfile")
+  }
+
+  connection {
+    type        = "ssh"
+    host        = var.server_ip
+    port        = var.ssh_port
+    user        = var.deploy_user
+    private_key = file(var.ssh_private_key_path)
+    timeout     = "3m"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mkdir -p ${local.remote_base_dir}/compose ${local.remote_base_dir}/configs ${local.remote_base_dir}/apps ${local.remote_base_dir}/scripts ${local.remote_base_dir}/data",
+      "sudo chown -R ${var.deploy_user}:${var.deploy_user} ${local.remote_base_dir}",
+    ]
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../compose/docker-compose.yml"
+    destination = "${local.remote_base_dir}/compose/docker-compose.yml"
+  }
+
+  provisioner "file" {
+    source      = local_file.compose_env.filename
+    destination = "${local.remote_base_dir}/compose/.env"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../configs/"
+    destination = "${local.remote_base_dir}/configs"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../apps/"
+    destination = "${local.remote_base_dir}/apps"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../scripts/"
+    destination = "${local.remote_base_dir}/scripts"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x ${local.remote_base_dir}/scripts/*.sh",
+      "cd ${local.remote_base_dir}/compose && docker compose build ninerouter",
+      "cd ${local.remote_base_dir}/compose && docker compose pull --ignore-buildable",
+      "cd ${local.remote_base_dir}/compose && docker compose up -d",
+      "sudo ${local.remote_base_dir}/scripts/install-backup-cron.sh",
+    ]
+  }
+}
