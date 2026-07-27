@@ -5,7 +5,7 @@
 #
 # zone_json_file must contain: {"overwrite": true, "zone": [{"name":"@","type":"A","value":"1.2.3.4","ttl":300}, ...]}
 #
-# API reference: POST https://developers.hostinger.com/v1/dns-zone/{domain}
+# API reference: PUT https://developers.hostinger.com/api/dns/v1/zones/{domain}
 # Auth: Authorization: Bearer <api_key>
 
 set -euo pipefail
@@ -21,8 +21,8 @@ fi
 
 echo "==> Updating DNS zone for ${DOMAIN} via Hostinger API"
 
-response=$(curl -sS -w '\n%{http_code}' -X POST \
-  "https://developers.hostinger.com/v1/dns-zone/${DOMAIN}" \
+response=$(curl -sS -w '\n%{http_code}' -X PUT \
+  "https://developers.hostinger.com/api/dns/v1/zones/${DOMAIN}" \
   -H "Authorization: Bearer ${API_KEY}" \
   -H "Content-Type: application/json" \
   --data @"${ZONE_FILE}")

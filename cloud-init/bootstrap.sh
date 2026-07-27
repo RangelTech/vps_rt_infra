@@ -66,10 +66,10 @@ chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "/home/${DEPLOY_USER}/.ssh"
 echo "${DEPLOY_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/90-${DEPLOY_USER}"
 chmod 440 "/etc/sudoers.d/90-${DEPLOY_USER}"
 
-echo "==> [6/9] Hardening SSH (key-only, no root login)"
+echo "==> [6/9] Hardening SSH (keep password auth for bootstrap root, disable challenge-response)"
 SSHD_CONFIG=/etc/ssh/sshd_config
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' "${SSHD_CONFIG}"
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' "${SSHD_CONFIG}"
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "${SSHD_CONFIG}"
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' "${SSHD_CONFIG}"
 sed -i 's/^#\?ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' "${SSHD_CONFIG}"
 systemctl restart ssh
 

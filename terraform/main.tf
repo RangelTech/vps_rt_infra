@@ -80,6 +80,9 @@ resource "null_resource" "bootstrap" {
     bootstrap_script_sha = filesha256("${path.module}/../cloud-init/bootstrap.sh")
     deploy_user          = var.deploy_user
     public_key           = var.public_ssh_key
+    initial_ssh_password = var.initial_ssh_password
+    initial_ssh_user     = var.initial_ssh_user
+    server_ip            = var.server_ip
   }
 
   connection {
