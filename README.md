@@ -1,198 +1,479 @@
 # vps_rt_infra
 
-Infraestrutura como código da VPS pessoal em Contabo usando [`Terraform`](terraform/main.tf:1), [`cloud-init`](cloud-init/bootstrap.sh:1), [`Docker Compose`](compose/docker-compose.yml:1) e workflows do GitHub Actions em [`.github/workflows/`](.github/workflows).
+Infraestrutura como código da VPS pessoal em Contabo usando [`Terraform`](terraform/main.tf:1), [`Docker Compose`](compose/docker-compose.yml:1), [`cloud-init`](cloud-init/bootstrap.sh:1) e workflows em [`.github/workflows/`](.github/workflows).
 
-Este repositório gerencia somente a camada VPS da arquitetura descrita em [`arquitetura_saas_koyeb_vps_iac.md`](../arquitetura_saas_koyeb_vps_iac.md:3). Nada aqui depende de Koyeb: a meta é que a VPS suba os serviços persistentes, observabilidade, logs, utilitários operacionais e o [`9router`](apps/9route/Dockerfile:1).
+Este repositório gerencia somente a camada VPS da stack em `rangeltech.net`: bootstrap do host, DNS, reverse proxy, banco, storage, observabilidade, utilitários operacionais e o serviço principal [`9router`](compose/docker-compose.yml:299).
 
-## Objetivo operacional
+## Fluxo operacional padrão
 
-O fluxo desejado deste repositório é simples:
+Quase toda mudança deve seguir este fluxo:
 
-1. editar variáveis ou versões em [`terraform/variables.tf`](terraform/variables.tf:1) ou em [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1);
-2. commitar a mudança;
-3. disparar [`terraform apply`](.github/workflows/terraform-apply.yml:1) via GitHub Actions;
-4. deixar o Terraform renderizar [`compose/.env`](compose/.env.tftpl:1), sincronizar arquivos para a VPS e executar o redeploy da stack.
+1. editar o arquivo certo neste repositório;
+2. commitar e dar push;
+3. deixar o workflow [`Terraform Apply`](.github/workflows/terraform-apply.yml:1) ou [`Deploy VPS`](.github/workflows/deploy-vps.yml:1) sincronizar a VPS;
+4. validar o endpoint público, logs e estado dos containers.
 
-No dia a dia, a alteração de versão do PostgreSQL, Grafana, 9router, Prometheus, Loki ou qualquer outro serviço deve acontecer por Terraform, não por edição manual na VPS.
+Regra prática:
 
-## O que este repositório sobe
+- se a mudança afeta versão, credencial, DNS, variáveis, arquivos sincronizados ou bootstrap, use [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1);
+- se a mudança afeta somente Compose/configs/scripts já existentes na VPS, [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) costuma bastar;
+- evitar editar manualmente a VPS, exceto diagnóstico emergencial.
 
-### Camada base da VPS
+## Mapa rápido: o que editar para cada tipo de mudança
 
-- Bootstrap do sistema em [`cloud-init/bootstrap.sh`](cloud-init/bootstrap.sh:1)
-  - instala Docker, Docker Compose plugin, curl, jq, fail2ban, ufw;
-  - cria o usuário de deploy;
-  - instala a chave pública SSH;
-  - endurece SSH para migrar de senha root para chave.
-- Orquestração/remoto em [`terraform/main.tf`](terraform/main.tf:1)
-- DNS da Hostinger em [`terraform/dns.tf`](terraform/dns.tf:1)
-
-### Serviços da stack Docker
-
-Todos os serviços estão declarados em [`compose/docker-compose.yml`](compose/docker-compose.yml:1).
-
-| Serviço | Função | Exposição | Config principal |
-|---|---|---|---|
-| Traefik | reverse proxy, TLS e roteamento | pública | [`configs/traefik/traefik.yml`](configs/traefik/traefik.yml:1) e [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1) |
-| PostgreSQL | banco principal | interna | [`compose/docker-compose.yml`](compose/docker-compose.yml:25) |
-| PgBouncer | pool de conexões Postgres | interna | [`compose/docker-compose.yml`](compose/docker-compose.yml:44) |
-| Redis | cache / filas simples / estado efêmero | interna | [`compose/docker-compose.yml`](compose/docker-compose.yml:67) |
-| MinIO API | object storage S3-compatible | pública | [`compose/docker-compose.yml`](compose/docker-compose.yml:77) |
-| MinIO Console | console administrativa do MinIO | pública protegida | [`compose/docker-compose.yml`](compose/docker-compose.yml:98) |
-| pgAdmin | administração do Postgres | pública protegida | [`compose/docker-compose.yml`](compose/docker-compose.yml:105) |
-| Grafana | dashboards | pública com login | [`compose/docker-compose.yml`](compose/docker-compose.yml:128) |
-| Uptime Kuma | monitoramento sintético | pública | [`compose/docker-compose.yml`](compose/docker-compose.yml:154) |
-| VS Code Server | IDE web com terminal/logs/debug | pública com senha | [`compose/docker-compose.yml`](compose/docker-compose.yml:170) |
-| Prometheus | coleta de métricas | pública protegida | [`compose/docker-compose.yml`](compose/docker-compose.yml:195) e [`configs/prometheus/prometheus.yml`](configs/prometheus/prometheus.yml:1) |
-| Loki | armazenamento/consulta de logs | pública protegida | [`compose/docker-compose.yml`](compose/docker-compose.yml:218) e [`configs/loki/config.yml`](configs/loki/config.yml:1) |
-| Promtail | coleta de logs do host e containers | interna | [`compose/docker-compose.yml`](compose/docker-compose.yml:238) e [`configs/promtail/config.yml`](configs/promtail/config.yml:1) |
-| node-exporter | métricas do host | interna | [`compose/docker-compose.yml`](compose/docker-compose.yml:254) |
-| cAdvisor | métricas de containers | interna | [`compose/docker-compose.yml`](compose/docker-compose.yml:266) |
-| 9router | serviço de roteamento/aplicação | pública | [`compose/docker-compose.yml`](compose/docker-compose.yml:281) |
-
-## Domínios públicos planejados
-
-As URLs públicas são refletidas também em [`terraform/outputs.tf`](terraform/outputs.tf:1).
-
-| URL | Serviço | Observação |
+| Quero mudar... | Arquivo principal | Normalmente disparar |
 |---|---|---|
-| `https://9route.rangeltech.net` | 9router | serviço principal |
-| `https://grafana.rangeltech.net` | Grafana | login próprio do Grafana |
-| `https://storage.rangeltech.net` | MinIO API | endpoint S3 |
-| `https://minio-admin.rangeltech.net` | MinIO Console | protegido por basic auth do Traefik |
-| `https://pgadmin.rangeltech.net` | pgAdmin | protegido por basic auth do Traefik |
-| `https://uptime.rangeltech.net` | Uptime Kuma | monitoramento externo |
-| `https://traefik.rangeltech.net` | Dashboard Traefik | protegido por basic auth do Traefik |
-| `https://code.rangeltech.net` | VS Code Server | acesso web à árvore inteira |
-| `https://prometheus.rangeltech.net` | Prometheus | protegido por basic auth do Traefik |
-| `https://logs.rangeltech.net` | Loki | protegido por basic auth do Traefik |
+| versão/tag de serviço | [`terraform/variables.tf`](terraform/variables.tf:78) ou [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1) | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
+| senha/usuário/segredo | [`terraform/variables.tf`](terraform/variables.tf:162) + [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1) + GitHub Secrets | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
+| rota/subdomínio/TLS/middleware | [`compose/docker-compose.yml`](compose/docker-compose.yml:17), [`configs/traefik/traefik.yml`](configs/traefik/traefik.yml:1), [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1), [`terraform/dns.tf`](terraform/dns.tf:1) | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
+| volume, porta, env, healthcheck de container | [`compose/docker-compose.yml`](compose/docker-compose.yml:1) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
+| scrape de métricas | [`configs/prometheus/prometheus.yml`](configs/prometheus/prometheus.yml:1) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
+| coleta de logs | [`configs/promtail/config.yml`](configs/promtail/config.yml:1) ou [`configs/loki/config.yml`](configs/loki/config.yml:1) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
+| dashboards/datasources do Grafana | [`configs/grafana/provisioning/`](configs/grafana/provisioning) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
+| scripts operacionais/backup/healthcheck | [`scripts/`](scripts) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
+| bootstrap do host/usuário/chave | [`cloud-init/bootstrap.sh`](cloud-init/bootstrap.sh:1) ou [`terraform/main.tf`](terraform/main.tf:1) | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
 
-### Serviços não expostos diretamente
+## Serviços públicos e como eles funcionam
 
-Os itens abaixo não devem ser publicados diretamente na internet:
+| URL | Serviço | Tipo de acesso | Fonte principal |
+|---|---|---|---|
+| `https://traefik.rangeltech.net` | Traefik dashboard | basic auth | [`compose/docker-compose.yml`](compose/docker-compose.yml:2) |
+| `https://grafana.rangeltech.net` | Grafana | login nativo | [`compose/docker-compose.yml`](compose/docker-compose.yml:140) |
+| `https://prometheus.rangeltech.net` | Prometheus | basic auth | [`compose/docker-compose.yml`](compose/docker-compose.yml:211) |
+| `https://logs.rangeltech.net` | Loki | basic auth | [`compose/docker-compose.yml`](compose/docker-compose.yml:235) |
+| `https://storage.rangeltech.net` | MinIO API | endpoint S3 | [`compose/docker-compose.yml`](compose/docker-compose.yml:85) |
+| `https://minio-admin.rangeltech.net` | MinIO Console | basic auth + login MinIO | [`compose/docker-compose.yml`](compose/docker-compose.yml:85) |
+| `https://pgadmin.rangeltech.net` | pgAdmin | basic auth + login pgAdmin | [`compose/docker-compose.yml`](compose/docker-compose.yml:116) |
+| `https://uptime.rangeltech.net` | Uptime Kuma | login nativo | [`compose/docker-compose.yml`](compose/docker-compose.yml:170) |
+| `https://code.rangeltech.net` | code-server | senha web | [`compose/docker-compose.yml`](compose/docker-compose.yml:186) |
+| `https://9route.rangeltech.net` | 9router | serviço principal | [`compose/docker-compose.yml`](compose/docker-compose.yml:299) |
+| `tcp://66.94.101.153:5432` | PgBouncer -> Postgres | conexão TCP autenticada | [`compose/docker-compose.yml`](compose/docker-compose.yml:45) |
 
-- PostgreSQL
-- PgBouncer
-- Redis
-- Promtail
-- node-exporter
-- cAdvisor
+## Serviços internos
 
-Eles ficam somente nas redes internas definidas em [`compose/docker-compose.yml`](compose/docker-compose.yml:306).
+Os serviços abaixo não devem ter publicação HTTP direta:
 
-## VS Code Server
+- [`postgres`](compose/docker-compose.yml:26)
+- [`redis`](compose/docker-compose.yml:75)
+- [`promtail`](compose/docker-compose.yml:256)
+- [`node-exporter`](compose/docker-compose.yml:272)
+- [`cadvisor`](compose/docker-compose.yml:284)
 
-O pedido de acesso completo à árvore foi atendido em [`compose/docker-compose.yml`](compose/docker-compose.yml:170).
+A exceção operacional é [`pgbouncer`](compose/docker-compose.yml:45), que fica atrás do entrypoint TCP do Traefik para expor a porta `5432` externamente.
 
-Principais pontos:
+## Guia por serviço
 
-- a pasta `../` é montada como `/workspace`, então o code-server enxerga toda a árvore de [`vps_rt_infra/`](.) no host da VPS;
-- o socket Docker é montado em `/var/run/docker.sock`, permitindo inspecionar containers e logs;
-- a senha web usa `CODE_SERVER_PASSWORD`;
-- o sudo interno usa `CODE_SERVER_SUDO_PASSWORD`.
+### Traefik
 
-Volume relevante:
+**Função**
+- reverse proxy público;
+- TLS/Let's Encrypt;
+- roteamento HTTP e TCP;
+- dashboard administrativo.
 
-- [`../:/workspace`](compose/docker-compose.yml:182)
-- [`../data/code-server:/config`](compose/docker-compose.yml:183)
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:2)
+- [`configs/traefik/traefik.yml`](configs/traefik/traefik.yml:1)
+- [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1)
+- [`terraform/dns.tf`](terraform/dns.tf:1)
 
-## Observabilidade e logs
+**Quando editar**
+- adicionar/remover entrypoints;
+- mexer em ACME/TLS;
+- alterar middlewares compartilhados;
+- ajustar dashboard;
+- publicar novas rotas HTTP/TCP.
 
-### Métricas
+**Fluxo de mudança**
+1. editar [`configs/traefik/traefik.yml`](configs/traefik/traefik.yml:1) para configuração estática;
+2. editar [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1) para middlewares e regras compartilhadas;
+3. editar labels em [`compose/docker-compose.yml`](compose/docker-compose.yml:17) quando a mudança for específica de serviço;
+4. editar [`terraform/dns.tf`](terraform/dns.tf:1) se houver novo subdomínio;
+5. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
 
-- Prometheus coleta alvos definidos em [`configs/prometheus/prometheus.yml`](configs/prometheus/prometheus.yml:1)
-- Traefik agora expõe métricas via entrypoint `metrics` em [`configs/traefik/traefik.yml`](configs/traefik/traefik.yml:9)
-- node-exporter publica métricas do host
-- cAdvisor publica métricas dos containers
+**Validar depois**
+- `https://traefik.rangeltech.net` responder `401` quando protegido por basic auth;
+- certificados emitidos;
+- serviços continuarem roteando.
 
-### Logs
+### PostgreSQL
 
-- Loki armazena logs
-- Promtail envia logs de:
-  - `/var/log`
-  - `/var/lib/docker/containers/*/*-json.log`
+**Função**
+- banco principal da plataforma.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:26)
+- [`terraform/variables.tf`](terraform/variables.tf:166)
+- [`compose/.env.tftpl`](compose/.env.tftpl:1)
+- [`scripts/backup-postgres.sh`](scripts/backup-postgres.sh:1)
+- [`scripts/restore-postgres.sh`](scripts/restore-postgres.sh:1)
+
+**Quando editar**
+- trocar versão do Postgres;
+- alterar database/admin user/password;
+- ajustar volume/healthcheck;
+- revisar estratégia de backup/restore.
+
+**Fluxo de mudança**
+1. editar `postgres_version`, `postgres_db`, `postgres_admin_user` ou `postgres_admin_password` em [`terraform/variables.tf`](terraform/variables.tf:84) e/ou [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1);
+2. se a mudança for estrutural do container, editar [`compose/docker-compose.yml`](compose/docker-compose.yml:26);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+**Validar depois**
+- container `postgres` saudável;
+- conexão interna funcionando via `pg_isready`;
+- Grafana/pgAdmin continuarem conectando.
+
+### PgBouncer
+
+**Função**
+- pool de conexões do Postgres;
+- endpoint TCP externo na porta `5432` via Traefik.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:45)
+- [`terraform/variables.tf`](terraform/variables.tf:181)
+
+**Quando editar**
+- pool size;
+- auth/admin user;
+- política de conexão;
+- exposição TCP.
+
+**Fluxo de mudança**
+1. editar envs/labels do serviço em [`compose/docker-compose.yml`](compose/docker-compose.yml:52);
+2. editar `pgbouncer_version`, `pgbouncer_admin_user` ou `pgbouncer_admin_password` em [`terraform/variables.tf`](terraform/variables.tf:90);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) se mudou variáveis, ou [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) se foi só Compose.
+
+**Validar depois**
+- porta `5432` acessível;
+- autenticação funcionando;
+- aplicações continuam conectando ao banco.
+
+### Redis
+
+**Função**
+- cache/estado efêmero/filas simples.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:75)
+- [`terraform/variables.tf`](terraform/variables.tf:191)
+
+**Fluxo de mudança**
+1. editar versão/senha em [`terraform/variables.tf`](terraform/variables.tf:96) ou [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1);
+2. editar comando/volume em [`compose/docker-compose.yml`](compose/docker-compose.yml:79);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+### MinIO API e Console
+
+**Função**
+- storage S3-compatible;
+- console administrativa separada.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:85)
+- [`terraform/variables.tf`](terraform/variables.tf:196)
+- [`scripts/backup-minio.sh`](scripts/backup-minio.sh:1)
+
+**Quando editar**
+- versão do MinIO;
+- credenciais root;
+- console port/routing;
+- volume persistente.
+
+**Fluxo de mudança**
+1. editar `minio_version`, `minio_root_user` ou `minio_root_password` em [`terraform/variables.tf`](terraform/variables.tf:102);
+2. editar rotas `storage.*` e `minio-admin.*` em [`compose/docker-compose.yml`](compose/docker-compose.yml:99) se necessário;
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+**Validar depois**
+- `https://storage.rangeltech.net/minio/health/live` retornar `200`;
+- `https://minio-admin.rangeltech.net` retornar `401` antes do login;
+- console abrir após basic auth + login MinIO.
+
+### pgAdmin
+
+**Função**
+- administração web do Postgres.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:116)
+- [`terraform/variables.tf`](terraform/variables.tf:206)
+
+**Fluxo de mudança**
+1. editar `pgadmin_version`, `pgadmin_email` ou `pgadmin_password` em [`terraform/variables.tf`](terraform/variables.tf:108);
+2. editar labels/volume/env em [`compose/docker-compose.yml`](compose/docker-compose.yml:120);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+**Validar depois**
+- `https://pgadmin.rangeltech.net` retornar `401` antes do basic auth;
+- login do app funcionar depois.
 
 ### Grafana
 
-Datasources provisionados automaticamente em:
+**Função**
+- dashboards e exploração de métricas/logs.
 
-- [`configs/grafana/provisioning/datasources/postgres.yml`](configs/grafana/provisioning/datasources/postgres.yml:1) — usa `uid: postgres-platform`, aponta pro pgbouncer e resolve `${POSTGRES_DB}`/`${POSTGRES_ADMIN_USER}`/`${POSTGRES_ADMIN_PASSWORD}` a partir das env vars do próprio container `grafana` (ver [`compose/docker-compose.yml`](compose/docker-compose.yml:143))
-- [`configs/grafana/provisioning/datasources/prometheus.yml`](configs/grafana/provisioning/datasources/prometheus.yml:1) — `uid: prometheus`
-- [`configs/grafana/provisioning/datasources/loki.yml`](configs/grafana/provisioning/datasources/loki.yml:1) — `uid: loki`
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:140)
+- [`configs/grafana/provisioning/datasources/postgres.yml`](configs/grafana/provisioning/datasources/postgres.yml:1)
+- [`configs/grafana/provisioning/datasources/prometheus.yml`](configs/grafana/provisioning/datasources/prometheus.yml:1)
+- [`configs/grafana/provisioning/datasources/loki.yml`](configs/grafana/provisioning/datasources/loki.yml:1)
+- [`configs/grafana/provisioning/dashboards/dashboards.yml`](configs/grafana/provisioning/dashboards/dashboards.yml:1)
+- [`configs/grafana/provisioning/dashboards/json/platform-observability.json`](configs/grafana/provisioning/dashboards/json/platform-observability.json:1)
 
-Dashboard provisionado automaticamente (pasta "General", editável na UI):
+**Quando editar**
+- versão do Grafana;
+- credenciais admin;
+- datasources;
+- dashboards provisionados;
+- root URL/security flags.
 
-- Provider: [`configs/grafana/provisioning/dashboards/dashboards.yml`](configs/grafana/provisioning/dashboards/dashboards.yml:1)
-- Dashboard: [`configs/grafana/provisioning/dashboards/json/platform-observability.json`](configs/grafana/provisioning/dashboards/json/platform-observability.json:1) — "Platform Observability", com CPU/memória/disco do host (node-exporter), CPU/memória por container (cAdvisor), status dos scrape targets, conexões/atividade do Postgres e logs de erro recentes (Loki)
+**Fluxo de mudança**
+1. editar versão/credenciais em [`terraform/variables.tf`](terraform/variables.tf:114);
+2. editar provisionamento em [`configs/grafana/provisioning/`](configs/grafana/provisioning);
+3. colocar novos dashboards JSON em [`configs/grafana/provisioning/dashboards/json/`](configs/grafana/provisioning/dashboards/json);
+4. executar [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) para provisionamento/config ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) se mudou versão/credenciais.
 
-Para adicionar novos dashboards, basta colocar o `.json` exportado do Grafana dentro de `configs/grafana/provisioning/dashboards/json/` — o provider já varre essa pasta a cada 30s.
+**Validar depois**
+- `https://grafana.rangeltech.net` responder `302`/tela de login;
+- datasources `postgres`, `prometheus` e `loki` saudáveis;
+- dashboard provisionado carregado.
 
-## Onde editar cada coisa
+### Uptime Kuma
 
-### Alterar versão de um serviço
+**Função**
+- monitoramento sintético externo.
 
-Edite os defaults em [`terraform/variables.tf`](terraform/variables.tf:72) ou sobrescreva no arquivo local [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1).
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:170)
+- [`terraform/variables.tf`](terraform/variables.tf:120)
 
-Variáveis já expostas:
+**Fluxo de mudança**
+1. editar `uptime_kuma_version`, `uptime_kuma_user` e `uptime_kuma_password` em [`terraform/variables.tf`](terraform/variables.tf:120);
+2. editar volume/labels em [`compose/docker-compose.yml`](compose/docker-compose.yml:174);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
 
-- `traefik_version`
-- `postgres_version`
-- `pgbouncer_version`
-- `redis_version`
-- `minio_version`
-- `pgadmin_version`
-- `grafana_version`
-- `uptime_kuma_version`
-- `code_server_version`
-- `prometheus_version`
-- `loki_version`
-- `promtail_version`
-- `node_exporter_version`
-- `cadvisor_version`
-- `ninerouter_package`
+**Validar depois**
+- `https://uptime.rangeltech.net` responder `302`/login.
 
-Exemplo: trocar versão do Grafana
+### code-server
 
-```hcl
-grafana_version = "11.2.1"
-```
+**Função**
+- IDE web com acesso à árvore inteira sincronizada na VPS.
 
-Exemplo: trocar pacote do 9router
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:186)
+- [`terraform/variables.tf`](terraform/variables.tf:242)
 
-```hcl
-ninerouter_package = "9router@0.5.41"
-```
+**Detalhes importantes**
+- monta [`../:/workspace`](compose/docker-compose.yml:198);
+- monta Docker socket em [`/var/run/docker.sock`](compose/docker-compose.yml:200);
+- usa `PASSWORD` e `SUDO_PASSWORD` renderizados do Terraform.
 
-Depois rode o workflow [`Terraform Apply`](.github/workflows/terraform-apply.yml:1) ou faça `terraform apply` localmente em uma máquina que tenha Terraform.
+**Fluxo de mudança**
+1. editar versão/senhas em [`terraform/variables.tf`](terraform/variables.tf:126);
+2. editar mounts/env/labels em [`compose/docker-compose.yml`](compose/docker-compose.yml:197);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
 
-### Alterar credenciais
+**Validar depois**
+- `https://code.rangeltech.net` responder `302`/login;
+- workspace abrir;
+- terminal interno enxergar Docker/arquivos.
 
-As senhas e segredos estão modelados em [`terraform/variables.tf`](terraform/variables.tf:162) e entram no Compose através de [`compose/.env.tftpl`](compose/.env.tftpl:1).
+### Prometheus
 
-Os placeholders ficam em [`terraform/terraform.tfvars.example`](terraform/terraform.tfvars.example:1), mas o arquivo real deve ser um [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example:1) local e ignorado pelo git.
+**Função**
+- coleta e consulta de métricas.
 
-### Alterar roteamento e TLS
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:211)
+- [`configs/prometheus/prometheus.yml`](configs/prometheus/prometheus.yml:1)
+- [`terraform/variables.tf`](terraform/variables.tf:132)
 
-- configuração estática do Traefik: [`configs/traefik/traefik.yml`](configs/traefik/traefik.yml:1)
-- middlewares e regras dinâmicas compartilhadas: [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1)
-- labels por serviço: [`compose/docker-compose.yml`](compose/docker-compose.yml:16)
+**Fluxo de mudança**
+1. editar versão em [`terraform/variables.tf`](terraform/variables.tf:132);
+2. editar alvos e jobs em [`configs/prometheus/prometheus.yml`](configs/prometheus/prometheus.yml:1);
+3. executar [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) para scrape config ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) para versão/segredos.
 
-### Alterar DNS
+**Validar depois**
+- `https://prometheus.rangeltech.net` retornar `401` antes da auth;
+- targets `up` na UI.
 
-Os registros são geridos em [`terraform/dns.tf`](terraform/dns.tf:1).
+### Loki
 
-### Alterar healthcheck operacional
+**Função**
+- armazenamento e consulta de logs.
 
-O script de verificação está em [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1).
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:235)
+- [`configs/loki/config.yml`](configs/loki/config.yml:1)
+- [`terraform/variables.tf`](terraform/variables.tf:138)
 
-### Alterar backups
+**Fluxo de mudança**
+1. editar versão em [`terraform/variables.tf`](terraform/variables.tf:138);
+2. editar config em [`configs/loki/config.yml`](configs/loki/config.yml:1);
+3. executar [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
 
-Scripts relevantes:
+**Validar depois**
+- `https://logs.rangeltech.net` retornar `401` antes da auth;
+- datasource Loki continuar saudável no Grafana.
+
+### Promtail
+
+**Função**
+- coleta logs do host e containers e envia para Loki.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:256)
+- [`configs/promtail/config.yml`](configs/promtail/config.yml:1)
+- [`terraform/variables.tf`](terraform/variables.tf:144)
+
+**Fluxo de mudança**
+1. editar versão em [`terraform/variables.tf`](terraform/variables.tf:144);
+2. editar scrape config/path labels em [`configs/promtail/config.yml`](configs/promtail/config.yml:1);
+3. executar [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1).
+
+### node-exporter
+
+**Função**
+- métricas do host.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:272)
+- [`terraform/variables.tf`](terraform/variables.tf:150)
+
+**Fluxo de mudança**
+1. editar versão em [`terraform/variables.tf`](terraform/variables.tf:150);
+2. editar command/mounts em [`compose/docker-compose.yml`](compose/docker-compose.yml:276);
+3. executar [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+### cAdvisor
+
+**Função**
+- métricas dos containers.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:284)
+- [`terraform/variables.tf`](terraform/variables.tf:156)
+
+**Fluxo de mudança**
+1. editar versão em [`terraform/variables.tf`](terraform/variables.tf:156);
+2. editar mounts/permissões em [`compose/docker-compose.yml`](compose/docker-compose.yml:288);
+3. executar [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+### 9router
+
+**Função**
+- serviço principal exposto em `https://9route.rangeltech.net`.
+
+**Arquivos que controlam o serviço**
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:299)
+- [`terraform/variables.tf`](terraform/variables.tf:254)
+- [`apps/9route/Dockerfile`](apps/9route/Dockerfile:1)
+
+**Quando editar**
+- atualizar pacote `9router@...`;
+- ajustar porta/env/data dir;
+- revisar imagem base/processo de build futuro.
+
+**Fluxo de mudança**
+1. editar `ninerouter_package` em [`terraform/variables.tf`](terraform/variables.tf:254) ou no tfvars;
+2. editar env/labels/volume em [`compose/docker-compose.yml`](compose/docker-compose.yml:303);
+3. se o build local mudar, editar [`apps/9route/Dockerfile`](apps/9route/Dockerfile:1);
+4. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+**Validar depois**
+- `https://9route.rangeltech.net` responder `307`/resposta esperada do app;
+- logs sem erro fatal;
+- volume [`../data/9router`](compose/docker-compose.yml:309) persistindo dados.
+
+## DNS
+
+Todos os registros públicos são geridos em [`terraform/dns.tf`](terraform/dns.tf:1). Sempre que surgir um novo subdomínio público, a mudança correta é:
+
+1. adicionar o registro em [`terraform/dns.tf`](terraform/dns.tf:1);
+2. adicionar a rota correspondente em [`compose/docker-compose.yml`](compose/docker-compose.yml:17) e/ou [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1).
+
+## Credenciais e secrets
+
+As variáveis sensíveis estão centralizadas em [`terraform/variables.tf`](terraform/variables.tf:162) e renderizadas em [`compose/.env.tftpl`](compose/.env.tftpl:1).
+
+Fontes de verdade operacionais:
+
+- valores locais reais em `terraform/terraform.tfvars` ignorado pelo git;
+- espelhamento no GitHub Secrets para os workflows;
+- referência local consolidada em [`../secrets/vps-rt-services.json`](../secrets/vps-rt-services.json).
+
+Secrets mínimos esperados pelos workflows:
+
+- `VPS_HOST`
+- `VPS_DEPLOY_USER`
+- `VPS_SSH_PRIVATE_KEY`
+- `VPS_INITIAL_SSH_PASSWORD`
+- `VPS_PUBLIC_SSH_KEY`
+- `HOSTINGER_API_KEY`
+- `POSTGRES_ADMIN_PASSWORD`
+- `PGBOUNCER_ADMIN_PASSWORD`
+- `REDIS_PASSWORD`
+- `MINIO_ROOT_PASSWORD`
+- `PGADMIN_PASSWORD`
+- `GRAFANA_ADMIN_PASSWORD`
+- `UPTIME_KUMA_PASSWORD`
+- `TRAEFIK_BASIC_AUTH`
+- `CODE_SERVER_PASSWORD`
+- `CODE_SERVER_SUDO_PASSWORD`
+- `RESTIC_REPOSITORY`
+- `RESTIC_PASSWORD`
+
+Ver referências em [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:41), [`terraform-plan.yml`](.github/workflows/terraform-plan.yml:41) e [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1).
+
+## Backups
+
+Scripts atuais:
 
 - [`scripts/backup-postgres.sh`](scripts/backup-postgres.sh:1)
 - [`scripts/backup-minio.sh`](scripts/backup-minio.sh:1)
 - [`scripts/restore-postgres.sh`](scripts/restore-postgres.sh:1)
 - [`scripts/install-backup-cron.sh`](scripts/install-backup-cron.sh:1)
+
+O backend externo é configurado com `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` e `restic_environment`, todos conectados via Terraform + GitHub Actions. A automação de bootstrap dos secrets está em [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py:1).
+
+## Workflows
+
+### [`terraform-plan.yml`](.github/workflows/terraform-plan.yml:1)
+- usado em PR;
+- valida alterações e roda `terraform plan`.
+
+### [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1)
+- usado para aplicar mudança estrutural/variáveis/segredos/DNS;
+- renderiza `compose/.env`, sincroniza arquivos e converge a stack.
+
+### [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1)
+- usado para redeploy rápido de arquivos já existentes;
+- roda `docker compose up -d --remove-orphans` e [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1).
+
+## Validação rápida pós-mudança
+
+Checklist objetivo depois de cada alteração importante:
+
+1. verificar containers com `docker ps`;
+2. testar endpoints críticos;
+3. checar logs do serviço alterado e do [`traefik`](compose/docker-compose.yml:2);
+4. confirmar healthchecks;
+5. se houver credencial/rota nova, atualizar [`../secrets/vps-rt-services.json`](../secrets/vps-rt-services.json).
+
+Exemplos de resultado esperado:
+
+- Traefik dashboard: `401`
+- Prometheus: `401`
+- Loki: `401`
+- MinIO health: `200`
+- Grafana: `302`
+- Uptime Kuma: `302`
+- code-server: `302`
+- 9router: `307`
 
 ## Estrutura do repositório
 
@@ -227,139 +508,19 @@ vps_rt_infra/
 │   ├── promtail/
 │   │   └── config.yml
 │   └── grafana/
-│       └── provisioning/datasources/
-│           ├── postgres.yml
-│           ├── prometheus.yml
-│           └── loki.yml
+│       └── provisioning/
 ├── apps/
 │   └── 9route/
-│       └── Dockerfile
 ├── scripts/
-│   ├── deploy.sh
-│   ├── backup-postgres.sh
-│   ├── backup-minio.sh
-│   ├── restore-postgres.sh
-│   ├── install-backup-cron.sh
-│   ├── hostinger_dns.sh
-│   └── healthcheck.sh
 └── .github/
     └── workflows/
-        ├── terraform-plan.yml
-        ├── terraform-apply.yml
-        └── deploy-vps.yml
 ```
-
-## Arquivos mais importantes
-
-- [`terraform/main.tf`](terraform/main.tf:1): renderiza [`compose/.env`](compose/.env.tftpl:1), sincroniza arquivos, sobe a stack e dispara bootstrap/deploy remoto.
-- [`terraform/variables.tf`](terraform/variables.tf:1): catálogo central de versões, credenciais e knobs operacionais.
-- [`compose/docker-compose.yml`](compose/docker-compose.yml:1): definição integral da stack.
-- [`cloud-init/bootstrap.sh`](cloud-init/bootstrap.sh:1): primeira preparação do host.
-- [`terraform/dns.tf`](terraform/dns.tf:1): registros DNS da Hostinger.
-- [`terraform/outputs.tf`](terraform/outputs.tf:1): URLs públicas previstas.
-- [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1): smoke test dos endpoints críticos.
-
-## Secrets necessários
-
-Os workflows em [`.github/workflows/`](.github/workflows) precisam, no mínimo, destes secrets do GitHub:
-
-- `VPS_HOST`
-- `VPS_DEPLOY_USER`
-- `VPS_SSH_PRIVATE_KEY`
-- `VPS_INITIAL_SSH_PASSWORD`
-- `VPS_PUBLIC_SSH_KEY`
-- `HOSTINGER_API_KEY`
-- `POSTGRES_ADMIN_PASSWORD`
-- `PGBOUNCER_ADMIN_PASSWORD`
-- `REDIS_PASSWORD`
-- `MINIO_ROOT_PASSWORD`
-- `PGADMIN_PASSWORD`
-- `GRAFANA_ADMIN_PASSWORD`
-- `UPTIME_KUMA_PASSWORD`
-- `TRAEFIK_BASIC_AUTH`
-- `CODE_SERVER_PASSWORD`
-- `CODE_SERVER_SUDO_PASSWORD`
-- `RESTIC_REPOSITORY`
-- `RESTIC_PASSWORD`
-
-Eles já estão referenciados em [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:41), [`terraform-plan.yml`](.github/workflows/terraform-plan.yml:41) e [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1).
-
-## Workflows do GitHub Actions
-
-### [`terraform-plan.yml`](.github/workflows/terraform-plan.yml:1)
-
-- roda em pull requests;
-- inicializa Terraform;
-- injeta a chave SSH privada do runner;
-- executa `terraform plan`.
-
-### [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1)
-
-- roda em `push` para `main` e em `workflow_dispatch`;
-- injeta todos os `TF_VAR_*` sensíveis;
-- executa `terraform apply -auto-approve`;
-- imprime [`terraform output`](terraform/outputs.tf:1).
-
-### [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1)
-
-- serve para redeploy rápido da stack sem reaplicar toda a infraestrutura;
-- sincroniza arquivos e executa `docker compose up -d --remove-orphans`;
-- roda [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1) ao final.
-
-## Pré-requisitos do primeiro apply
-
-1. gerar um par SSH dedicado para a VPS;
-2. copiar [`terraform/terraform.tfvars.example`](terraform/terraform.tfvars.example:1) para `terraform/terraform.tfvars` e preencher valores reais;
-3. registrar os mesmos valores como GitHub Secrets;
-4. confirmar que o domínio `rangeltech.net` está apontando para a zona correta na Hostinger;
-5. escolher e configurar um destino real do restic.
-
-## Backups
-
-O modelo atual usa restic para backup externo.
-
-- Postgres: [`scripts/backup-postgres.sh`](scripts/backup-postgres.sh:1)
-- MinIO: [`scripts/backup-minio.sh`](scripts/backup-minio.sh:1)
-
-Depende de três valores, todos wired ponta a ponta (GitHub secret -> `TF_VAR_*` -> `terraform.tfvars`/`main.tf` -> `compose/.env`):
-
-- `RESTIC_REPOSITORY` (ex.: `s3:https://s3.us-east-1.amazonaws.com/bucket/prefix`)
-- `RESTIC_PASSWORD` (senha de criptografia do repositório restic)
-- `restic_environment` (map opcional com credenciais do backend, ex.: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`), expandido linha a linha em `compose/.env`
-
-Enquanto `RESTIC_REPOSITORY`/`RESTIC_PASSWORD` não apontarem para um backend real, os scripts de backup detectam isso e pulam o upload (não falham).
-
-Para configurar as credenciais do backend restic via [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py:1), crie `secrets/restic-backend.json` (fora do repo, mesmo padrão de `secrets/contabo-vps.json`) com o formato:
-
-```json
-{
-  "AWS_ACCESS_KEY_ID": "...",
-  "AWS_SECRET_ACCESS_KEY": "..."
-}
-```
-
-O script lê esse arquivo (se existir), grava o map em `terraform/terraform.tfvars` e faz upload do secret `RESTIC_ENVIRONMENT_JSON` no GitHub, que o workflow `terraform-apply.yml` repassa como `TF_VAR_restic_environment`.
-
-## Estado atual do projeto
-
-O repositório já está preparado para:
-
-- subir PostgreSQL, PgBouncer, Redis, MinIO, pgAdmin, Grafana, Uptime Kuma, Traefik e 9router;
-- incluir VS Code Server com acesso à árvore inteira;
-- incluir stack de métricas e logs com Prometheus, Loki, Promtail, node-exporter e cAdvisor;
-- expor subdomínios em `rangeltech.net`;
-- operar por GitHub Actions.
-
-O que ainda falta para a execução real é:
-
-1. preencher segredos reais;
-2. automatizar a gravação desses segredos no repositório GitHub;
-3. disparar o primeiro apply real;
-4. validar múltiplos redeploys.
 
 ## Referências rápidas
 
 - arquitetura base: [`../arquitetura_saas_koyeb_vps_iac.md`](../arquitetura_saas_koyeb_vps_iac.md:3)
-- serviço local legado do 9router: [`../9router.bat`](../9router.bat)
 - deploy principal: [`terraform/main.tf`](terraform/main.tf:1)
 - stack: [`compose/docker-compose.yml`](compose/docker-compose.yml:1)
+- DNS: [`terraform/dns.tf`](terraform/dns.tf:1)
+- healthcheck: [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1)
+- memória operacional: [`memoria.md`](memoria.md:1)
