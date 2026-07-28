@@ -38,6 +38,12 @@ jobs:
             "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
             "chmod +x /opt/platform/scripts/*.sh && cd /opt/platform/compose && docker compose build ninerouter && docker compose up -d --remove-orphans"
 
+      - name: Install compose self-healer
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
+            "sudo /opt/platform/scripts/install-compose-healer.sh"
+
       - name: Healthcheck
         run: |
           ssh -i ~/.ssh/vps_rt_infra_ed25519 \

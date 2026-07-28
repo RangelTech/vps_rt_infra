@@ -32,6 +32,7 @@ Regra prática:
 | dashboards/datasources do Grafana | [`configs/grafana/provisioning/`](configs/grafana/provisioning) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
 | scripts operacionais/backup/healthcheck | [`scripts/`](scripts) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
 | bootstrap do host/usuário/chave | [`cloud-init/bootstrap.sh`](cloud-init/bootstrap.sh:1) ou [`terraform/main.tf`](terraform/main.tf:1) | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
+| auto-restart/reconciliação do Compose | [`scripts/compose-healer.sh`](scripts/compose-healer.sh:1), [`scripts/install-compose-healer.sh`](scripts/install-compose-healer.sh:1), [`terraform/main.tf`](terraform/main.tf:139), [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
 
 ## Serviços públicos e como eles funcionam
 
@@ -437,8 +438,16 @@ Scripts atuais:
 - [`scripts/backup-minio.sh`](scripts/backup-minio.sh:1)
 - [`scripts/restore-postgres.sh`](scripts/restore-postgres.sh:1)
 - [`scripts/install-backup-cron.sh`](scripts/install-backup-cron.sh:1)
+- [`scripts/compose-healer.sh`](scripts/compose-healer.sh:1)
+- [`scripts/install-compose-healer.sh`](scripts/install-compose-healer.sh:1)
 
 O backend externo é configurado com `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` e `restic_environment`, todos conectados via Terraform + GitHub Actions. A automação de bootstrap dos secrets está em [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py:1).
+
+## Auto-restart da stack
+
+O host usa um timer systemd `rt-compose-healer.timer`, instalado por [`scripts/install-compose-healer.sh`](scripts/install-compose-healer.sh:1), para reconciliar a stack a cada minuto. O script [`scripts/compose-healer.sh`](scripts/compose-healer.sh:1) lista os serviços de `docker compose config --services`; se qualquer serviço esperado estiver sem container ou com estado diferente de `running`, ele executa `docker compose up -d --remove-orphans` em `/opt/platform/compose`.
+
+Isso complementa `restart: unless-stopped`: a política do Docker cobre crash do processo, mas não corrige uma parada limpa/manual em lote. Para manutenção intencional, criar temporariamente `/opt/platform/.maintenance` faz o healer não agir.
 
 ## Workflows
 
@@ -452,7 +461,7 @@ O backend externo é configurado com `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` e `r
 
 ### [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1)
 - usado para redeploy rápido de arquivos já existentes;
-- roda `docker compose up -d --remove-orphans` e [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1).
+- roda `docker compose up -d --remove-orphans`, instala `rt-compose-healer.timer` e executa [`scripts/healthcheck.sh`](scripts/healthcheck.sh:1).
 
 ## Validação rápida pós-mudança
 

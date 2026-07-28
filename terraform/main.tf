@@ -136,6 +136,8 @@ resource "null_resource" "deploy_stack" {
     backup_postgres_sha     = filesha256("${path.module}/../scripts/backup-postgres.sh")
     backup_minio_sha        = filesha256("${path.module}/../scripts/backup-minio.sh")
     healthcheck_sha         = filesha256("${path.module}/../scripts/healthcheck.sh")
+    compose_healer_sha      = filesha256("${path.module}/../scripts/compose-healer.sh")
+    install_compose_healer_sha = filesha256("${path.module}/../scripts/install-compose-healer.sh")
   }
 
   connection {
@@ -207,6 +209,7 @@ resource "null_resource" "deploy_stack" {
       "cd ${local.remote_base_dir}/compose && docker compose pull --ignore-buildable",
       "cd ${local.remote_base_dir}/compose && docker compose up -d --remove-orphans",
       "sudo ${local.remote_base_dir}/scripts/install-backup-cron.sh",
+      "sudo ${local.remote_base_dir}/scripts/install-compose-healer.sh",
     ]
   }
 }
