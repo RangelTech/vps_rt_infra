@@ -103,11 +103,13 @@ services:
       - traefik.http.routers.minio-api.entrypoints=websecure
       - traefik.http.routers.minio-api.tls.certresolver=letsencrypt
       - traefik.http.routers.minio-api.middlewares=security-headers@file
+      - traefik.http.routers.minio-api.service=minio-api
       - traefik.http.services.minio-api.loadbalancer.server.port=9000
       - traefik.http.routers.minio-console.rule=Host(`minio-admin.${ROOT_DOMAIN}`)
       - traefik.http.routers.minio-console.entrypoints=websecure
       - traefik.http.routers.minio-console.tls.certresolver=letsencrypt
       - traefik.http.routers.minio-console.middlewares=admin-auth@docker,security-headers@file
+      - traefik.http.routers.minio-console.service=minio-console
       - traefik.http.services.minio-console.loadbalancer.server.port=9001
       - traefik.http.middlewares.admin-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
 
