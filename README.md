@@ -2,7 +2,7 @@
 
 Infraestrutura como código da VPS pessoal em Contabo usando [`Terraform`](terraform/main.tf:1), [`Docker Compose`](compose/docker-compose.yml:1), [`cloud-init`](cloud-init/bootstrap.sh:1) e workflows em [`.github/workflows/`](.github/workflows).
 
-Este repositório gerencia somente a camada VPS da stack em `rangeltech.net`: bootstrap do host, DNS, reverse proxy, banco, storage, observabilidade, utilitários operacionais e o serviço principal [`9router`](compose/docker-compose.yml:299).
+Este repositório gerencia somente a camada VPS da stack em `rangeltech.net`: bootstrap do host, DNS, reverse proxy, banco, storage, observabilidade, utilitários operacionais, o serviço principal [`9router`](compose/docker-compose.yml:299) e sites estáticos de clientes com domínio próprio (ver [`sites/README.md`](sites/README.md:1)).
 
 ## Fluxo operacional padrão
 
@@ -32,6 +32,7 @@ Regra prática:
 | dashboards/datasources do Grafana | [`configs/grafana/provisioning/`](configs/grafana/provisioning) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
 | scripts operacionais/backup/healthcheck | [`scripts/`](scripts) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) |
 | bootstrap do host/usuário/chave | [`cloud-init/bootstrap.sh`](cloud-init/bootstrap.sh:1) ou [`terraform/main.tf`](terraform/main.tf:1) | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
+| site estático de cliente (novo/existente) | [`sites/README.md`](sites/README.md:1), pasta `sites/<slug>/public/`, [`compose/docker-compose.yml`](compose/docker-compose.yml:1) | [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
 | auto-restart/reconciliação do Compose | [`scripts/compose-healer.sh`](scripts/compose-healer.sh:1), [`scripts/install-compose-healer.sh`](scripts/install-compose-healer.sh:1), [`terraform/main.tf`](terraform/main.tf:139), [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) | [`deploy-vps.yml`](.github/workflows/deploy-vps.yml:1) ou [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) |
 
 ## Serviços públicos e como eles funcionam
@@ -389,9 +390,33 @@ A exceção operacional é [`pgbouncer`](compose/docker-compose.yml:45), que fic
 - logs sem erro fatal;
 - volume [`../data/9router`](compose/docker-compose.yml:309) persistindo dados.
 
+### Client static sites
+
+**Função**
+- hospedar sites estáticos de clientes, cada um com domínio próprio (não subdomínio de `rangeltech.net`);
+- isolado dos serviços principais: 1 container `nginx:alpine` por cliente.
+
+**Arquivos que controlam o serviço**
+- [`sites/README.md`](sites/README.md:1) — runbook completo de onboarding/remoção de cliente
+- `sites/<slug>/public/` — arquivos estáticos do cliente
+- [`compose/docker-compose.yml`](compose/docker-compose.yml:1) — seção `## Client static sites ##`, 1 bloco de serviço por cliente
+
+**Quando editar**
+- adicionar/remover cliente;
+- trocar domínio de um cliente;
+- publicar novos arquivos estáticos.
+
+**Fluxo de mudança**
+1. seguir [`sites/README.md`](sites/README.md:1) (criar pasta, copiar bloco de serviço, ajustar domínio);
+2. garantir DNS do domínio do cliente apontando (A record) pro IP da VPS — fora deste repo, feito no registrador do cliente (ou na nossa Hostinger separadamente se o domínio for nosso);
+3. executar [`terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) (a pasta `sites/**` já está nos paths que disparam o workflow).
+
+**Validar depois**
+- `https://<domínio-do-cliente>` responder `200` com certificado Let's Encrypt próprio (não o de `rangeltech.net`).
+
 ## DNS
 
-Todos os registros públicos são geridos em [`terraform/dns.tf`](terraform/dns.tf:1). Sempre que surgir um novo subdomínio público, a mudança correta é:
+Todos os registros públicos da zona `rangeltech.net` são geridos em [`terraform/dns.tf`](terraform/dns.tf:1). Domínios de clientes de sites estáticos (seção "Client static sites" acima) **não** entram aqui — são domínios externos, geridos fora deste repositório. Sempre que surgir um novo subdomínio público de `rangeltech.net`, a mudança correta é:
 
 1. adicionar o registro em [`terraform/dns.tf`](terraform/dns.tf:1);
 2. adicionar a rota correspondente em [`compose/docker-compose.yml`](compose/docker-compose.yml:17) e/ou [`configs/traefik/dynamic.yml`](configs/traefik/dynamic.yml:1);
@@ -441,7 +466,9 @@ Scripts atuais:
 - [`scripts/compose-healer.sh`](scripts/compose-healer.sh:1)
 - [`scripts/install-compose-healer.sh`](scripts/install-compose-healer.sh:1)
 
-O backend externo é configurado com `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` e `restic_environment`, todos conectados via Terraform + GitHub Actions. A automação de bootstrap dos secrets está em [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py:1).
+O backend externo é configurado com `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` e `restic_environment`, todos conectados via Terraform + GitHub Actions.
+
+`scripts/bootstrap_github_secrets.py` foi removido em 17/08/2026 — gerava senhas novas para TODOS os serviços a cada execução, incluindo os já em produção, risco real de girar credencial em uso sem querer. Se precisar recriar `terraform.tfvars`/GitHub Secrets do zero (nova máquina, rotação deliberada), fazer manualmente: gerar cada valor (`openssl rand -hex 32` ou equivalente), gravar em `terraform/terraform.tfvars` e como GitHub Secret do ambiente `production`, um de cada vez.
 
 ## Auto-restart da stack
 
@@ -520,6 +547,10 @@ vps_rt_infra/
 │       └── provisioning/
 ├── apps/
 │   └── 9route/
+├── sites/
+│   ├── README.md
+│   └── <slug>/
+│       └── public/
 ├── scripts/
 └── .github/
     └── workflows/

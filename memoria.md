@@ -2,7 +2,7 @@
 
 > Documento de continuidade entre chats. Se você é uma nova instância do Claude/Roo assumindo este projeto, leia este arquivo inteiro antes de fazer qualquer coisa. Ele reflete o estado real do repositório, as decisões já tomadas e o que falta fazer.
 
-Última atualização: 2026-07-27.
+Última atualização: 2026-08-17.
 
 ## 1. O que é este projeto
 
@@ -111,22 +111,14 @@ Correções aplicadas:
 - Todo segredo sensível é declarado como `variable ... { sensitive = true }` em [`terraform/variables.tf`](terraform/variables.tf:1) e passado via `TF_VAR_*` no workflow.
 - Local: `terraform/terraform.tfvars` (gitignored, só existe localmente/no runner) — template em [`terraform/terraform.tfvars.example`](terraform/terraform.tfvars.example:1).
 - GitHub Actions: os mesmos valores replicados como GitHub Secrets do repo (ambiente `production`).
-- Script de automação: [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py:1)
-  - lê `../secrets/contabo-vps.json`, `../secrets/api_key_hostinger.json`, chave SSH v2 local, e opcionalmente `../secrets/restic-backend.json`;
-  - gera senhas fortes aleatórias para cada serviço (`random_password()`, 28 chars);
-  - gera o hash bcrypt do basic auth do Traefik (`admin:<hash>`);
-  - escreve `terraform/terraform.tfvars` localmente;
-  - criptografa e sobe cada secret via API REST do GitHub (`libsodium`/`PyNaCl` sealed box).
-  - **Import notável**: usa `bcrypt`, `requests`, `nacl` — precisam estar instalados no Python local para rodar o script.
-  - Lista completa de secrets subidos: `VPS_HOST`, `VPS_DEPLOY_USER`, `VPS_SSH_PRIVATE_KEY`, `VPS_INITIAL_SSH_PASSWORD`, `VPS_PUBLIC_SSH_KEY`, `HOSTINGER_API_KEY`, `POSTGRES_ADMIN_PASSWORD`, `PGBOUNCER_ADMIN_PASSWORD`, `REDIS_PASSWORD`, `MINIO_ROOT_PASSWORD`, `PGADMIN_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`, `UPTIME_KUMA_PASSWORD`, `TRAEFIK_BASIC_AUTH`, `CODE_SERVER_PASSWORD`, `CODE_SERVER_SUDO_PASSWORD`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `RESTIC_ENVIRONMENT_JSON`.
-  - **Cuidado**: este script sobrescreve `terraform.tfvars` e os GitHub Secrets com senhas NOVAS toda vez que é rodado — se já existir um deploy real na VPS com senhas antigas, rodar de novo troca as senhas e exige novo `terraform apply` para não ficar dessincronizado.
+- ~~Script de automação: `scripts/bootstrap_github_secrets.py`~~ — **removido em 17/08/2026** (mega spec agent-llm, `analise-06-estudo-profundo-repos.md`). Gerava senhas NOVAS pra todos os serviços a cada execução e sobrescrevia `terraform.tfvars` + todos os GitHub Secrets sem distinguir "primeira vez" de "já em produção" — risco real de girar credencial em uso. Ficam documentados aqui pra quando precisar recriar algo do zero: lista de secrets usados pelo Terraform: `VPS_HOST`, `VPS_DEPLOY_USER`, `VPS_SSH_PRIVATE_KEY`, `VPS_INITIAL_SSH_PASSWORD`, `VPS_PUBLIC_SSH_KEY`, `HOSTINGER_API_KEY`, `POSTGRES_ADMIN_PASSWORD`, `PGBOUNCER_ADMIN_PASSWORD`, `REDIS_PASSWORD`, `MINIO_ROOT_PASSWORD`, `PGADMIN_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`, `UPTIME_KUMA_PASSWORD`, `TRAEFIK_BASIC_AUTH` (bcrypt de `admin:<senha>`), `CODE_SERVER_PASSWORD`, `CODE_SERVER_SUDO_PASSWORD`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `RESTIC_ENVIRONMENT_JSON`. Recriar/rotacionar agora é manual: gerar cada valor, gravar em `terraform/terraform.tfvars` E como GitHub Secret do ambiente `production`, um de cada vez — mais lento, mas sem risco de girar tudo por engano.
 
 ## 7. Backups (restic)
 
 - Scripts: [`scripts/backup-postgres.sh`](scripts/backup-postgres.sh:1), [`scripts/backup-minio.sh`](scripts/backup-minio.sh:1), [`scripts/restore-postgres.sh`](scripts/restore-postgres.sh:1), [`scripts/install-backup-cron.sh`](scripts/install-backup-cron.sh:1).
 - Depende de `restic_repository` + `restic_password` + `restic_environment` (map opcional, ex. credenciais S3), todos wired ponta a ponta: GitHub secret → `TF_VAR_*` → `terraform.tfvars`/`main.tf` → `compose/.env`.
 - Enquanto o repositório restic não apontar para um backend real, os scripts detectam e **pulam** o upload (não falham o deploy).
-- Para configurar credenciais reais do backend: criar `../secrets/restic-backend.json` fora do repo e rodar `bootstrap_github_secrets.py` de novo (ele lê esse arquivo automaticamente).
+- Para configurar credenciais reais do backend: gerar `RESTIC_REPOSITORY`/`RESTIC_PASSWORD`/`RESTIC_ENVIRONMENT_JSON` manualmente e gravar como GitHub Secret + `terraform.tfvars` (script de bootstrap automático removido, ver seção 6).
 
 ## 8. Estado atual (o que já foi feito vs. o que falta)
 
@@ -169,6 +161,21 @@ Os `triggers` de `null_resource.deploy_stack` em [`terraform/main.tf`](terraform
 - Novos arquivos JSON adicionados em `configs/grafana/provisioning/dashboards/json/` **não** disparam automaticamente um redeploy via trigger de hash (a pasta inteira via `provisioner "file"` ainda é sincronizada em todo apply, mas se nada mais mudou, o `null_resource.deploy_stack` pode não ser considerado "tainted" pelo Terraform e não rodar de novo).
 - Também vale para qualquer novo arquivo dentro de `configs/` que não tenha uma linha de trigger dedicada.
 - **Correção sugerida** (não aplicada ainda): trocar os triggers baseados em arquivo único por um hash agregado de todo o diretório `configs/` (ex.: `md5(join("", [for f in fileset(path.module, "../configs/**") : filemd5(f)]))`), ou simplesmente aceitar que o workflow também pode ser disparado manualmente via `workflow_dispatch` quando necessário.
+
+## 8b. Client static sites (2026-08-17)
+
+Novo escopo do repo: hospedar sites estáticos de clientes, isolados dos serviços principais. Dois modos: **A** domínio próprio do cliente, **B** cliente sem domínio ainda -> subdomínio `<slug>.rangeltech.net` (esse sim entra em `terraform/dns.tf`, igual `grafana`/`9route`/etc). Modo é só uma questão de qual `Host()` usar + onde o DNS é gerenciado; container/pasta/TLS são idênticos.
+
+- **Decisão**: repositório único (`vps_rt_infra`), não 1 repo por site. Justificativa do usuário: sites são simples/estáticos, não justificam overhead de N repositórios; infra e CI/CD já estão centralizados aqui. Repo por cliente só faria sentido se o cliente precisasse de acesso git próprio.
+- **Decisão**: 1 container `nginx:alpine` por cliente (não 1 nginx compartilhado com vhosts), consistente com o padrão já usado por todo o resto do compose (1 serviço = 1 bloco com labels Traefik próprias). Trade-off aceito: mais containers idle (nginx:alpine é leve, ~5-10MB, ok pra VPS 6).
+- **Estrutura**: `sites/<slug>/public/` (arquivos estáticos) + bloco de serviço em [`compose/docker-compose.yml`](compose/docker-compose.yml:1) seção `## Client static sites ##` (final do arquivo, antes de `networks:`). Runbook completo de onboarding/remoção em [`sites/README.md`](sites/README.md:1).
+- **TLS**: mesmo `certresolver=letsencrypt` (HTTP-01) já usado por todo mundo — funciona pra qualquer domínio apontado pro IP da VPS, não precisa mudar nada no Traefik.
+- **DNS**: modo A fica fora do escopo do [`terraform/dns.tf`](terraform/dns.tf:1) — domínio do cliente aponta A record pro IP `66.94.101.153` fora deste repo (registrador do cliente, ou Hostinger nossa se o domínio for nosso). Modo B entra normalmente em `terraform/dns.tf` como mais uma linha de `dns_records` (`{ name = "<slug>", type = "A", value = var.server_ip, ttl = 300 }`), igual qualquer outro subdomínio da stack.
+- **Sync/deploy**: `sites/` foi adicionado em 3 lugares que precisavam saber da pasta nova:
+  - [`terraform/main.tf`](terraform/main.tf:121): `provisioner "file"` sincroniza `sites/` pra `/opt/platform/sites`, mkdir do dir remoto, e trigger `sites_sha` (hash agregado via `fileset`+`filemd5`, não por arquivo individual — necessário porque cada cliente novo adiciona arquivos, e o padrão de trigger por arquivo único não escala pra isso, mesma lacuna já documentada na seção 8 pra `dashboards/json/`).
+  - [`.github/workflows/deploy-vps.yml`](.github/workflows/deploy-vps.yml:1): `sites/` adicionado no rsync.
+  - [`.github/workflows/terraform-apply.yml`](.github/workflows/terraform-apply.yml:1) e [`terraform-plan.yml`](.github/workflows/terraform-plan.yml:1): `sites/**` adicionado nos `paths` que disparam o workflow.
+- **Ainda não commitado/aplicado**: nenhum cliente real foi cadastrado ainda (só o scaffold/bloco de exemplo comentado). Primeiro cliente real vai ser o primeiro teste ponta a ponta desse fluxo — validar principalmente o trigger `sites_sha` do Terraform e o certificado Let's Encrypt saindo certo pro domínio externo.
 
 ## 9. Decisões de design importantes (para não repetir debate)
 

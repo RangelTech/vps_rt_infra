@@ -28,15 +28,28 @@ jobs:
         run: |
           rsync -az --delete \
             -e "ssh -i ~/.ssh/vps_rt_infra_ed25519" \
-            compose/ configs/ apps/ scripts/ \
+            compose/ configs/ apps/ scripts/ sites/ \
             "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/opt/platform/" \
             --exclude ".env"
+          rsync -az \
+            -e "ssh -i ~/.ssh/vps_rt_infra_ed25519" \
+            services.json \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/opt/platform/services.json"
 
       - name: Restart stack
         run: |
           ssh -i ~/.ssh/vps_rt_infra_ed25519 \
             "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
             "chmod +x /opt/platform/scripts/*.sh && cd /opt/platform/compose && docker compose build ninerouter && docker compose up -d --remove-orphans"
+
+      - name: Apply optional service flags (services.json)
+        # Sem este passo, o atalho manual nunca aplicava as flags de
+        # grafana/prometheus/loki/etc — só o Terraform Apply completo fazia
+        # (gap encontrado e fechado em 17/08/2026, mega spec agent-llm).
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
+            "RT_COMPOSE_DIR=/opt/platform/compose RT_SERVICES_JSON=/opt/platform/services.json /opt/platform/scripts/apply-services.sh"
 
       - name: Install compose self-healer
         run: |
