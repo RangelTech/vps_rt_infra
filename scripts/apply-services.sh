@@ -51,9 +51,17 @@ fi
 
 for svc in "${disabled[@]:-}"; do
   [ -z "$svc" ] && continue
-  if docker compose ps -a -q "$svc" >/dev/null 2>&1 && [ -n "$(docker compose ps -a -q "$svc" 2>/dev/null)" ]; then
+  # `docker compose stop <svc>` fails ("no such service: X") when the
+  # service's depends_on points at another profile-gated service that isn't
+  # in the current invocation's profile set (e.g. grafana -> prometheus/loki)
+  # — Compose tries to resolve the whole dependency graph even for a single
+  # service, not just the one being stopped. Using `docker stop`/`docker
+  # inspect` directly bypasses that resolution entirely; safe here because
+  # every service in this compose file sets `container_name` equal to its
+  # service key, so the container name IS the service name.
+  if docker inspect "$svc" >/dev/null 2>&1; then
     log "stopping disabled service: $svc"
-    docker compose stop "$svc" || true
+    docker stop "$svc" >/dev/null || true
   fi
 done
 
