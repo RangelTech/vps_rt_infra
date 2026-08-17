@@ -10,6 +10,7 @@ on:
       - "apps/**"
       - "cloud-init/**"
       - "scripts/**"
+      - "sites/**"
   workflow_dispatch: {}
 
 jobs:
