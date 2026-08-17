@@ -117,6 +117,7 @@ services:
     image: dpage/pgadmin4:${PGADMIN_VERSION}
     container_name: pgadmin
     restart: unless-stopped
+    profiles: ["pgadmin"]
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
@@ -141,6 +142,7 @@ services:
     image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
     restart: unless-stopped
+    profiles: ["grafana"]
     depends_on:
       - prometheus
       - loki
@@ -187,6 +189,7 @@ services:
     image: lscr.io/linuxserver/code-server:${CODE_SERVER_VERSION}
     container_name: code-server
     restart: unless-stopped
+    profiles: ["code-server"]
     environment:
       PUID: 1000
       PGID: 1000
@@ -212,6 +215,7 @@ services:
     image: prom/prometheus:${PROMETHEUS_VERSION}
     container_name: prometheus
     restart: unless-stopped
+    profiles: ["prometheus"]
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -236,6 +240,7 @@ services:
     image: grafana/loki:${LOKI_VERSION}
     container_name: loki
     restart: unless-stopped
+    profiles: ["loki"]
     command: -config.file=/etc/loki/config.yml
     volumes:
       - ../configs/loki/config.yml:/etc/loki/config.yml:ro
@@ -257,6 +262,7 @@ services:
     image: grafana/promtail:${PROMTAIL_VERSION}
     container_name: promtail
     restart: unless-stopped
+    profiles: ["promtail"]
     command: -config.file=/etc/promtail/config.yml
     volumes:
       - ../configs/promtail/config.yml:/etc/promtail/config.yml:ro
@@ -273,6 +279,7 @@ services:
     image: prom/node-exporter:${NODE_EXPORTER_VERSION}
     container_name: node-exporter
     restart: unless-stopped
+    profiles: ["node-exporter"]
     command:
       - --path.rootfs=/host
     pid: host
@@ -285,6 +292,7 @@ services:
     image: gcr.io/cadvisor/cadvisor:${CADVISOR_VERSION}
     container_name: cadvisor
     restart: unless-stopped
+    profiles: ["cadvisor"]
     privileged: true
     devices:
       - /dev/kmsg
@@ -318,6 +326,50 @@ services:
       - traefik.http.routers.ninerouter.tls.certresolver=letsencrypt
       - traefik.http.routers.ninerouter.middlewares=security-headers@file
       - traefik.http.services.ninerouter.loadbalancer.server.port=${NINEROUTER_PORT}
+
+  ## ---------------------------------------------------------------------
+  ## Client static sites
+  ## One nginx:alpine container per client, serving files from
+  ## ../sites/<slug>/public. Two modes — see sites/README.md for the full
+  ## onboarding runbook before copying a block for a new client:
+  ##   A) client has their own domain -> Host(`their-domain.com`)
+  ##   B) client has no domain yet    -> Host(`<slug>.${ROOT_DOMAIN}`)
+  ##      (also add the subdomain to terraform/dns.tf in that case)
+  ## ---------------------------------------------------------------------
+
+  # site-example:                                          # mode A example
+  #   image: nginx:alpine
+  #   container_name: site-example
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../sites/example/public:/usr/share/nginx/html:ro
+  #   networks:
+  #     - public
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.docker.network=public
+  #     - traefik.http.routers.site-example.rule=Host(`example-client.com`) || Host(`www.example-client.com`)
+  #     - traefik.http.routers.site-example.entrypoints=websecure
+  #     - traefik.http.routers.site-example.tls.certresolver=letsencrypt
+  #     - traefik.http.routers.site-example.middlewares=security-headers@file
+  #     - traefik.http.services.site-example.loadbalancer.server.port=80
+
+  # site-example2:                                          # mode B example
+  #   image: nginx:alpine
+  #   container_name: site-example2
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../sites/example2/public:/usr/share/nginx/html:ro
+  #   networks:
+  #     - public
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.docker.network=public
+  #     - traefik.http.routers.site-example2.rule=Host(`example2.${ROOT_DOMAIN}`)
+  #     - traefik.http.routers.site-example2.entrypoints=websecure
+  #     - traefik.http.routers.site-example2.tls.certresolver=letsencrypt
+  #     - traefik.http.routers.site-example2.middlewares=security-headers@file
+  #     - traefik.http.services.site-example2.loadbalancer.server.port=80
 
 networks:
   internal:

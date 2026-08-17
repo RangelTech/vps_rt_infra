@@ -138,6 +138,13 @@ resource "null_resource" "deploy_stack" {
     healthcheck_sha         = filesha256("${path.module}/../scripts/healthcheck.sh")
     compose_healer_sha      = filesha256("${path.module}/../scripts/compose-healer.sh")
     install_compose_healer_sha = filesha256("${path.module}/../scripts/install-compose-healer.sh")
+    # Client static sites: many small files added/changed per client, so a
+    # single aggregate hash of the whole tree is used instead of one trigger
+    # per file (see README.md/memoria.md "lacuna conhecida" for why per-file
+    # hashes don't scale for a directory like this).
+    sites_sha = md5(join("", [for f in sort(fileset("${path.module}/..", "sites/**")) : filemd5("${path.module}/../${f}")]))
+    services_json_sha       = filesha256("${path.module}/../services.json")
+    apply_services_sha      = filesha256("${path.module}/../scripts/apply-services.sh")
   }
 
   connection {
@@ -151,7 +158,7 @@ resource "null_resource" "deploy_stack" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo mkdir -p ${local.remote_base_dir}/compose ${local.remote_base_dir}/configs ${local.remote_base_dir}/apps ${local.remote_base_dir}/scripts ${local.remote_base_dir}/data",
+      "sudo mkdir -p ${local.remote_base_dir}/compose ${local.remote_base_dir}/configs ${local.remote_base_dir}/apps ${local.remote_base_dir}/scripts ${local.remote_base_dir}/data ${local.remote_base_dir}/sites",
       "sudo chown -R ${var.deploy_user}:${var.deploy_user} ${local.remote_base_dir}",
     ]
   }
@@ -181,6 +188,16 @@ resource "null_resource" "deploy_stack" {
     destination = "${local.remote_base_dir}/scripts"
   }
 
+  provisioner "file" {
+    source      = "${path.module}/../sites/"
+    destination = "${local.remote_base_dir}/sites"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../services.json"
+    destination = "${local.remote_base_dir}/services.json"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x ${local.remote_base_dir}/scripts/*.sh",
@@ -208,6 +225,7 @@ resource "null_resource" "deploy_stack" {
       "cd ${local.remote_base_dir}/compose && docker compose build ninerouter",
       "cd ${local.remote_base_dir}/compose && docker compose pull --ignore-buildable",
       "cd ${local.remote_base_dir}/compose && docker compose up -d --remove-orphans",
+      "RT_COMPOSE_DIR=${local.remote_base_dir}/compose RT_SERVICES_JSON=${local.remote_base_dir}/services.json ${local.remote_base_dir}/scripts/apply-services.sh",
       "sudo ${local.remote_base_dir}/scripts/install-backup-cron.sh",
       "sudo ${local.remote_base_dir}/scripts/install-compose-healer.sh",
     ]

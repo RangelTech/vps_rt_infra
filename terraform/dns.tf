@@ -10,7 +10,12 @@ locals {
     { name = "traefik",    type = "A", value = var.server_ip, ttl = 300 },
     { name = "code",       type = "A", value = var.server_ip, ttl = 300 },
     { name = "prometheus", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "logs",       type = "A", value = var.server_ip, ttl = 300 }
+    { name = "logs",       type = "A", value = var.server_ip, ttl = 300 },
+    # agent-llm mega spec (infra-01): agent-platform (backend+frontend),
+    # Chatwoot e a ponte migram do Cloud Run pra cá.
+    { name = "ia",         type = "A", value = var.server_ip, ttl = 300 },
+    { name = "chat",       type = "A", value = var.server_ip, ttl = 300 },
+    { name = "bridge",     type = "A", value = var.server_ip, ttl = 300 }
   ]
 }
 
