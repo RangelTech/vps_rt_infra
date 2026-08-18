@@ -18,6 +18,14 @@ entryPoints:
     address: ":443"
   postgres:
     address: ":5432"
+  # Postgres SEM pgbouncer pela frente — pool_mode=transaction do pgbouncer
+  # quebra prepared statements (checkpointer do LangGraph, psycopg). Reaberto
+  # em 17/08/2026 (mega spec agent-llm): o kernel continua no Cloud Run,
+  # fora da VPS, e precisa desse caminho direto pra funcionar de verdade —
+  # existia antes (porta 5433, ver ADR 0001-boundaries.md do chatwoot-rt) mas
+  # tinha sumido da infra-como-código, só documentado como decisão.
+  postgres-direct:
+    address: ":5433"
   metrics:
     address: ":8080"
 

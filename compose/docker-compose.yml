@@ -7,6 +7,7 @@ services:
       - "80:80"
       - "443:443"
       - "5432:5432"
+      - "5433:5433"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -27,6 +28,19 @@ services:
     image: postgres:${POSTGRES_VERSION}
     container_name: postgres
     restart: unless-stopped
+    # SSL exigido por quem conecta via porta pública direta (kernel no Cloud
+    # Run, fora da VPS — ver postgres-direct acima). Achado em 17/08/2026: o
+    # mount de /etc/postgres-tls e o `command` de SSL existiam ao vivo na VPS
+    # mas nunca tinham sido commitados aqui — um `docker compose up` a partir
+    # deste arquivo tirava o TLS do Postgres sem ninguém perceber. Certs já
+    # existem em configs/postgres-tls/ (server.crt/server.key).
+    command:
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/etc/postgres-tls/server.crt
+      - -c
+      - ssl_key_file=/etc/postgres-tls/server.key
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_ADMIN_USER}
@@ -34,13 +48,23 @@ services:
       TZ: ${TIMEZONE}
     volumes:
       - ../data/postgres:/var/lib/postgresql/data
+      - ../configs/postgres-tls:/etc/postgres-tls:ro
     networks:
       - internal
+      - public
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    labels:
+      # Acesso direto (sem pgbouncer) pro kernel no Cloud Run — ver
+      # comentário no entrypoint postgres-direct em configs/traefik/traefik.yml.
+      - traefik.enable=true
+      - traefik.tcp.routers.postgres-direct.rule=HostSNI(`*`)
+      - traefik.tcp.routers.postgres-direct.entrypoints=postgres-direct
+      - traefik.tcp.routers.postgres-direct.service=postgres-direct
+      - traefik.tcp.services.postgres-direct.loadbalancer.server.port=5432
 
   pgbouncer:
     image: edoburu/pgbouncer:${PGBOUNCER_VERSION}

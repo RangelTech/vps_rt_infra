@@ -81,6 +81,7 @@ ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw allow 5432/tcp
+ufw allow 5433/tcp
 ufw --force enable
 
 echo "==> [8/9] Enabling fail2ban for sshd"
