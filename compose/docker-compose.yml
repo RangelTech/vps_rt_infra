@@ -25,7 +25,16 @@ services:
       - traefik.http.middlewares.admin-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
 
   postgres:
-    image: postgres:${POSTGRES_VERSION}
+    # Achado 19/08/2026: este compose apontava para o postgres oficial puro
+    # (mesmo bug de drift do achado 17/08 com o TLS) - a extensao vector
+    # existia no catalogo (pg_extension, persistido no volume de dados) mas a
+    # lib vector.so nao existe na imagem oficial, so em pgvector/pgvector.
+    # Um docker compose up a partir deste arquivo recriava o container com a
+    # imagem errada e quebrava RAG/memoria silenciosamente ate alguem tentar
+    # usar embeddings (erro real: could not access file "$libdir/vector").
+    # NAO trocar de volta para a imagem oficial - precisa ser a variante
+    # pgvector, na mesma major version (16) do volume de dados existente.
+    image: pgvector/pgvector:pg16
     container_name: postgres
     restart: unless-stopped
     # SSL exigido por quem conecta via porta pública direta (kernel no Cloud
