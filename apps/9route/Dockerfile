@@ -1,3 +1,11 @@
+# SUPERSEDED (infra-08, 2026-08-19): the `ninerouter` compose service now
+# builds directly from the 9router-multitenant fork's own git repo (a git
+# build context in compose/docker-compose.yml), using that repo's own
+# Dockerfile — not this file. This installs the abandoned npm-package
+# flavor of 9router (single-tenant, no multi-tenant schema) and is kept
+# only for historical reference; it is not referenced by any compose
+# service. Do not build this for the multitenant deploy.
+#
 # 9route (9router) container image.
 #
 # 9router is distributed as a global npm package (confirmed: `9router@0.5.40`,
