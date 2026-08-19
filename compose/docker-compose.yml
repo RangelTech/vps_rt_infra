@@ -400,6 +400,12 @@ services:
       SITE_URL: https://infisical.${ROOT_DOMAIN}
       ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY}
       AUTH_SECRET: ${INFISICAL_AUTH_SECRET}
+      # DB_CONNECTION_URI/REDIS_URL embed the password directly in a URL and
+      # are NOT url-encoded here — Infisical's pg-connection-string parser
+      # chokes on raw "@"/"#"/etc in the credential (found the hard way:
+      # first deploy crash-looped on "Invalid URL" until INFISICAL_DB_PASSWORD/
+      # INFISICAL_REDIS_PASSWORD were regenerated alphanumeric-only). Keep
+      # those two GitHub secrets alphanumeric on any future rotation.
       DB_CONNECTION_URI: postgres://infisical:${INFISICAL_DB_PASSWORD}@infisical-postgres:5432/infisical
       REDIS_URL: redis://:${INFISICAL_REDIS_PASSWORD}@infisical-redis:6379
       TZ: ${TIMEZONE}
