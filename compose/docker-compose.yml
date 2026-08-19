@@ -352,6 +352,76 @@ services:
       - traefik.http.services.ninerouter.loadbalancer.server.port=${NINEROUTER_PORT}
 
   ## ---------------------------------------------------------------------
+  ## Infisical (self-hosted secret manager) — infra-09
+  ## Dedicated Postgres + Redis (isolated blast radius, NOT the shared
+  ## platform postgres/redis above — infra-09 section 5/8). UI reachable at
+  ## infisical.${ROOT_DOMAIN}; CI/services authenticate via Machine Identity
+  ## (Universal Auth), never via the UI login.
+  ## ---------------------------------------------------------------------
+
+  infisical-postgres:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: infisical-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infisical
+      POSTGRES_USER: infisical
+      POSTGRES_PASSWORD: ${INFISICAL_DB_PASSWORD}
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../data/infisical-postgres:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infisical-redis:
+    image: redis:${REDIS_VERSION}
+    container_name: infisical-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${INFISICAL_REDIS_PASSWORD}
+    volumes:
+      - ../data/infisical-redis:/data
+    networks:
+      - internal
+
+  infisical:
+    image: infisical/infisical:${INFISICAL_VERSION}
+    container_name: infisical
+    restart: unless-stopped
+    depends_on:
+      infisical-postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      SITE_URL: https://infisical.${ROOT_DOMAIN}
+      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY}
+      AUTH_SECRET: ${INFISICAL_AUTH_SECRET}
+      DB_CONNECTION_URI: postgres://infisical:${INFISICAL_DB_PASSWORD}@infisical-postgres:5432/infisical
+      REDIS_URL: redis://:${INFISICAL_REDIS_PASSWORD}@infisical-redis:6379
+      TZ: ${TIMEZONE}
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.infisical.rule=Host(`infisical.${ROOT_DOMAIN}`)
+      - traefik.http.routers.infisical.entrypoints=websecure
+      - traefik.http.routers.infisical.tls.certresolver=letsencrypt
+      # No extra basic-auth layer here (unlike pgadmin/prometheus/loki): those
+      # services have weak/no built-in auth, whereas Infisical has full
+      # project auth + MFA-capable login + Machine Identity (Universal Auth)
+      # for CI. Stacking basic auth in front would block the CI client_id/
+      # client_secret login flow at the proxy. Same reasoning as grafana above
+      # (also no admin-auth middleware).
+      - traefik.http.routers.infisical.middlewares=security-headers@file
+      - traefik.http.services.infisical.loadbalancer.server.port=8080
+
+  ## ---------------------------------------------------------------------
   ## Client static sites
   ## One nginx:alpine container per client, serving files from
   ## ../sites/<slug>/public. Two modes — see sites/README.md for the full

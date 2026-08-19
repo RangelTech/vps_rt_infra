@@ -68,6 +68,12 @@ resource "local_file" "compose_env" {
     ninerouter_package = var.ninerouter_package
     ninerouter_port    = var.ninerouter_port
 
+    infisical_version        = var.infisical_version
+    infisical_db_password    = replace(var.infisical_db_password, "$", "$$")
+    infisical_redis_password = replace(var.infisical_redis_password, "$", "$$")
+    infisical_encryption_key = var.infisical_encryption_key
+    infisical_auth_secret    = var.infisical_auth_secret
+
     restic_repository = replace(var.restic_repository, "$", "$$")
     restic_password   = replace(var.restic_password, "$", "$$")
     restic_environment = {
@@ -201,11 +207,13 @@ resource "null_resource" "deploy_stack" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x ${local.remote_base_dir}/scripts/*.sh",
-      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,grafana,uptime-kuma,code-server,prometheus,loki,promtail,backups,9router}",
-      "chmod 700 ${local.remote_base_dir}/data/postgres ${local.remote_base_dir}/data/redis ${local.remote_base_dir}/data/minio ${local.remote_base_dir}/data/pgadmin ${local.remote_base_dir}/data/traefik ${local.remote_base_dir}/data/uptime-kuma ${local.remote_base_dir}/data/code-server ${local.remote_base_dir}/data/promtail || true",
+      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,grafana,uptime-kuma,code-server,prometheus,loki,promtail,backups,9router,infisical-postgres,infisical-redis}",
+      "chmod 700 ${local.remote_base_dir}/data/postgres ${local.remote_base_dir}/data/redis ${local.remote_base_dir}/data/minio ${local.remote_base_dir}/data/pgadmin ${local.remote_base_dir}/data/traefik ${local.remote_base_dir}/data/uptime-kuma ${local.remote_base_dir}/data/code-server ${local.remote_base_dir}/data/promtail ${local.remote_base_dir}/data/infisical-postgres ${local.remote_base_dir}/data/infisical-redis || true",
       "chmod 755 ${local.remote_base_dir}/data/grafana ${local.remote_base_dir}/data/prometheus ${local.remote_base_dir}/data/loki ${local.remote_base_dir}/data/9router || true",
       "sudo chown -R 999:999 ${local.remote_base_dir}/data/postgres || true",
       "sudo chown -R 999:999 ${local.remote_base_dir}/data/redis || true",
+      "sudo chown -R 999:999 ${local.remote_base_dir}/data/infisical-postgres || true",
+      "sudo chown -R 999:999 ${local.remote_base_dir}/data/infisical-redis || true",
       "sudo chown -R 5050:0 ${local.remote_base_dir}/data/pgadmin || true",
       "sudo chmod 750 ${local.remote_base_dir}/data/pgadmin || true",
       "sudo find ${local.remote_base_dir}/data/pgadmin -mindepth 1 -type d -exec chmod 750 {} \\; || true",

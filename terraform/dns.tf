@@ -15,7 +15,10 @@ locals {
     # Chatwoot e a ponte migram do Cloud Run pra cá.
     { name = "ia",         type = "A", value = var.server_ip, ttl = 300 },
     { name = "chat",       type = "A", value = var.server_ip, ttl = 300 },
-    { name = "bridge",     type = "A", value = var.server_ip, ttl = 300 }
+    { name = "bridge",     type = "A", value = var.server_ip, ttl = 300 },
+    # infra-09: Infisical self-hosted secret manager (UI + API for Machine
+    # Identity / Universal Auth lookups from CI and app containers).
+    { name = "infisical",  type = "A", value = var.server_ip, ttl = 300 }
   ]
 }
 

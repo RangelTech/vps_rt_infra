@@ -58,6 +58,10 @@ jobs:
           TF_VAR_restic_repository: ${{ secrets.RESTIC_REPOSITORY }}
           TF_VAR_restic_password: ${{ secrets.RESTIC_PASSWORD }}
           TF_VAR_restic_environment: ${{ secrets.RESTIC_ENVIRONMENT_JSON || '{}' }}
+          TF_VAR_infisical_db_password: ${{ secrets.INFISICAL_DB_PASSWORD }}
+          TF_VAR_infisical_redis_password: ${{ secrets.INFISICAL_REDIS_PASSWORD }}
+          TF_VAR_infisical_encryption_key: ${{ secrets.INFISICAL_ENCRYPTION_KEY }}
+          TF_VAR_infisical_auth_secret: ${{ secrets.INFISICAL_AUTH_SECRET }}
         run: terraform apply -auto-approve
 
       - name: Show outputs

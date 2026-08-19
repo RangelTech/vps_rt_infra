@@ -281,3 +281,37 @@ variable "restic_environment" {
   type        = map(string)
   default     = {}
 }
+
+# ---------------------------------------------------------------------------
+# Infisical (self-hosted secret manager) — infra-09
+# ---------------------------------------------------------------------------
+
+variable "infisical_version" {
+  description = "infisical/infisical image tag"
+  type        = string
+  default     = "v0.162.21"
+}
+
+variable "infisical_db_password" {
+  description = "Password for the dedicated Postgres user/db used only by Infisical (isolated instance, not the shared platform Postgres)"
+  type        = string
+  sensitive   = true
+}
+
+variable "infisical_redis_password" {
+  description = "Password for the dedicated Redis instance used only by Infisical"
+  type        = string
+  sensitive   = true
+}
+
+variable "infisical_encryption_key" {
+  description = "Infisical ENCRYPTION_KEY - 16 bytes hex (32 hex chars), used to encrypt secrets at rest. Losing/rotating this makes existing stored secrets unreadable."
+  type        = string
+  sensitive   = true
+}
+
+variable "infisical_auth_secret" {
+  description = "Infisical AUTH_SECRET - random string used to sign JWTs"
+  type        = string
+  sensitive   = true
+}

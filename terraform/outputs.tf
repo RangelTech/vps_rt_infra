@@ -18,5 +18,6 @@ output "public_urls" {
     code_server = "https://code.${var.root_domain}"
     prometheus  = "https://prometheus.${var.root_domain}"
     loki        = "https://logs.${var.root_domain}"
+    infisical   = "https://infisical.${var.root_domain}"
   }
 }

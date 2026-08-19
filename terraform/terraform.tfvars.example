@@ -52,3 +52,9 @@ restic_environment = {
   AWS_ACCESS_KEY_ID     = "CHANGE_ME"
   AWS_SECRET_ACCESS_KEY = "CHANGE_ME"
 }
+
+infisical_version        = "v0.162.21"
+infisical_db_password    = "CHANGE_ME"
+infisical_redis_password = "CHANGE_ME"
+infisical_encryption_key = "CHANGE_ME_32_HEX_CHARS"
+infisical_auth_secret    = "CHANGE_ME_LONG_RANDOM_STRING"
