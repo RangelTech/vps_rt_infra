@@ -6,6 +6,12 @@
 
 http:
   middlewares:
+    legal-pages-redirect:
+      redirectRegex:
+        regex: "^https://chat.rangeltech.net/(politica-de-privacidade|termos-de-uso|exclusao-de-dados)$"
+        replacement: "https://ia.rangeltech.net/${1}"
+        permanent: false
+
     security-headers:
       headers:
         stsSeconds: 31536000
@@ -39,6 +45,18 @@ http:
       service: agentllm-backend-cloudrun
       middlewares:
         - security-headers
+    chatwoot-legal-redirect:
+      rule: "Host(`chat.rangeltech.net`) && (PathPrefix(`/politica-de-privacidade`) || PathPrefix(`/termos-de-uso`) || PathPrefix(`/exclusao-de-dados`))"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      priority: 150
+      service: agentllm-backend-cloudrun
+      middlewares:
+        - security-headers
+        - legal-pages-redirect
+
     chatwoot-web-cloudrun:
       rule: "Host(`chat.rangeltech.net`)"
       entryPoints:
