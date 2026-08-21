@@ -337,38 +337,6 @@ services:
     networks:
       - internal
 
-  ninerouter:
-    # Builds from the 9router-multitenant fork source (git build context,
-    # BuildKit), not a pulled image — infra-08: "vps_rt_infra clona o código
-    # do 9router e sobe". The fork ships its own production Dockerfile
-    # (multi-stage Next.js standalone build); we build that directly instead
-    # of duplicating it here, to avoid drift between two Dockerfiles.
-    # Pin `#main` to a tag/commit (e.g. `#v0.x.x` or `#<sha>`) for
-    # reproducible deploys once the fork starts tagging releases.
-    build:
-      context: https://github.com/LucasRangelSSouza/9router-multitenant.git#main
-      dockerfile: Dockerfile
-    container_name: ninerouter
-    restart: unless-stopped
-    environment:
-      PORT: ${NINEROUTER_PORT}
-      HOSTNAME: 0.0.0.0
-      DATA_DIR: /app/data
-      TZ: ${TIMEZONE}
-    volumes:
-      - ../data/9router:/app/data
-    networks:
-      - public
-      - internal
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=public
-      - traefik.http.routers.ninerouter.rule=Host(`9route.${ROOT_DOMAIN}`)
-      - traefik.http.routers.ninerouter.entrypoints=websecure
-      - traefik.http.routers.ninerouter.tls.certresolver=letsencrypt
-      - traefik.http.routers.ninerouter.middlewares=security-headers@file
-      - traefik.http.services.ninerouter.loadbalancer.server.port=${NINEROUTER_PORT}
-
   ## ---------------------------------------------------------------------
   ## Infisical (self-hosted secret manager) — infra-09
   ## Dedicated Postgres + Redis (isolated blast radius, NOT the shared
