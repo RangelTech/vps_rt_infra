@@ -18,7 +18,12 @@ locals {
     { name = "bridge",     type = "A", value = var.server_ip, ttl = 300 },
     # infra-09: Infisical self-hosted secret manager (UI + API for Machine
     # Identity / Universal Auth lookups from CI and app containers).
-    { name = "infisical",  type = "A", value = var.server_ip, ttl = 300 }
+    { name = "infisical",  type = "A", value = var.server_ip, ttl = 300 },
+    # produto-05 seção 4: 1 registro coringa só, cadastrado uma vez — cada
+    # container Evolution por tenant sobe com label Traefik
+    # Host(`evolution-<tenant_id>.evolution.rangeltech.net`), sem precisar
+    # de registro DNS novo a cada tenant provisionado.
+    { name = "*.evolution", type = "A", value = var.server_ip, ttl = 300 }
   ]
 }
 
