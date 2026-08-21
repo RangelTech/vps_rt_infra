@@ -8,8 +8,12 @@ BASE_DIR="/opt/platform"
 ENV_FILE="${BASE_DIR}/compose/.env"
 MINIO_DATA_DIR="${BASE_DIR}/data/minio"
 
-# shellcheck disable=SC1090
-set -a; source "${ENV_FILE}"; set +a
+# Le o .env linha a linha em vez de `source` -- mesmo achado do
+# backup-postgres.sh (senha com parenteses quebra `source` em bash).
+while IFS='=' read -r key value; do
+  [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+  export "$key=$value"
+done < <(grep -v '^\s*#' "${ENV_FILE}" | grep '=')
 
 if [ -z "${RESTIC_REPOSITORY:-}" ] || [ -z "${RESTIC_PASSWORD:-}" ]; then
   echo "RESTIC_REPOSITORY/RESTIC_PASSWORD not set, skipping MinIO backup" >&2

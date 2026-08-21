@@ -9,8 +9,16 @@ ENV_FILE="${BASE_DIR}/compose/.env"
 DUMP_DIR="${BASE_DIR}/data/backups/postgres"
 DATE_TAG=$(date +%Y%m%d-%H%M%S)
 
-# shellcheck disable=SC1090
-set -a; source "${ENV_FILE}"; set +a
+# Le o .env linha a linha em vez de `source` -- achado real (21/08/2026):
+# `source` avalia o valor como bash, e senhas com parenteses/aspas (ex.:
+# POSTGRES_ADMIN_PASSWORD) quebram com "syntax error near unexpected
+# token". O backup falhou silenciosamente (log cheio de erro, cron
+# reportou sucesso porque o erro de source nao para o script com
+# `set -e` em subshell de source) desde que o cron foi instalado.
+while IFS='=' read -r key value; do
+  [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+  export "$key=$value"
+done < <(grep -v '^\s*#' "${ENV_FILE}" | grep '=')
 
 mkdir -p "${DUMP_DIR}"
 
