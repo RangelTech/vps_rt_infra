@@ -15,6 +15,69 @@ http:
         contentTypeNosniff: true
         browserXssFilter: true
 
+  # Cutover real (infra-01 secao 5, 21/08/2026): ia.rangeltech.net passa a
+  # apontar pro backend no Cloud Run (rangel-tech) em vez do container
+  # agentllm-backend na VPS. Prioridade mais alta que o router baseado em
+  # label do container (Docker provider) pra nao ficar ambiguo enquanto os
+  # dois ainda existem lado a lado. passHostHeader=false e obrigatorio: o
+  # Cloud Run roteia pelo Host header pro *.run.app do proprio servico, nao
+  # pelo dominio customizado (sem isso da erro do Google Front End).
+  #
+  # Frontend simplificado de volta pro padrao antigo (21/08/2026, pedido do
+  # dono): sem separacao em Cloud Storage/CDN, o backend serve a SPA inteira
+  # (_mount_spa, mesmo Dockerfile de sempre) -- router ia-static-assets e
+  # bucket rangel-tech-frontend removidos, /assets/* volta a ser so mais uma
+  # rota do agentllm-backend-cloudrun abaixo.
+  routers:
+    agentllm-backend-cloudrun:
+      rule: "Host(`ia.rangeltech.net`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      priority: 100
+      service: agentllm-backend-cloudrun
+      middlewares:
+        - security-headers
+    chatwoot-web-cloudrun:
+      rule: "Host(`chat.rangeltech.net`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      priority: 100
+      service: chatwoot-web-cloudrun
+      middlewares:
+        - security-headers
+
+    chatwoot-bridge-cloudrun:
+      rule: "Host(`bridge.rangeltech.net`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      priority: 100
+      service: chatwoot-bridge-cloudrun
+      middlewares:
+        - security-headers
+
+  services:
+    chatwoot-web-cloudrun:
+      loadBalancer:
+        passHostHeader: false
+        servers:
+          - url: "https://chatwoot-web-pujq3pjmca-uc.a.run.app"
+    agentllm-backend-cloudrun:
+      loadBalancer:
+        passHostHeader: false
+        servers:
+          - url: "https://agent-llm-backend-pujq3pjmca-uc.a.run.app"
+    chatwoot-bridge-cloudrun:
+      loadBalancer:
+        passHostHeader: false
+        servers:
+          - url: "https://chatwoot-bridge-pujq3pjmca-uc.a.run.app"
+
 tls:
   options:
     default:

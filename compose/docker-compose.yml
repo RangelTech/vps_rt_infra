@@ -110,10 +110,21 @@ services:
     container_name: redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    # Porta publicada + rede `public` (21/08/2026, infra-04): LiteLLM e
+    # chatwoot-web rodam no Cloud Run (fora da VPS), precisam de rota
+    # externa pro Redis (DB 2 e DB 1 respectivamente). Isso já estava
+    # aplicado ao vivo desde 19/08 mas nunca tinha sido sincronizado pro
+    # compose -- achado real (21/08/2026): qualquer `docker compose up -d`
+    # subsequente (inclusive o healer automático, rt-compose-healer.timer)
+    # recriava o container só com a rede `internal`, cortando o Redis dos
+    # dois Cloud Run de vez sem aviso nenhum.
+    ports:
+      - "6379:6379"
     volumes:
       - ../data/redis:/data
     networks:
       - internal
+      - public
 
   minio:
     image: quay.io/minio/minio:${MINIO_VERSION}
