@@ -26,7 +26,10 @@ locals {
     { name = "*.evolution", type = "A", value = var.server_ip, ttl = 300 },
     # Verificação de domínio pro app TikTok Developers (RAtende), 25/08/2026 —
     # exigido pra aceitar as URLs de Termos/Política sob ia.rangeltech.net.
-    { name = "ia", type = "TXT", value = "tiktok-developers-site-verification=IctaIyx7EzE65hXP66TM9xFIrXR7oDl9", ttl = 300 }
+    { name = "ia", type = "TXT", value = "tiktok-developers-site-verification=IctaIyx7EzE65hXP66TM9xFIrXR7oDl9", ttl = 300 },
+    # Mesma verificação, agora pro domínio do Chatwoot em si
+    # (chat.rangeltech.net) — exigido pro redirect URI do Login Kit.
+    { name = "chat", type = "TXT", value = "tiktok-developers-site-verification=9VCnh82QgEEOLPsmWXeQREModQPcfma0", ttl = 300 }
   ]
 }
 
