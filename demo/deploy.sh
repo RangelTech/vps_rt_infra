@@ -53,6 +53,16 @@ if [ ! -f deploy/public-demo/data/education-release/release_manifest.json ]; the
   cp "$release_dir"/* deploy/public-demo/data/education-release/
 fi
 
+# Maintainer-side loader: verifies the release manifest again and writes the
+# approved-column CSV derivative that analytics-db's init script loads on
+# first boot. Without this, analytics/release/derivative.json is missing,
+# the init script's own hash check aborts before it, and the Postgres role
+# metabase_reader never gets created -- which surfaces later as a confusing
+# "password incorrect" from Metabase, not as a missing-file error.
+if [ ! -f deploy/public-demo/analytics/release/derivative.json ]; then
+  $PY scripts/public_demo_load_release.py --release-dir deploy/public-demo/data/education-release
+fi
+
 # The repo's own CI already runs check_public_demo_policy.py --strict-release
 # against the unpatched profile before this ref is tagged. Running it again
 # here, after patch_compose_for_traefik.py's deliberate change (nginx joins
