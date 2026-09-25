@@ -78,7 +78,12 @@ docker image inspect "$AIRFLOW_IMAGE" >/dev/null 2>&1 || docker build --tag "$AI
   --build-arg "MLOPS_ARCHIVE_SHA256=$MLOPS_ARCHIVE_SHA256" \
   deploy/public-demo/airflow
 
-bash scripts/public_demo.sh pull --ignore-buildable
+# --ignore-buildable only skips services with a `build:` section; airflow
+# has none (its image is built above, out of band), so it must be excluded
+# by name instead or `pull` tries to fetch it from a registry that doesn't
+# have it.
+pullable=$(bash scripts/public_demo.sh config --services | grep -v '^airflow$')
+bash scripts/public_demo.sh pull $pullable
 bash scripts/public_demo.sh up -d
 
 # Metabase seed is idempotent by object name (see seed_metabase.py); safe to
