@@ -62,7 +62,12 @@ fi
 # Idempotent: no-ops if nginx is already patched.
 $PY "$INFRA_DIR/patch_compose_for_traefik.py" deploy/public-demo/compose.yaml "$ROOT_DOMAIN"
 
-bash scripts/public_demo.sh up -d --pull always
+# airflow is the one local-build service (no registry to pull from); build
+# it explicitly, pull everything else, matching the production stack's own
+# build-then-pull-then-up idiom in vps_rt_infra/terraform/main.tf.
+bash scripts/public_demo.sh build airflow
+bash scripts/public_demo.sh pull --ignore-buildable
+bash scripts/public_demo.sh up -d
 
 # Metabase seed is idempotent by object name (see seed_metabase.py); safe to
 # always run. Only touch nginx if the dashboard UUID actually changed.
