@@ -1,24 +1,31 @@
 locals {
   dns_records = [
-    { name = "@",          type = "A", value = var.server_ip, ttl = 300 },
-    { name = "9route",     type = "A", value = var.server_ip, ttl = 300 },
-    { name = "grafana",    type = "A", value = var.server_ip, ttl = 300 },
-    { name = "storage",    type = "A", value = var.server_ip, ttl = 300 },
+    { name = "@", type = "A", value = var.server_ip, ttl = 300 },
+    # Personal portfolio site (public GitHub repo lucas-rangel-portfolio),
+    # served by the site-portfolio static container below. www redirects
+    # to the apex via the site's own labels.
+    { name = "www", type = "A", value = var.server_ip, ttl = 300 },
+    # Public-demo Compose profile (distributed-agent-runtime-lab, deploy/public-demo/):
+    # its own isolated nginx, on the public network only for Traefik routing.
+    { name = "demo", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "9route", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "grafana", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "storage", type = "A", value = var.server_ip, ttl = 300 },
     { name = "minio-admin", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "pgadmin",    type = "A", value = var.server_ip, ttl = 300 },
-    { name = "uptime",     type = "A", value = var.server_ip, ttl = 300 },
-    { name = "traefik",    type = "A", value = var.server_ip, ttl = 300 },
-    { name = "code",       type = "A", value = var.server_ip, ttl = 300 },
+    { name = "pgadmin", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "uptime", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "traefik", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "code", type = "A", value = var.server_ip, ttl = 300 },
     { name = "prometheus", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "logs",       type = "A", value = var.server_ip, ttl = 300 },
+    { name = "logs", type = "A", value = var.server_ip, ttl = 300 },
     # agent-llm mega spec (infra-01): agent-platform (backend+frontend),
     # Chatwoot e a ponte migram do Cloud Run pra cá.
-    { name = "ia",         type = "A", value = var.server_ip, ttl = 300 },
-    { name = "chat",       type = "A", value = var.server_ip, ttl = 300 },
-    { name = "bridge",     type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "chat", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "bridge", type = "A", value = var.server_ip, ttl = 300 },
     # infra-09: Infisical self-hosted secret manager (UI + API for Machine
     # Identity / Universal Auth lookups from CI and app containers).
-    { name = "infisical",  type = "A", value = var.server_ip, ttl = 300 },
+    { name = "infisical", type = "A", value = var.server_ip, ttl = 300 },
     # produto-05 seção 4: 1 registro coringa só, cadastrado uma vez — cada
     # container Evolution por tenant sobe com label Traefik
     # Host(`evolution-<tenant_id>.evolution.rangeltech.net`), sem precisar
@@ -34,7 +41,7 @@ locals {
 }
 
 resource "local_file" "hostinger_zone" {
-  filename        = "${path.module}/hostinger-zone.json"
+  filename = "${path.module}/hostinger-zone.json"
   content = jsonencode({
     overwrite = true
     zone = [

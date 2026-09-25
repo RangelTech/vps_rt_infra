@@ -195,3 +195,14 @@ Se você está retomando este projeto:
 3. Se ainda não commitadas: revise o diff, commit, push.
 4. Confirme que `terraform/terraform.tfvars` existe e está atualizado (ou rode `scripts/bootstrap_github_secrets.py` se for a primeira vez).
 5. Prossiga para o todo 30 (primeiro `terraform apply` real) e siga a ordem da seção 8.
+
+## 11. Site portfolio pessoal + demo publica do portfolio Data/AI (2026-09-25)
+
+Dois novos consumidores desta VPS, ambos aditivos, nenhum tocando os servicos de producao (Matrix bridges, Infisical, etc.) ja rodando aqui:
+
+- **`site-portfolio`** (`compose/docker-compose.yml`, secao "Client static sites"): static export do repo publico `lucas-rangel-portfolio`, publicado por `.github/workflows/deploy-portfolio.yml` (dispatch manual, `ref` = tag do site) via rsync direto pra `sites/portfolio/public/` (conteudo nao versionado aqui, so o `.gitkeep`). Roteado por `Host(rangeltech.net) || Host(www.rangeltech.net)` — os dois registros DNS (`@` ja existia, `www` novo) em `terraform/dns.tf`.
+- **`demo.rangeltech.net`**: perfil `public-demo` do repo publico `distributed-agent-runtime-lab` (RAG + Metabase + Airflow pausado, todos isolados), rodando como projeto Compose **separado** (`public-demo`, distinto do projeto `compose` de producao), em `/opt/demo/runtime-lab`. Deploy proprio em `demo/` (`deploy.sh` + `patch_compose_for_traefik.py` + `README.md`), disparado por `.github/workflows/deploy-demo.yml` (dispatch manual). O unico ponto de contato com a stack de producao e a rede Docker `public` ja existente — o nginx do demo entra nela so pra rotear via Traefik (labels, sem porta publicada propria), exatamente como qualquer client site. Ver `demo/README.md` pro limite de isolamento completo.
+
+Ambos usam as MESMAS secrets do GitHub Actions ja configuradas (`VPS_SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_DEPLOY_USER`), sem secret nova.
+
+**Pendente**: apos o primeiro `deploy-demo.yml`, so a mudanca de UUID do dashboard publico do Metabase requer recriar o nginx do demo — o script ja faz isso sozinho quando detecta que o UUID mudou.

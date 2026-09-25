@@ -1,0 +1,57 @@
+name: Deploy Public Demo
+
+# Deploys the public-demo Compose profile from distributed-agent-runtime-lab
+# as its own isolated project on this VPS, routed through the existing
+# Traefik. Never touches /opt/platform or the production stack: see
+# demo/README.md for the isolation boundary.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or commit of LucasRangelSSouza/distributed-agent-runtime-lab to deploy"
+        required: true
+        default: "v0.2.0"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Prepare isolated directories (one-time, idempotent)
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
+            "sudo mkdir -p /opt/demo-infra /opt/demo && sudo chown -R ${{ secrets.VPS_DEPLOY_USER }}:${{ secrets.VPS_DEPLOY_USER }} /opt/demo-infra /opt/demo"
+
+      - name: Sync the demo deploy scripts (not the app itself)
+        run: |
+          rsync -az \
+            -e "ssh -i ~/.ssh/vps_rt_infra_ed25519" \
+            demo/ \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/opt/demo-infra/"
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
+            "chmod +x /opt/demo-infra/deploy.sh && RUNTIME_LAB_REF='${{ github.event.inputs.ref }}' ROOT_DOMAIN=rangeltech.net /opt/demo-infra/deploy.sh"
+
+      - name: Smoke test
+        run: |
+          for attempt in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://demo.rangeltech.net/rag/)
+            [ "$code" = "200" ] && exit 0
+            sleep 3
+          done
+          echo "demo.rangeltech.net did not return 200"; exit 1

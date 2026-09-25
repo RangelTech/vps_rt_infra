@@ -425,6 +425,104 @@ services:
       - traefik.http.services.infisical.loadbalancer.server.port=8080
 
   ## ---------------------------------------------------------------------
+  ## Matrix (Synapse) + mautrix-meta (Facebook/Instagram bridges)
+  ## correcao-01-execucao-completa.md secao 4. Private, non-federating
+  ## homeserver used only as a bridge engine for the RAtende Connector
+  ## extension's captured cookies. Dedicated Postgres (own blast radius,
+  ## same reasoning as the infisical-postgres block above) with 3
+  ## databases in locale C (Synapse requires it, see configs/matrix-postgres/
+  ## init-db.sh comment). Exactly 2 mautrix-meta processes, forever --
+  ## every tenant's Facebook/Instagram connections log into these same 2
+  ## processes ("puppeting"), no per-connection container.
+  ## ---------------------------------------------------------------------
+
+  matrix-postgres:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: matrix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: matrix_admin
+      POSTGRES_PASSWORD: ${MATRIX_POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../data/matrix-postgres:/var/lib/postgresql/data
+      - ../configs/matrix-postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix_admin -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  synapse:
+    image: matrixdotorg/synapse:${SYNAPSE_VERSION}
+    container_name: synapse
+    restart: unless-stopped
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+    environment:
+      SYNAPSE_CONFIG_PATH: /etc/synapse/homeserver.yaml
+    volumes:
+      # 28/08/2026, achado real: config files bind-montados DENTRO do
+      # caminho de outro volume (../data/synapse:/data +
+      # .../homeserver.yaml:/data/homeserver.yaml) pode virar diretorio
+      # vazio dono de root se a criacao do container correr com o
+      # compose-healer (systemd timer que roda `docker compose up -d` a
+      # cada minuto) no meio da subida -- Docker materializa um stub
+      # vazio quando o mount aninhado nao resolve a tempo. Path totalmente
+      # separado (/etc/synapse, nunca dentro de /data) elimina a classe
+      # inteira desse bug -- so /data guarda estado real (signing key,
+      # media), nunca overlap com bind mount de config.
+      - ../data/synapse:/data
+      - ../configs/synapse/homeserver.yaml:/etc/synapse/homeserver.yaml:ro
+      - ../configs/synapse/log.config:/etc/synapse/log.config:ro
+      - ../configs/synapse/registrations:/etc/synapse/registrations:ro
+    networks:
+      - internal
+
+  mautrix-meta-facebook:
+    image: dock.mau.dev/mautrix/meta:${MAUTRIX_META_VERSION}
+    container_name: mautrix-meta-facebook
+    restart: unless-stopped
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+      synapse:
+        condition: service_started
+    volumes:
+      - ../data/mautrix-meta-facebook:/data
+      - ../configs/mautrix-meta/facebook-config.yaml:/data/config.yaml:ro
+      - ../configs/synapse/registrations/facebook.yaml:/data/registration.yaml:ro
+    networks:
+      # internal: talks to synapse/matrix-postgres. public: needs real
+      # internet egress to reach facebook.com -- `internal: true` on the
+      # `internal` network blocks ALL outbound routing by design (achado
+      # real 28/08/2026, primeiro deploy: "server misbehaving" no DNS
+      # embutido do Docker porque o bridge só tinha a rede internal).
+      - internal
+      - public
+
+  mautrix-meta-instagram:
+    image: dock.mau.dev/mautrix/meta:ig-${MAUTRIX_META_VERSION}
+    container_name: mautrix-meta-instagram
+    restart: unless-stopped
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+      synapse:
+        condition: service_started
+    volumes:
+      - ../data/mautrix-meta-instagram:/data
+      - ../configs/mautrix-meta/instagram-config.yaml:/data/config.yaml:ro
+      - ../configs/synapse/registrations/instagram.yaml:/data/registration.yaml:ro
+    networks:
+      - internal
+      - public
+
+  ## ---------------------------------------------------------------------
   ## Client static sites
   ## One nginx:alpine container per client, serving files from
   ## ../sites/<slug>/public. Two modes — see sites/README.md for the full
@@ -433,6 +531,27 @@ services:
   ##   B) client has no domain yet    -> Host(`<slug>.${ROOT_DOMAIN}`)
   ##      (also add the subdomain to terraform/dns.tf in that case)
   ## ---------------------------------------------------------------------
+
+  site-portfolio:
+    # Static export of the public repo lucas-rangel-portfolio (Next.js
+    # `output: "export"`). Content in ../sites/portfolio/public is rsynced
+    # by .github/workflows/deploy-portfolio.yml from a pinned release tag;
+    # it is never committed to this repository.
+    image: nginx:alpine
+    container_name: site-portfolio
+    restart: unless-stopped
+    volumes:
+      - ../sites/portfolio/public:/usr/share/nginx/html:ro
+    networks:
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.site-portfolio.rule=Host(`${ROOT_DOMAIN}`) || Host(`www.${ROOT_DOMAIN}`)
+      - traefik.http.routers.site-portfolio.entrypoints=websecure
+      - traefik.http.routers.site-portfolio.tls.certresolver=letsencrypt
+      - traefik.http.routers.site-portfolio.middlewares=security-headers@file
+      - traefik.http.services.site-portfolio.loadbalancer.server.port=80
 
   # site-example:                                          # mode A example
   #   image: nginx:alpine
