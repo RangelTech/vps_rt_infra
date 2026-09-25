@@ -83,7 +83,14 @@ docker image inspect "$AIRFLOW_IMAGE" >/dev/null 2>&1 || docker build --tag "$AI
 # by name instead or `pull` tries to fetch it from a registry that doesn't
 # have it.
 pullable=$(bash scripts/public_demo.sh config --services | grep -v '^airflow$')
-bash scripts/public_demo.sh pull $pullable
+# This host's IPv6 route to GitHub's blob storage (ghcr.io image layers)
+# resets mid-transfer often enough to need retries; each attempt resumes
+# from already-downloaded layers rather than starting over.
+for attempt in 1 2 3 4 5; do
+  bash scripts/public_demo.sh pull $pullable && break
+  [ "$attempt" = 5 ] && exit 1
+  sleep 10
+done
 bash scripts/public_demo.sh up -d
 
 # Metabase seed is idempotent by object name (see seed_metabase.py); safe to
