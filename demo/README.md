@@ -36,7 +36,13 @@ port of its own — see `patch_compose_for_traefik.py` below.
   publishes its own host ports 80/443 for a standalone local run — this VPS's
   ports 80/443 already belong to the shared Traefik, so this script removes
   nginx's `ports:`, joins it to the external `public` network, and adds the
-  same kind of Traefik labels every other site here uses. It is the only
+  same kind of Traefik labels every other site here uses. Traefik terminates
+  public TLS (Let's Encrypt) and re-encrypts to nginx's own self-signed 8443
+  listener: the plain 8080 listener is only a health check plus a redirect, and
+  every real route lives in the 8443 block. The backend hop uses the
+  `demo-backend-tls` serversTransport (insecureSkipVerify, internal hop only)
+  defined in `configs/traefik/dynamic.yml` -- a label-defined transport does
+  not register. It is the only
   place that knows this VPS's routing; the public repo stays portable and
   unaware of it (spec: a repo's own compose file is never edited for one
   deployment target).
@@ -66,3 +72,14 @@ the whole demo down without touching production:
 ```bash
 ssh deploy@rangeltech.net "cd /opt/demo/runtime-lab && bash scripts/public_demo.sh down -v"
 ```
+
+## Known operating notes (2026-09-25 first deploy)
+
+- The VPS was under heavy sustained load (load average ~20) during the first
+  deploy: image extraction, Metabase's first-boot migrations and the RAG corpus
+  build are each slow. `rag-gateway` needs its 120s `start_period`; a first
+  public answer can take 10s, warm ones 2-5s.
+- Image pulls from ghcr.io retry (IPv6 resets to GitHub blob storage).
+- Recreating volumes (`down -v`) is only needed if analytics-db initialised
+  before `analytics/release/derivative.json` existed; `deploy.sh` now runs the
+  loader first.
