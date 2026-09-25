@@ -2,9 +2,11 @@ locals {
   dns_records = [
     { name = "@", type = "A", value = var.server_ip, ttl = 300 },
     # Personal portfolio site (public GitHub repo lucas-rangel-portfolio),
-    # served by the site-portfolio static container below. www redirects
-    # to the apex via the site's own labels.
-    { name = "www", type = "A", value = var.server_ip, ttl = 300 },
+    # served by the site-portfolio static container below. "www" already
+    # exists in the live zone as a CNAME to the apex (predates this repo's
+    # tracked record list) and is not re-declared here: adding it as an A
+    # record conflicts with that CNAME (Hostinger: a name cannot carry both
+    # a CNAME and another record type). It already resolves to this VPS.
     # Public-demo Compose profile (distributed-agent-runtime-lab, deploy/public-demo/):
     # its own isolated nginx, on the public network only for Traefik routing.
     { name = "demo", type = "A", value = var.server_ip, ttl = 300 },
