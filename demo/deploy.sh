@@ -62,10 +62,22 @@ fi
 # Idempotent: no-ops if nginx is already patched.
 $PY "$INFRA_DIR/patch_compose_for_traefik.py" deploy/public-demo/compose.yaml "$ROOT_DOMAIN"
 
-# airflow is the one local-build service (no registry to pull from); build
-# it explicitly, pull everything else, matching the production stack's own
-# build-then-pull-then-up idiom in vps_rt_infra/terraform/main.tf.
-bash scripts/public_demo.sh build airflow
+# airflow's compose service has only an `image:`, no `build:` section: its
+# Dockerfile (which fetches the two owner-repo DAG packages by pinned commit)
+# is built out of band by scripts/build_public_demo_images.sh, matching
+# exactly how the repo's own CI/local docs build it. Skip that script's other
+# two images (runtime/RAG): those are now real, already-pulled GHCR images.
+set -a; . deploy/public-demo/versions.env; set +a
+docker build --tag "$AIRFLOW_IMAGE" \
+  --build-arg "AIRFLOW_IMAGE=$AIRFLOW_BASE_IMAGE" \
+  --build-arg "DATA_MAP_REPO=$DATA_MAP_REPO" \
+  --build-arg "DATA_MAP_COMMIT=$DATA_MAP_COMMIT" \
+  --build-arg "DATA_MAP_ARCHIVE_SHA256=$DATA_MAP_ARCHIVE_SHA256" \
+  --build-arg "MLOPS_REPO=$MLOPS_REPO" \
+  --build-arg "MLOPS_COMMIT=$MLOPS_COMMIT" \
+  --build-arg "MLOPS_ARCHIVE_SHA256=$MLOPS_ARCHIVE_SHA256" \
+  deploy/public-demo/airflow
+
 bash scripts/public_demo.sh pull --ignore-buildable
 bash scripts/public_demo.sh up -d
 
