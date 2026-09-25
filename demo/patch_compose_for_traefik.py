@@ -27,9 +27,12 @@ import yaml
 # the public dashboard path) live solely in the 8443 TLS server block. Routing
 # Traefik to 8080 therefore redirect-loops. Instead Traefik terminates public
 # TLS with Let's Encrypt as usual, then makes its own backend connection to
-# nginx's self-signed 8443 listener (a "serverstransport" with
-# insecureSkipVerify -- that certificate is never client-facing, only used
-# for this one internal hop, so skipping its own verification is safe here).
+# nginx's self-signed 8443 listener, using the "demo-backend-tls"
+# serversTransport (insecureSkipVerify -- that certificate is never
+# client-facing, only used for this one internal hop) defined in
+# configs/traefik/dynamic.yml. A Docker-label-defined serversTransport was
+# tried first and silently failed to register; the file provider is the
+# working path, alongside this same file's other one-off Traefik config.
 TRAEFIK_LABELS = [
     "traefik.enable=true",
     "traefik.docker.network=public",
@@ -39,8 +42,7 @@ TRAEFIK_LABELS = [
     "traefik.http.routers.demo-nginx.middlewares=security-headers@file",
     "traefik.http.services.demo-nginx.loadbalancer.server.port=8443",
     "traefik.http.services.demo-nginx.loadbalancer.server.scheme=https",
-    "traefik.http.services.demo-nginx.loadbalancer.serverstransport=demo-backend-tls@docker",
-    "traefik.http.serverstransports.demo-backend-tls.insecureskipverify=true",
+    "traefik.http.services.demo-nginx.loadbalancer.serverstransport=demo-backend-tls@file",
 ]
 
 
