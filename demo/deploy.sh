@@ -46,7 +46,10 @@ $PY scripts/public_demo_env.py --set EDUCATION_RELEASE_DIR=./data/education-rele
 # Public dataset, no credential needed; cached across deploys.
 mkdir -p deploy/public-demo/data/education-release
 if [ ! -f deploy/public-demo/data/education-release/release_manifest.json ]; then
-  release_dir=$($PY -c "import kagglehub; print(kagglehub.dataset_download('lucasrangelss/brazil-education-data-lake/versions/1'))")
+  # kagglehub prints its own progress lines to stdout before the path; only
+  # the last line is the actual return value (same reasoning as the seed
+  # UUID capture below).
+  release_dir=$($PY -c "import kagglehub; print(kagglehub.dataset_download('lucasrangelss/brazil-education-data-lake/versions/1'))" | tail -1)
   cp "$release_dir"/* deploy/public-demo/data/education-release/
 fi
 
