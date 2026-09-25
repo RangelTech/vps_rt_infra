@@ -68,7 +68,7 @@ $PY "$INFRA_DIR/patch_compose_for_traefik.py" deploy/public-demo/compose.yaml "$
 # exactly how the repo's own CI/local docs build it. Skip that script's other
 # two images (runtime/RAG): those are now real, already-pulled GHCR images.
 set -a; . deploy/public-demo/versions.env; set +a
-docker build --tag "$AIRFLOW_IMAGE" \
+docker image inspect "$AIRFLOW_IMAGE" >/dev/null 2>&1 || docker build --tag "$AIRFLOW_IMAGE" \
   --build-arg "AIRFLOW_IMAGE=$AIRFLOW_BASE_IMAGE" \
   --build-arg "DATA_MAP_REPO=$DATA_MAP_REPO" \
   --build-arg "DATA_MAP_COMMIT=$DATA_MAP_COMMIT" \

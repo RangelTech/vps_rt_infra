@@ -42,8 +42,13 @@ jobs:
             "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/opt/demo-infra/"
 
       - name: Deploy
+        # ServerAliveInterval/CountMax: the airflow image build has a large
+        # base layer that can take several minutes to extract on this VPS
+        # under load, with no SSH traffic in between; the default client
+        # settings let that idle gap look like a dead connection.
         run: |
           ssh -i ~/.ssh/vps_rt_infra_ed25519 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=20 \
             "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
             "chmod +x /opt/demo-infra/deploy.sh && RUNTIME_LAB_REF='${{ github.event.inputs.ref }}' ROOT_DOMAIN=rangeltech.net /opt/demo-infra/deploy.sh"
 
