@@ -32,7 +32,7 @@ if [ ! -x "$VENV/bin/python3" ]; then
   sudo apt-get install -y -qq python3-venv
   python3 -m venv "$VENV"
 fi
-"$VENV/bin/pip" install --quiet pyyaml kagglehub
+"$VENV/bin/pip" install --quiet pyyaml kagglehub pyarrow
 PY="$VENV/bin/python3"
 
 # Secrets persist across deploys; only the first deploy generates them.
