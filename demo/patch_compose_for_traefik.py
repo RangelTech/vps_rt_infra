@@ -22,6 +22,14 @@ import sys
 
 import yaml
 
+# Port 8080 (this profile's plain-HTTP listener) only serves a health check
+# and an unconditional redirect to 8443 -- the real routes (chat, /v1/answer,
+# the public dashboard path) live solely in the 8443 TLS server block. Routing
+# Traefik to 8080 therefore redirect-loops. Instead Traefik terminates public
+# TLS with Let's Encrypt as usual, then makes its own backend connection to
+# nginx's self-signed 8443 listener (a "serverstransport" with
+# insecureSkipVerify -- that certificate is never client-facing, only used
+# for this one internal hop, so skipping its own verification is safe here).
 TRAEFIK_LABELS = [
     "traefik.enable=true",
     "traefik.docker.network=public",
@@ -29,7 +37,10 @@ TRAEFIK_LABELS = [
     "traefik.http.routers.demo-nginx.entrypoints=websecure",
     "traefik.http.routers.demo-nginx.tls.certresolver=letsencrypt",
     "traefik.http.routers.demo-nginx.middlewares=security-headers@file",
-    "traefik.http.services.demo-nginx.loadbalancer.server.port=8080",
+    "traefik.http.services.demo-nginx.loadbalancer.server.port=8443",
+    "traefik.http.services.demo-nginx.loadbalancer.server.scheme=https",
+    "traefik.http.services.demo-nginx.loadbalancer.serverstransport=demo-backend-tls@docker",
+    "traefik.http.serverstransports.demo-backend-tls.insecureskipverify=true",
 ]
 
 
