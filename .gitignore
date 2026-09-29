@@ -11,6 +11,11 @@ crash.*.log
 # Secrets / env
 .env
 compose/.env
+configs/synapse/homeserver.yaml
+configs/synapse/registrations/facebook.yaml
+configs/synapse/registrations/instagram.yaml
+configs/mautrix-meta/facebook-config.yaml
+configs/mautrix-meta/instagram-config.yaml
 *.pem
 *.key
 userlist.txt
@@ -22,6 +27,10 @@ run-*-logs/
 ssh_diag_out.txt
 _diag_ssh.py
 _diag_ssh2.py
+
+# Portfolio static export, rsynced by deploy-portfolio.yml from a pinned tag
+sites/portfolio/public/*
+!sites/portfolio/public/.gitkeep
 
 # OS / editor
 .DS_Store

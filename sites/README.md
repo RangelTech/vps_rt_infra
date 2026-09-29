@@ -82,4 +82,4 @@ A diferença entre os dois modos é só **onde o DNS é gerenciado** e a regra d
 
 | slug | modo | domínio(s) | pasta | observações |
 |---|---|---|---|---|
-| _(nenhum ainda)_ | | | | |
+| portfolio | B (subdominio nao usado; roteia `@`+`www` direto) | rangeltech.net, www.rangeltech.net | sites/portfolio/public (gerado, nao versionado) | Static export do repo publico lucas-rangel-portfolio; publicado por `.github/workflows/deploy-portfolio.yml` (dispatch manual, ref = tag do site) |

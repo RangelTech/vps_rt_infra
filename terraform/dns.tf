@@ -1,24 +1,33 @@
 locals {
   dns_records = [
-    { name = "@",          type = "A", value = var.server_ip, ttl = 300 },
-    { name = "9route",     type = "A", value = var.server_ip, ttl = 300 },
-    { name = "grafana",    type = "A", value = var.server_ip, ttl = 300 },
-    { name = "storage",    type = "A", value = var.server_ip, ttl = 300 },
+    { name = "@", type = "A", value = var.server_ip, ttl = 300 },
+    # Personal portfolio site (public GitHub repo lucas-rangel-portfolio),
+    # served by the site-portfolio static container below. "www" already
+    # exists in the live zone as a CNAME to the apex (predates this repo's
+    # tracked record list) and is not re-declared here: adding it as an A
+    # record conflicts with that CNAME (Hostinger: a name cannot carry both
+    # a CNAME and another record type). It already resolves to this VPS.
+    # Public-demo Compose profile (distributed-agent-runtime-lab, deploy/public-demo/):
+    # its own isolated nginx, on the public network only for Traefik routing.
+    { name = "demo", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "9route", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "grafana", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "storage", type = "A", value = var.server_ip, ttl = 300 },
     { name = "minio-admin", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "pgadmin",    type = "A", value = var.server_ip, ttl = 300 },
-    { name = "uptime",     type = "A", value = var.server_ip, ttl = 300 },
-    { name = "traefik",    type = "A", value = var.server_ip, ttl = 300 },
-    { name = "code",       type = "A", value = var.server_ip, ttl = 300 },
+    { name = "pgadmin", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "uptime", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "traefik", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "code", type = "A", value = var.server_ip, ttl = 300 },
     { name = "prometheus", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "logs",       type = "A", value = var.server_ip, ttl = 300 },
+    { name = "logs", type = "A", value = var.server_ip, ttl = 300 },
     # agent-llm mega spec (infra-01): agent-platform (backend+frontend),
     # Chatwoot e a ponte migram do Cloud Run pra cá.
-    { name = "ia",         type = "A", value = var.server_ip, ttl = 300 },
-    { name = "chat",       type = "A", value = var.server_ip, ttl = 300 },
-    { name = "bridge",     type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "chat", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "bridge", type = "A", value = var.server_ip, ttl = 300 },
     # infra-09: Infisical self-hosted secret manager (UI + API for Machine
     # Identity / Universal Auth lookups from CI and app containers).
-    { name = "infisical",  type = "A", value = var.server_ip, ttl = 300 },
+    { name = "infisical", type = "A", value = var.server_ip, ttl = 300 },
     # SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md Fase B: Hermes Relay (WSS
     # persistente por dispositivo). Servico ja deployado (apps/hermes-relay,
     # compose/docker-compose.yml) mas este registro ainda nao foi aplicado
@@ -41,7 +50,7 @@ locals {
 }
 
 resource "local_file" "hostinger_zone" {
-  filename        = "${path.module}/hostinger-zone.json"
+  filename = "${path.module}/hostinger-zone.json"
   content = jsonencode({
     overwrite = true
     zone = [

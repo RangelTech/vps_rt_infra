@@ -96,6 +96,18 @@ http:
         servers:
           - url: "https://chatwoot-bridge-pujq3pjmca-uc.a.run.app"
 
+  serversTransports:
+    # The public-demo profile's nginx terminates its own internal TLS with a
+    # self-signed certificate (see vps_rt_infra/demo/README.md and
+    # patch_compose_for_traefik.py) -- that cert is never client-facing,
+    # only used for this one Traefik-to-nginx hop, so skipping verification
+    # on it is safe. A Docker-label-defined serversTransport was tried first
+    # and silently failed to register ("servers transport not found ...
+    # @docker"); defining it here, alongside this file's other one-off
+    # config, is the documented, working path.
+    demo-backend-tls:
+      insecureSkipVerify: true
+
 tls:
   options:
     default:
