@@ -1,22 +1,26 @@
 """Hermes Relay (SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md, Fase B / secao
-8.1 e 12) -- slice 2: conexao WSS persistente autenticada por TICKET de
-curta duracao (nao mais a credencial de longa duracao do dispositivo).
+8.1 e 12) -- slice 3: alem da presenca autenticada por ticket (slices 1-2),
+agora avisa o dispositivo em tempo real quando um comando e criado, em vez
+de o dispositivo depender so do seu proprio poll periodico.
 
-A extensao chama `POST /api/hermes/devices/ws-ticket` no backend (autenticada
-com sua credencial de longa duracao, hermes_device_credentials), recebe um
-ticket descartavel (hermes_ws_tickets, migration 0042) e usa SO o ticket na
-query string do WS -- a credencial de longa duracao nunca aparece ali, e
-portanto nunca aparece em log de acesso do Traefik. O Relay marca o ticket
-como usado no mesmo UPDATE que valida (uso unico: replay do mesmo ticket
-falha sempre) e confere a expiracao no banco, nao no relogio local.
+O backend faz `SELECT pg_notify('hermes_commands', device_id)` na mesma
+transacao que insere o comando (hermes_commands.py:create_command) --
+Postgres so entrega a notificacao se a transacao de fato comitar. Cada
+conexao WS aqui mantem uma segunda conexao Postgres so pra `LISTEN
+hermes_commands` e, ao ver seu proprio device_id, manda um
+`{"type": "command.available"}` pro cliente. O Relay continua sem gravar
+estado de negocio: ele so LE hermes_ws_tickets/hermes_devices e escuta um
+canal, o claim de verdade do comando continua sendo o
+`GET /api/hermes/commands/pending` atomico do backend (FOR UPDATE SKIP
+LOCKED) -- o push aqui e so o gatilho pra parar de esperar o proximo poll.
 
-Fora do escopo desta fatia (fica para a proxima): despachar comandos,
-publicar eventos de sessao para o backend. O Relay nao grava estado de
-negocio no Postgres -- aqui ele LE hermes_ws_tickets/hermes_devices e
-atualiza presenca (last_seen_at/status), que ja e o dado que o backend HTTP
-tambem escreve hoje.
+Fora do escopo desta fatia (fica para a proxima): publicar eventos de
+sessao para o backend pelo proprio Relay (hoje a extensao ainda publica
+isso via HTTP).
 """
 
+import asyncio
+import contextlib
 import hashlib
 import logging
 import os
@@ -98,6 +102,27 @@ def _authenticate_device(ticket: str) -> dict | None:
         }
 
 
+async def _listen_for_commands(device_id: str, websocket: WebSocket) -> None:
+    """Runs for the lifetime of one WS connection. A fresh async connection
+    (not the threadpool one used for auth/presence) because LISTEN/notifies()
+    blocks on that connection for as long as this task lives."""
+    aconn = await psycopg.AsyncConnection.connect(**_PG_KWARGS, autocommit=True)
+    try:
+        await aconn.execute("LISTEN hermes_commands")
+        async for notify in aconn.notifies():
+            if notify.payload == device_id:
+                await websocket.send_json({"type": "command.available"})
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # Nunca derruba a conexao WS por isso -- o dispositivo so perde o
+        # aviso em tempo real e volta a depender do proprio poll ate a
+        # proxima conexao.
+        log.exception("command listener failed for device_id=%s", device_id)
+    finally:
+        await aconn.close()
+
+
 def _mark_disconnected(device_id: str) -> None:
     with _connect() as conn:
         conn.execute(
@@ -137,6 +162,7 @@ async def ws_device(websocket: WebSocket):
         "device_id": device["id"],
         "tenant_id": device["tenant_id"],
     })
+    listen_task = asyncio.create_task(_listen_for_commands(device["id"], websocket))
     try:
         while True:
             msg = await websocket.receive_text()
@@ -145,5 +171,8 @@ async def ws_device(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
+        listen_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await listen_task
         log.info("device disconnected tenant_id=%s device_id=%s", device["tenant_id"], device["id"])
         await run_in_threadpool(_mark_disconnected, device["id"])
