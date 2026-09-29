@@ -1,19 +1,20 @@
 """Hermes Relay (SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md, Fase B / secao
-8.1 e 12) -- slice 1: conexao WSS persistente autenticada por dispositivo.
+8.1 e 12) -- slice 2: conexao WSS persistente autenticada por TICKET de
+curta duracao (nao mais a credencial de longa duracao do dispositivo).
 
-Escopo desta fatia: provar que o transporte WSS + autenticacao de
-dispositivo funcionam de verdade contra o mesmo banco (hermes_devices /
-hermes_device_credentials) que o backend HTTP ja usa -- reaproveitando o
-MESMO hash (sha256, ver backend/app/security.py:hash_token) e a MESMA
-consulta de autenticacao (backend/app/device_auth.py:current_device), so
-que sobre um socket de longa duracao em vez de um bearer por request.
+A extensao chama `POST /api/hermes/devices/ws-ticket` no backend (autenticada
+com sua credencial de longa duracao, hermes_device_credentials), recebe um
+ticket descartavel (hermes_ws_tickets, migration 0042) e usa SO o ticket na
+query string do WS -- a credencial de longa duracao nunca aparece ali, e
+portanto nunca aparece em log de acesso do Traefik. O Relay marca o ticket
+como usado no mesmo UPDATE que valida (uso unico: replay do mesmo ticket
+falha sempre) e confere a expiracao no banco, nao no relogio local.
 
 Fora do escopo desta fatia (fica para a proxima): despachar comandos,
-publicar eventos de sessao para o backend, emitir/validar tickets de curta
-duracao para o RIA assistir uma sessao ao vivo. O Relay nao grava estado de
-negocio no Postgres -- aqui ele so LE hermes_devices/hermes_device_credentials
-para autenticar e atualiza presenca (last_seen_at/status), que ja e o dado
-que o backend HTTP tambem escreve hoje.
+publicar eventos de sessao para o backend. O Relay nao grava estado de
+negocio no Postgres -- aqui ele LE hermes_ws_tickets/hermes_devices e
+atualiza presenca (last_seen_at/status), que ja e o dado que o backend HTTP
+tambem escreve hoje.
 """
 
 import hashlib
@@ -49,48 +50,51 @@ def _connect(**overrides):
 
 app = FastAPI(title="Hermes Relay")
 
-# Espelha device_auth.py:_DEVICE_QUERY no backend -- qualquer mudanca de
-# schema precisa ser replicada nos dois lugares ate existir um contrato
-# OpenAPI/SQL compartilhado (spec secao 17, entregavel 2, ainda pendente).
-_DEVICE_QUERY = """
-SELECT d.id AS device_id, d.tenant_id, d.name, d.status,
-       c.id AS credential_id, c.revoked_at AS credential_revoked_at
-  FROM hermes_device_credentials c
-  JOIN hermes_devices d ON d.id = c.device_id
- WHERE c.token_hash = %s
+# Consome hermes_ws_tickets (backend/migrations/0042) num UPDATE atomico:
+# so aceita ticket nao usado e ainda nao expirado, e ja marca used_at no
+# mesmo statement -- duas conexoes concorrentes com o mesmo ticket nunca
+# autenticam as duas (a segunda pega 0 linhas, exatamente como o claim
+# atomico de comandos pendentes no backend, FOR UPDATE SKIP LOCKED).
+_CONSUME_TICKET = """
+UPDATE hermes_ws_tickets
+   SET used_at = now()
+ WHERE token_hash = %s AND used_at IS NULL AND expires_at > now()
+RETURNING device_id, tenant_id
 """
+
+_DEVICE_STATUS_QUERY = "SELECT name, status FROM hermes_devices WHERE id = %s"
 
 
 def hash_token(token: str) -> str:
+    """Mesmo hash do backend (app/security.py:hash_token) -- sha256 hex."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def _authenticate_device(token: str) -> dict | None:
+def _authenticate_device(ticket: str) -> dict | None:
     """Sync (psycopg normal), rodado via threadpool -- mesma tecnica que o
     backend usa nas suas proprias rotas sincronas."""
     with _connect(row_factory=dict_row) as conn:
-        row = conn.execute(_DEVICE_QUERY, (hash_token(token),)).fetchone()
-        if row is None or row["credential_revoked_at"] is not None:
+        claim = conn.execute(_CONSUME_TICKET, (hash_token(ticket),)).fetchone()
+        if claim is None:
+            conn.commit()  # nada a desfazer, mas fecha a transacao aberta pela leitura
             return None
-        if row["status"] == "revoked":
+        device = conn.execute(_DEVICE_STATUS_QUERY, (claim["device_id"],)).fetchone()
+        if device is None or device["status"] == "revoked":
+            conn.rollback()  # nao consome um ticket bom pra um device ja revogado
             return None
         now = datetime.now(UTC)
-        conn.execute(
-            "UPDATE hermes_device_credentials SET last_used_at = %s WHERE id = %s",
-            (now, row["credential_id"]),
-        )
         conn.execute(
             """UPDATE hermes_devices
                   SET last_seen_at = %s,
                       status = CASE WHEN status = 'disconnected' THEN 'connected' ELSE status END
                 WHERE id = %s""",
-            (now, row["device_id"]),
+            (now, claim["device_id"]),
         )
         conn.commit()
         return {
-            "id": str(row["device_id"]),
-            "tenant_id": str(row["tenant_id"]),
-            "name": row["name"],
+            "id": str(claim["device_id"]),
+            "tenant_id": str(claim["tenant_id"]),
+            "name": device["name"],
         }
 
 
@@ -117,13 +121,13 @@ async def healthz():
 
 @app.websocket("/ws/device")
 async def ws_device(websocket: WebSocket):
-    token = websocket.query_params.get("token")
-    if not token:
-        await websocket.close(code=4401, reason="missing token")
+    ticket = websocket.query_params.get("ticket")
+    if not ticket:
+        await websocket.close(code=4401, reason="missing ticket")
         return
-    device = await run_in_threadpool(_authenticate_device, token)
+    device = await run_in_threadpool(_authenticate_device, ticket)
     if device is None:
-        await websocket.close(code=4401, reason="invalid or revoked credential")
+        await websocket.close(code=4401, reason="invalid, expired, used or revoked ticket")
         return
 
     await websocket.accept()
