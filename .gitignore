@@ -32,6 +32,10 @@ _diag_ssh2.py
 sites/portfolio/public/*
 !sites/portfolio/public/.gitkeep
 
+# Python (apps/hermes-relay and any future Python app source)
+__pycache__/
+*.pyc
+
 # OS / editor
 .DS_Store
 Thumbs.db
