@@ -17,6 +17,16 @@ LOCKED) -- o push aqui e so o gatilho pra parar de esperar o proximo poll.
 Fora do escopo desta fatia (fica para a proxima): publicar eventos de
 sessao para o backend pelo proprio Relay (hoje a extensao ainda publica
 isso via HTTP).
+
+Nota de seguranca (revisada 29/09/2026): o push carrega so o tipo do
+evento, nenhum dado de comando/sessao/tenant -- quem quer o conteudo tem
+que chamar o `GET /commands/pending` autenticado de novo, que ja e
+escopado por device_id no proprio backend. E o filtro por device_id aqui
+nao depende do cliente dizer quem ele e: `device_id` vem do ticket que o
+backend emitiu (hermes_ws_tickets, ligado ao dispositivo na hora da
+emissao), nao de nada que o WS mande. Um dispositivo so pode ouvir
+notificacoes do seu proprio canal porque so consegue ser autenticado como
+si mesmo.
 """
 
 import asyncio
