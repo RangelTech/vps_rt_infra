@@ -19,6 +19,13 @@ locals {
     # infra-09: Infisical self-hosted secret manager (UI + API for Machine
     # Identity / Universal Auth lookups from CI and app containers).
     { name = "infisical",  type = "A", value = var.server_ip, ttl = 300 },
+    # SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md Fase B: Hermes Relay (WSS
+    # persistente por dispositivo). Servico ja deployado (apps/hermes-relay,
+    # compose/docker-compose.yml) mas este registro ainda nao foi aplicado
+    # de verdade -- 29/09/2026, sem HOSTINGER_API_KEY disponivel na maquina
+    # que criou o servico. Aplicar via o pipeline real deste repo assim que
+    # possivel; ate la o router Traefik do hermes-relay fica inerte.
+    { name = "hermes-relay", type = "A", value = var.server_ip, ttl = 300 },
     # produto-05 seção 4: 1 registro coringa só, cadastrado uma vez — cada
     # container Evolution por tenant sobe com label Traefik
     # Host(`evolution-<tenant_id>.evolution.rangeltech.net`), sem precisar

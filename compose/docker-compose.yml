@@ -468,6 +468,50 @@ services:
   #     - traefik.http.routers.site-example2.middlewares=security-headers@file
   #     - traefik.http.services.site-example2.loadbalancer.server.port=80
 
+  ## ---------------------------------------------------------------------
+  ## Hermes Relay (SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md, Fase B)
+  ## Slice 1 (29/09/2026): conexao WSS persistente autenticada por
+  ## dispositivo (apps/hermes-relay/main.py), rodando aqui e nao no Cloud
+  ## Run porque a spec exige infra que segure WebSocket de longa duracao
+  ## (secao 12). PENDENTE antes de expor de verdade: registro DNS
+  ## `hermes-relay.${ROOT_DOMAIN}` (terraform/dns.tf ja tem o registro;
+  ## falta aplicar com a HOSTINGER_API_KEY, que nao estava disponivel na
+  ## maquina que criou este servico) -- sem DNS, o router Traefik abaixo
+  ## fica inerte (nao resolve, nao emite certificado, nao recebe trafego).
+  ## Ainda nao despacha comandos nem publica eventos pro backend -- so
+  ## prova o transporte + autenticacao contra hermes_device_credentials.
+  ## ---------------------------------------------------------------------
+
+  hermes-relay:
+    build:
+      context: ../apps/hermes-relay
+    container_name: hermes-relay
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Variaveis separadas, nao uma DATABASE_URL montada por interpolacao
+      # -- a senha real do Postgres tem caracteres nao percent-encoded
+      # (achado ao vivo 29/09/2026, mesma classe do bug do Infisical acima).
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: agent_llm
+      PGUSER: ${POSTGRES_ADMIN_USER}
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      TZ: ${TIMEZONE}
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.hermes-relay.rule=Host(`hermes-relay.${ROOT_DOMAIN}`)
+      - traefik.http.routers.hermes-relay.entrypoints=websecure
+      - traefik.http.routers.hermes-relay.tls.certresolver=letsencrypt
+      - traefik.http.routers.hermes-relay.middlewares=security-headers@file
+      - traefik.http.services.hermes-relay.loadbalancer.server.port=8000
+
 networks:
   internal:
     name: internal
