@@ -1,0 +1,33 @@
+# PNCP public dashboard edge. Separate Compose project: one nginx that serves the portfolio-styled shell
+# page and forwards ONLY the single public Metabase dashboard route to the existing Metabase container.
+name: pncp-dashboard
+services:
+  edge:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_DASHBOARD_UUID: ${PUBLIC_DASHBOARD_UUID:?set in /opt/pncp-dashboard/.env}
+      NGINX_ENVSUBST_FILTER: ^PUBLIC_
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./html:/usr/share/nginx/html:ro
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    networks: [public, metabase_link]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.pncp-dashboard.rule=Host(`pncp.rangeltech.net`)
+      - traefik.http.routers.pncp-dashboard.entrypoints=websecure
+      - traefik.http.routers.pncp-dashboard.tls.certresolver=letsencrypt
+      - traefik.http.services.pncp-dashboard.loadbalancer.server.port=8080
+networks:
+  public:
+    external: true
+  metabase_link:
+    external: true
+    name: public-demo_app

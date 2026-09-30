@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PNCP public procurement research | Lucas Rangel</title>
+<meta name="description" content="Read-only dashboard of aggregates from the public PNCP Kaggle release.">
+<style>
+  :root{--ink:#101828;--muted:#5e6879;--line:#dce3ec;--paper:#f8fafc;--accent:#2563eb;--accent-ink:#1d4ed8}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:var(--accent-ink);text-underline-offset:3px}
+  a:focus-visible,iframe:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+  @media(min-width:640px){.wrap{padding:0 32px}}
+  header{display:flex;align-items:center;justify-content:space-between;height:88px;border-bottom:1px solid var(--line)}
+  .mark{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font:500 13px ui-monospace,monospace;text-decoration:none}
+  .back{font:500 13px ui-monospace,monospace;color:var(--ink);text-decoration:none}
+  .back:hover{color:var(--accent)}
+  .eyebrow{margin:56px 0 16px;font:500 12px ui-monospace,monospace;letter-spacing:.08em;color:var(--accent)}
+  h1{margin:0;max-width:820px;font-size:clamp(30px,4.6vw,52px);line-height:1.08;letter-spacing:-.05em;font-weight:800}
+  .lead{max-width:720px;margin:20px 0 0;color:var(--muted);font-size:17px}
+  .facts{display:grid;gap:12px;margin:32px 0 24px;padding:0;list-style:none}
+  @media(min-width:720px){.facts{grid-template-columns:repeat(3,1fr)}}
+  .facts li{padding:16px 20px;background:#fff;border:1px solid var(--line);border-radius:16px}
+  .facts span{display:block;color:var(--muted);font-size:13px}
+  .facts strong{font-size:16px}
+  .frame{position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;min-height:560px}
+  iframe{display:block;width:100%;height:min(2400px,220vh);min-height:640px;border:0}
+  .status{position:absolute;inset:0;z-index:1;display:grid;place-content:center;gap:8px;padding:24px;text-align:center;color:var(--muted);background:#fff}
+  .status[hidden]{display:none}
+  .spinner{width:22px;height:22px;margin:0 auto;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+  .notes{margin:32px 0 64px;padding:0;color:var(--muted);font-size:14px;max-width:820px}
+  .notes li{margin:6px 0 6px 20px}
+  footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="mark" href="https://rangeltech.net" aria-label="Lucas Rangel, back to the portfolio">LR</a>
+    <a class="back" href="https://rangeltech.net/#demos">&larr; Back to portfolio</a>
+  </header>
+  <main id="main">
+    <p class="eyebrow">PNCP · PUBLIC DASHBOARD</p>
+    <h1>PNCP public procurement research</h1>
+    <p class="lead">Read-only aggregates from the public PNCP Kaggle catalogue: coverage, categories, organizations, quantities, and deadlines. It describes the released records. It is not legal advice, an eligibility check, or a supplier recommendation.</p>
+    <ul class="facts" aria-label="Release scope">
+      <li><span>Release</span><strong>PNCP Kaggle catalogue, version 1</strong></li>
+      <li><span>Data cutoff</span><strong>31 July 2026</strong></li>
+      <li><span>Source</span><strong><a href="https://www.kaggle.com/lucasrangelss/datasets" target="_blank" rel="noreferrer">Kaggle catalogue (opens in a new tab)</a></strong></li>
+    </ul>
+    <div class="frame" id="frame">
+      <div class="status" id="loading" role="status"><div class="spinner" aria-hidden="true"></div><p>Loading the dashboard&hellip;</p></div>
+      <div class="status" id="failed" role="alert" hidden><p><strong>The dashboard did not load.</strong></p><p>Reload the page, or <a id="direct" href="/">open it directly</a>.</p></div>
+      <iframe id="board" title="PNCP public procurement research dashboard" referrerpolicy="no-referrer"></iframe>
+      <noscript><p style="padding:24px">This dashboard needs JavaScript. The underlying data is in the <a href="https://www.kaggle.com/lucasrangelss/datasets">Kaggle catalogue</a>.</p></noscript>
+    </div>
+    <ul class="notes">
+      <li>Item-level charts count items, not notices. Estimated value sums each parent notice once, never once per item.</li>
+      <li>Missing values stay missing. A notice without a recorded proposal deadline is not counted in the deadline chart.</li>
+      <li>The PNCP source can change after the cutoff; the release manifest records exactly what these numbers were built from.</li>
+    </ul>
+  </main>
+  <footer>Lucas Rangel · Senior Data &amp; AI Platform Engineer · <a href="https://github.com/LucasRangelSSouza/distributed-agent-runtime-lab" target="_blank" rel="noreferrer">Dashboard source (opens in a new tab)</a></footer>
+</div>
+<script>
+  (function () {
+    var frame = document.getElementById('board'), loading = document.getElementById('loading'), failed = document.getElementById('failed');
+    function fail() { loading.hidden = true; failed.hidden = false; }
+    fetch('/dashboard-uuid.txt', {cache: 'no-store'}).then(function (r) { if (!r.ok) throw new Error('uuid'); return r.text(); }).then(function (id) {
+      var path = '/public/dashboard/' + id.trim();
+      document.getElementById('direct').href = path;
+      var timer = setTimeout(fail, 25000);
+      frame.addEventListener('load', function () { clearTimeout(timer); loading.hidden = true; });
+      frame.src = path + '#bordered=false&titled=false';
+    }).catch(fail);
+  })();
+</script>
+</body>
+</html>

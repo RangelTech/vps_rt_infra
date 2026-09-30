@@ -1,0 +1,67 @@
+# Deny by default. Only the shell page, one approved public dashboard, and the assets it needs.
+limit_req_zone $binary_remote_addr zone=pncp_edge:10m rate=10r/s;
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+server {
+    listen 8080 default_server;
+    server_name _;
+    server_tokens off;
+    limit_req zone=pncp_edge burst=40 nodelay;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header Authorization "";
+    proxy_set_header Cookie "";
+    proxy_hide_header Set-Cookie;
+    proxy_hide_header X-Powered-By;
+    proxy_http_version 1.1;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 30s;
+    set $metabase http://public-demo-metabase-1:3000;
+
+    location = / {
+        limit_except GET HEAD { deny all; }
+        root /usr/share/nginx/html;
+        try_files /index.html =404;
+        add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Cache-Control "no-store" always;
+    }
+    location = /dashboard-uuid.txt {
+        default_type text/plain;
+        add_header Cache-Control "no-store" always;
+        return 200 "${PUBLIC_DASHBOARD_UUID}";
+    }
+    location = /healthz { access_log off; default_type text/plain; return 200 "ok\n"; }
+
+    location ^~ /public/dashboard/${PUBLIC_DASHBOARD_UUID} {
+        limit_except GET HEAD { deny all; }
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_pass $metabase;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    }
+    location ^~ /api/public/dashboard/${PUBLIC_DASHBOARD_UUID} {
+        limit_except GET HEAD { deny all; }
+        proxy_pass $metabase;
+    }
+    location ^~ /app/ {
+        limit_except GET HEAD { deny all; }
+        proxy_pass $metabase;
+    }
+    location = /api/session/properties {
+        limit_except GET HEAD { deny all; }
+        proxy_pass $metabase;
+    }
+    location ~* ^/(admin|question|model|metric|collection|dashboard|browse|reference|auth|setup|embed|public/question|public/card)(/|$) {
+        return 403;
+    }
+    location ~* ^/api/(database|card|dataset|table|field|user|setup|session|setting|collection|dashboard|search|activity|permissions|embed)(/|$) {
+        return 403;
+    }
+    location / { return 404; }
+}
