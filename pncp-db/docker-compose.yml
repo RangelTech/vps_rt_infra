@@ -1,0 +1,30 @@
+# Public PNCP database: one Postgres for RAG Chat, Metabase, and public read-only consultation.
+# It holds only public catalogue data. Never published on a host port; reached over the `pncpdb`
+# network by the RAG backend, Metabase, and pgAdmin.
+name: pncp-db
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    env_file: /opt/pncp-db/.env
+    environment:
+      POSTGRES_DB: pncp
+      POSTGRES_USER: pncp_owner
+    command: >
+      postgres -c shared_buffers=768MB -c work_mem=16MB -c effective_cache_size=3GB
+      -c max_connections=60 -c max_parallel_workers_per_gather=2 -c maintenance_work_mem=1GB -c max_parallel_maintenance_workers=2
+    volumes:
+      - /opt/pncp-db/data:/var/lib/postgresql/data
+    mem_limit: 3500m
+    shm_size: 512m
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    networks: [pncpdb]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pncp_owner -d pncp"]
+      interval: 10s
+      retries: 10
+networks:
+  pncpdb:
+    name: pncpdb

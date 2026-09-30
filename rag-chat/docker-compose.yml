@@ -14,7 +14,24 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 2200m
+    networks: [internal, egress, pncpdb]
+
+  embed:
+    # Holds the only copy of the embedding credential; reachable from the backend over the private network only.
+    build: /opt/rag-chat/src/backend
+    restart: unless-stopped
+    command: ["python", "-m", "rag_chat_backend.embed_service"]
+    environment:
+      EMBED_CREDENTIALS_FILE: /run/secrets/embed-sa.json
+      EMBED_PROJECT: mi-prd-lake
+    volumes:
+      - /opt/rag-chat/secrets/embed-sa.json:/run/secrets/embed-sa.json:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 192m
     networks: [internal, egress]
+
   web:
     build: /opt/rag-chat/src
     restart: unless-stopped
@@ -45,9 +62,21 @@ services:
       - traefik.http.middlewares.rag-chat-limit.ratelimit.period=3s
       - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=4
       - traefik.http.services.rag-chat.loadbalancer.server.port=3000
+      # Search endpoint used by the portfolio's dashboards page, same origin as the site (no CORS).
+      - traefik.http.routers.rag-explore.rule=Host(`rangeltech.net`) && PathPrefix(`/api/explore`)
+      - traefik.http.routers.rag-explore.priority=100
+      - traefik.http.routers.rag-explore.entrypoints=websecure
+      - traefik.http.routers.rag-explore.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-explore.middlewares=security-headers@file,rag-explore-limit
+      - traefik.http.routers.rag-explore.service=rag-chat
+      - traefik.http.middlewares.rag-explore-limit.ratelimit.average=2
+      - traefik.http.middlewares.rag-explore-limit.ratelimit.period=3s
+      - traefik.http.middlewares.rag-explore-limit.ratelimit.burst=6
 networks:
   internal:
     internal: true
   egress: {}
+  pncpdb:
+    external: true
   public:
     external: true

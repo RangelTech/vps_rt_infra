@@ -1,0 +1,22 @@
+[
+ {
+  "name": "SIOPE median education investment per student, by year (BRL, nominal)",
+  "display": "line",
+  "sql": "SELECT year, median_brl_per_student FROM bi.siope_invest_year ORDER BY year"
+ },
+ {
+  "name": "SIOPE municipalities reporting, by year",
+  "display": "bar",
+  "sql": "SELECT year, municipalities_reporting FROM bi.siope_reporting_year ORDER BY year"
+ },
+ {
+  "name": "SIOPE median investment per student by region, 2024 (BRL)",
+  "display": "bar",
+  "sql": "SELECT region, median_brl_per_student FROM bi.siope_invest_region_2024 ORDER BY median_brl_per_student DESC"
+ },
+ {
+  "name": "SIOPE median investment per student by state, 2024 (BRL)",
+  "display": "bar",
+  "sql": "SELECT uf, median_brl_per_student FROM bi.siope_invest_uf_2024 ORDER BY median_brl_per_student DESC"
+ }
+]
