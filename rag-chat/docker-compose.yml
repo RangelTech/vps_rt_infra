@@ -1,0 +1,46 @@
+# RAG Chat public demo. Separate Compose project from the production stack; only the web
+# container joins the shared `public` network, so Traefik is the single ingress.
+name: rag-chat
+services:
+  backend:
+    build: /opt/rag-chat/src/backend
+    restart: unless-stopped
+    env_file: /opt/rag-chat/.env
+    environment:
+      RAG_INDEX_PATH: /data/index.db
+    volumes:
+      - /opt/rag-chat/data:/data:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 768m
+    networks: [internal, egress]
+  web:
+    build: /opt/rag-chat/src
+    restart: unless-stopped
+    environment:
+      RAG_CHAT_BACKEND_URL: http://backend:8080
+    depends_on: [backend]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+    networks: [internal, public]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.rag-chat.rule=Host(`rag.rangeltech.net`)
+      - traefik.http.routers.rag-chat.entrypoints=websecure
+      - traefik.http.routers.rag-chat.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-chat.middlewares=security-headers@file,rag-chat-limit
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.average=1
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.period=2s
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=8
+      - traefik.http.services.rag-chat.loadbalancer.server.port=3000
+networks:
+  internal:
+    internal: true
+  egress: {}
+  public:
+    external: true
