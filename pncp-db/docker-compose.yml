@@ -13,6 +13,7 @@ services:
     command: >
       postgres -c shared_buffers=768MB -c work_mem=16MB -c effective_cache_size=3GB
       -c max_connections=60 -c max_parallel_workers_per_gather=2 -c maintenance_work_mem=1GB -c max_parallel_maintenance_workers=2
+      -c shared_preload_libraries=pg_prewarm -c pg_prewarm.autoprewarm=true -c pg_prewarm.autoprewarm_interval=300
     volumes:
       - /opt/pncp-db/data:/var/lib/postgresql/data
     mem_limit: 3500m
