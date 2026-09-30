@@ -33,10 +33,17 @@ services:
       - traefik.http.routers.rag-chat.rule=Host(`rag.rangeltech.net`)
       - traefik.http.routers.rag-chat.entrypoints=websecure
       - traefik.http.routers.rag-chat.tls.certresolver=letsencrypt
-      - traefik.http.routers.rag-chat.middlewares=security-headers@file,rag-chat-limit
+      - traefik.http.routers.rag-chat.middlewares=security-headers@file
+      # Rate limit the question endpoint only; static assets of one page load must not be throttled.
+      - traefik.http.routers.rag-chat-api.rule=Host(`rag.rangeltech.net`) && PathPrefix(`/api/answer`)
+      - traefik.http.routers.rag-chat-api.priority=100
+      - traefik.http.routers.rag-chat-api.entrypoints=websecure
+      - traefik.http.routers.rag-chat-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-chat-api.middlewares=security-headers@file,rag-chat-limit
+      - traefik.http.routers.rag-chat-api.service=rag-chat
       - traefik.http.middlewares.rag-chat-limit.ratelimit.average=1
-      - traefik.http.middlewares.rag-chat-limit.ratelimit.period=2s
-      - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=8
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.period=3s
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=4
       - traefik.http.services.rag-chat.loadbalancer.server.port=3000
 networks:
   internal:
