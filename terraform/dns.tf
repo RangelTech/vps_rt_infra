@@ -10,6 +10,8 @@ locals {
     # Public-demo Compose profile (distributed-agent-runtime-lab, deploy/public-demo/):
     # its own isolated nginx, on the public network only for Traefik routing.
     { name = "demo", type = "A", value = var.server_ip, ttl = 300 },
+    # RAG Chat public demo (portfolio repo rag-chat): its own Compose project, one Traefik router.
+    { name = "rag", type = "A", value = var.server_ip, ttl = 300 },
     { name = "9route", type = "A", value = var.server_ip, ttl = 300 },
     { name = "grafana", type = "A", value = var.server_ip, ttl = 300 },
     { name = "storage", type = "A", value = var.server_ip, ttl = 300 },
