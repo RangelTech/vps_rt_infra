@@ -69,8 +69,8 @@ jobs:
           TOKEN=$($SSH 'echo $OPEN_BUTTON_TOKEN')
           EDGE_SSH=root@${{ inputs.edge_ip }} EDGE_KEY=~/.ssh/edge PUBLIC_HOST=$PUBLIC_HOST \
             VAST_IP=${{ inputs.ssh_host }} VAST_PORT=${{ inputs.api_port }} VAST_LABEL=C.${{ inputs.instance_id }} VAST_TOKEN="$TOKEN" WHISPER_PORT="${{ inputs.whisper_port }}" \
-            scripts/publish-endpoint.sh
-          scripts/dns-upsert.sh "${PUBLIC_HOST#*.}" "${PUBLIC_HOST%%.*}" ${{ inputs.edge_ip }}
+            bash scripts/publish-endpoint.sh
+          bash scripts/dns-upsert.sh "${PUBLIC_HOST#*.}" "${PUBLIC_HOST%%.*}" ${{ inputs.edge_ip }}
         shell: bash
       - name: Wait for API and smoke test
         run: |
@@ -78,4 +78,4 @@ jobs:
             code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${{ secrets.VLLM_API_KEY }}" https://${{ inputs.public_host }}/v1/models) && [ "$code" = 200 ] && break
             sleep 10
           done
-          scripts/smoke-test.sh https://${{ inputs.public_host }} "${{ secrets.VLLM_API_KEY }}"
+          bash scripts/smoke-test.sh https://${{ inputs.public_host }} "${{ secrets.VLLM_API_KEY }}"
