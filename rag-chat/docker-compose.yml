@@ -13,7 +13,7 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    mem_limit: 768m
+    mem_limit: 2200m
     networks: [internal, egress]
   web:
     build: /opt/rag-chat/src
