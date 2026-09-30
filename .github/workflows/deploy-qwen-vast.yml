@@ -18,8 +18,11 @@ on:
         description: Vast mapped API port (VAST_TCP_PORT_8000)
         required: true
       whisper_port:
-        description: Vast mapped port for container port 3000 (VAST_TCP_PORT_3000), speech-to-text sidecar; empty disables it
+        description: Vast mapped port for container port 3000 (VAST_TCP_PORT_3000), sidecar mux (whisper + embeddings); empty disables both
         default: ''
+      embed_repo:
+        description: Hugging Face embedding model served at /v1/embeddings (needs whisper_port); empty disables it
+        default: Qwen/Qwen3-Embedding-4B
       instance_id:
         description: Vast instance id (CONTAINER_ID), e.g. 53155573
         required: true
@@ -60,7 +63,7 @@ jobs:
       - name: Configure vLLM on the instance (idempotent, no re-download)
         run: |
           $SSH "cat > /root/configure.sh && chmod +x /root/configure.sh" < scripts/configure-vast-vllm.sh
-          $SSH "WHISPER=${{ inputs.whisper_port != '' && '1' || '0' }} PROFILE=${{ inputs.profile }} PRUNE_UNUSED=1 VLLM_API_KEY='${{ secrets.VLLM_API_KEY }}' /root/configure.sh"
+          $SSH "WHISPER=${{ inputs.whisper_port != '' && '1' || '0' }} EMBED=${{ inputs.whisper_port != '' && inputs.embed_repo != '' && '1' || '0' }} EMBED_REPO='${{ inputs.embed_repo }}' PROFILE=${{ inputs.profile }} PRUNE_UNUSED=1 VLLM_API_KEY='${{ secrets.VLLM_API_KEY }}' /root/configure.sh"
       - name: Publish behind Traefik + DNS
         env:
           HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
