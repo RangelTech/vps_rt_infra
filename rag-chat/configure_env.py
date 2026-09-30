@@ -22,10 +22,15 @@ extra = [
      "tables": ["pncp.obt_pncp_contratos", "pncp.obt_pncp_atas"], "dataset_slug": "lucasrangelss/pncp-contracts-semantic",
      "release": "v1", "cutoff": "2026-07-31"},
     {"id": "siope", "type": "sql", "label": "SIOPE education spending (SQL)",
-     "tables": ["siope.obt_fnde_siope_indicador_municipio_ano", "siope.obt_fnde_siope_dados_gerais_municipio_ano",
+     "tables": ["bi.siope_latest", "bi.siope_invest_year", "siope.obt_fnde_siope_indicador_municipio_ano", "siope.obt_fnde_siope_dados_gerais_municipio_ano",
                 "siope.obt_fnde_siope_despesa_funcao_municipio_ano", "siope.obt_fnde_fundeb_indicadores_siope_municipio_ano",
                 "ibge.obt_ibge_municipio", "ibge.obt_ibge_uf"],
-     "dataset_slug": "lucasrangelss/siope-analytics", "release": "v1", "cutoff": "n/a"},
+     "dataset_slug": "lucasrangelss/siope-analytics", "release": "v1", "cutoff": "n/a",
+     "notes": ("Education investment per student is SIOPE indicator code '57' (nome_indicador 'Investimento educacional por aluno') "
+               "in obt_fnde_siope_indicador_municipio_ano, or use the ready-made view bi.siope_latest (one row per municipality and year, "
+               "latest period). Indicator rows repeat by num_periodo, so keep the latest period per municipality and year. "
+               "The expenditure columns of obt_fnde_siope_dados_gerais_municipio_ano are mostly empty from 2023 on, so prefer the indicator table. "
+               "Values are nominal BRL. 2025 is a partial year. Join municipalities to IBGE with codigo_municipio.")},
 ]
 env.update({
     "RAG_DATABASE_URL": f"postgresql://rag_reader:{db['RAG_PW']}@{host}:5432/pncp",
