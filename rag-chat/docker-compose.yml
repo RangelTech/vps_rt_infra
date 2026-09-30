@@ -21,9 +21,8 @@ services:
     build: /opt/rag-chat/src/backend
     restart: unless-stopped
     command: ["python", "-m", "rag_chat_backend.embed_service"]
-    environment:
-      EMBED_CREDENTIALS_FILE: /run/secrets/embed-sa.json
-      EMBED_PROJECT: mi-prd-lake
+    # Provider and its settings live in /opt/rag-chat/embed.env on the host (see embed.env.example); the default is vertex.
+    env_file: /opt/rag-chat/embed.env
     volumes:
       - /opt/rag-chat/secrets/embed-sa.json:/run/secrets/embed-sa.json:ro
     read_only: true
