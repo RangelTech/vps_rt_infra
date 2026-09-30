@@ -12,7 +12,7 @@ services:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./html:/usr/share/nginx/html:ro
     read_only: true
-    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    tmpfs: [/var/cache/nginx, /var/run, /tmp, /etc/nginx/conf.d]
     cap_drop: [ALL]
     cap_add: [CHOWN, SETGID, SETUID]
     security_opt: ["no-new-privileges:true"]
@@ -21,10 +21,10 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=public
-      - traefik.http.routers.pncp-dashboard.rule=Host(`pncp.rangeltech.net`)
-      - traefik.http.routers.pncp-dashboard.entrypoints=websecure
-      - traefik.http.routers.pncp-dashboard.tls.certresolver=letsencrypt
-      - traefik.http.services.pncp-dashboard.loadbalancer.server.port=8080
+      - traefik.http.routers.bi.rule=Host(`bi.rangeltech.net`)
+      - traefik.http.routers.bi.entrypoints=websecure
+      - traefik.http.routers.bi.tls.certresolver=letsencrypt
+      - traefik.http.services.bi.loadbalancer.server.port=8080
 networks:
   public:
     external: true
