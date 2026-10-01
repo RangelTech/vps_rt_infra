@@ -19,7 +19,7 @@ LEDGER = EXPORTS / "candidates" / "subjects" / "ledger.jsonl"
 EXPECTED = json.loads((EXPORTS / "expected_slugs.json").read_text())
 LOG = HOME / "watchdog.log"
 STATE = HOME / "watchdog_state.json"
-MIN_AVAILABLE_MB = 1800
+MIN_AVAILABLE_MB = 1200
 MAX_FAILS_PER_SLUG = 6
 
 # script name -> (subjects it covers, process match)
@@ -115,20 +115,17 @@ def main() -> None:
     last_line = sh("grep REINDEX_PASS_DONE /opt/pncp-db-infra/reindex.log | tail -1")
     # a pass that embedded nothing new means every source text already has a vector
     complete = count >= REINDEX_TARGET or "embedded 0 this run" in last_line
-    # a process that is alive but has not added a row for 20 minutes is stalled (for example a crashed reader thread)
-    now = time.time()
-    if alive and count > state.get("reindex_count", -1):
-        state["reindex_count"], state["reindex_progress_at"] = count, now
-    stalled = alive and not complete and now - state.get("reindex_progress_at", now) > 20 * 60
+    # a process that is alive but whose log has not moved for 15 minutes is stalled (for example a crashed reader thread).
+    # The log is the reliable signal: the table statistics are updated lazily and can stay flat while rows are inserted.
+    age_min = (time.time() - os.path.getmtime("/opt/pncp-db-infra/reindex.log")) / 60 if os.path.exists("/opt/pncp-db-infra/reindex.log") else 0
+    stalled = alive and not complete and age_min > 15
     if stalled:
         for pid in sh("pgrep -f '[r]eindex_qwen.py'").split():
             sh(f"kill {pid}")
-        notes.append("reindex: STALLED, killed")
-        log("reindex stalled for 20 minutes, killed it")
+        notes.append(f"reindex: STALLED ({age_min:.0f} min without log output), killed")
+        log("reindex log did not move for 15 minutes, killed it")
         time.sleep(3)
         alive = False
-        state["reindex_progress_at"] = now
-    STATE.write_text(json.dumps(state))
     if not complete and not alive:
         if mem < MIN_AVAILABLE_MB:
             notes.append("reindex: not relaunched, low memory")
