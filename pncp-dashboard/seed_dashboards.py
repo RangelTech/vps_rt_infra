@@ -121,7 +121,7 @@ def main() -> None:
     uuid = ensure_dashboard(
         mb, "PNCP public procurement", "Aggregates over the PNCP notices, cutoff " + CUTOFF, (
             f"**Scope:** every notice in the public PNCP catalogue with data through {CUTOFF}. Counts describe the released records only "
-            "and do not certify current procurement status. Values are shown as published; each notice is counted once."),
+            "and do not certify current procurement status. Values are shown as published, including implausible estimated values, which dominate the sums by year; each notice is counted once."),
         pncp_ids, PNCP_LAYOUT)
     print(f"pncp_dashboard_uuid={uuid}")
     if SIOPE_CARDS:
