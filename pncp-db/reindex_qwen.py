@@ -57,8 +57,8 @@ def db_host() -> str:
 
 def embed_batch(url: str, key: str, texts: list[str]) -> list[list[float]]:
     body = json.dumps({"model": "qwen-embedding", "input": texts, "dimensions": DIM}).encode()
-    last = ""
-    for attempt in range(8):
+    attempt = 0
+    while True:  # an endpoint that is down (for example a stopped GPU) must not kill the worker thread and deadlock the pass
         try:
             request = urllib.request.Request(url + "/embeddings", body, {"Authorization": "Bearer " + key, "Content-Type": "application/json"})
             with urllib.request.urlopen(request, timeout=300) as response:
@@ -68,9 +68,9 @@ def embed_batch(url: str, key: str, texts: list[str]) -> list[list[float]]:
                 raise ValueError("unexpected embedding shape")
             return vectors
         except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError) as exc:
-            last = repr(exc)[:100]
-            time.sleep(min(5 * (attempt + 1), 60))
-    raise SystemExit(f"embedding endpoint kept failing: {last}")
+            attempt += 1
+            print(f"embedding endpoint unavailable (attempt {attempt}): {repr(exc)[:100]}", flush=True)  # keeps the log, and the watchdog, informed
+            time.sleep(min(5 * attempt, 60))
 
 
 def main() -> None:
