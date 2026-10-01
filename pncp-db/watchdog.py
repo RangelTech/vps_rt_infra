@@ -24,8 +24,9 @@ MAX_FAILS_PER_SLUG = 6
 
 # script name -> (subjects it covers, process match)
 KAGGLE_JOBS = {
-    "subjects_c.sh": ["pncp", "siope"],
-    "subjects_d.sh": ["fnde-salario-educacao", "taxas-rendimento", "censo-escolar", "saeb"],
+    # SAEB and SIOPE analytics are exported from the owner's own machine (see poller/STATE.md); this host keeps the rest
+    "subjects_c.sh": ["pncp"],
+    "subjects_d.sh": ["fnde-salario-educacao", "taxas-rendimento", "censo-escolar"],
 }
 
 
@@ -86,6 +87,12 @@ def main() -> None:
         pending = [s for s in slugs if status.get(s, {}).get("status") != "published"
                    and status.get(s, {}).get("fails", 0) < MAX_FAILS_PER_SLUG]
         alive = running(f"subject_release.py run {subjects[0]}")
+        if script == "subjects_d.sh" and not pending and alive:
+            # its argument list still names saeb, which the local machine owns; stop it once its own subjects are done
+            for pid in sh("pgrep -f '[s]ubject_release.py run fnde-salario-educacao'").split():
+                sh(f"kill {pid}")
+            log("subjects_d finished its own subjects; stopped it before it reaches saeb")
+            alive = False
         notes.append(f"{script}: pending={len(pending)} alive={alive}")
         if pending and not alive:
             if mem < MIN_AVAILABLE_MB:
