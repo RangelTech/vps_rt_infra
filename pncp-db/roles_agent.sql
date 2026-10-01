@@ -15,3 +15,6 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- The pgvector types and operators live in schema public; read roles need to see them for halfvec queries.
+GRANT USAGE ON SCHEMA public TO sql_agent, rag_reader, bi_reader, public_reader;
