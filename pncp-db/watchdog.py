@@ -108,6 +108,20 @@ def main() -> None:
     last_line = sh("grep REINDEX_PASS_DONE /opt/pncp-db-infra/reindex.log | tail -1")
     # a pass that embedded nothing new means every source text already has a vector
     complete = count >= REINDEX_TARGET or "embedded 0 this run" in last_line
+    # a process that is alive but has not added a row for 20 minutes is stalled (for example a crashed reader thread)
+    now = time.time()
+    if alive and count > state.get("reindex_count", -1):
+        state["reindex_count"], state["reindex_progress_at"] = count, now
+    stalled = alive and not complete and now - state.get("reindex_progress_at", now) > 20 * 60
+    if stalled:
+        for pid in sh("pgrep -f '[r]eindex_qwen.py'").split():
+            sh(f"kill {pid}")
+        notes.append("reindex: STALLED, killed")
+        log("reindex stalled for 20 minutes, killed it")
+        time.sleep(3)
+        alive = False
+        state["reindex_progress_at"] = now
+    STATE.write_text(json.dumps(state))
     if not complete and not alive:
         if mem < MIN_AVAILABLE_MB:
             notes.append("reindex: not relaunched, low memory")

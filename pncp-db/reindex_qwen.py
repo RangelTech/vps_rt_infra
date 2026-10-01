@@ -89,6 +89,15 @@ def main() -> None:
     stats = {"embedded": 0, "started": time.time()}
 
     def producer() -> None:
+        try:
+            produce()
+        except BaseException as exc:  # noqa: BLE001  e.g. the BigQuery read session expired after several hours
+            print(f"producer stopped: {exc!r}", flush=True)
+        finally:
+            for _ in range(WORKERS):
+                work.put(None)
+
+    def produce() -> None:
         seen = set(done)
         ids: list[str] = []
         texts: list[str] = []
@@ -109,8 +118,6 @@ def main() -> None:
                 break
         if ids:
             work.put((ids, texts))
-        for _ in range(WORKERS):
-            work.put(None)
 
     def worker() -> None:
         while (item := work.get()) is not None:
