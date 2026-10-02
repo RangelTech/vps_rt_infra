@@ -533,6 +533,7 @@ services:
   ## ---------------------------------------------------------------------
 
   site-portfolio:
+    # Served at lucas.<root domain>; the apex redirects there (2026-10-02).
     # Static export of the public repo lucas-rangel-portfolio (Next.js
     # `output: "export"`). Content in ../sites/portfolio/public is rsynced
     # by .github/workflows/deploy-portfolio.yml from a pinned release tag;
@@ -547,11 +548,21 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=public
-      - traefik.http.routers.site-portfolio.rule=Host(`${ROOT_DOMAIN}`) || Host(`www.${ROOT_DOMAIN}`)
+      - traefik.http.routers.site-portfolio.rule=Host(`lucas.${ROOT_DOMAIN}`)
       - traefik.http.routers.site-portfolio.entrypoints=websecure
       - traefik.http.routers.site-portfolio.tls.certresolver=letsencrypt
       - traefik.http.routers.site-portfolio.middlewares=security-headers@file
       - traefik.http.services.site-portfolio.loadbalancer.server.port=80
+      # The apex and www keep old links working until the company site takes
+      # the apex: temporary redirect to the same path on lucas.
+      - traefik.http.routers.site-portfolio-apex.rule=Host(`${ROOT_DOMAIN}`) || Host(`www.${ROOT_DOMAIN}`)
+      - traefik.http.routers.site-portfolio-apex.entrypoints=websecure
+      - traefik.http.routers.site-portfolio-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.site-portfolio-apex.middlewares=portfolio-moved
+      - traefik.http.routers.site-portfolio-apex.service=site-portfolio
+      - traefik.http.middlewares.portfolio-moved.redirectregex.regex=^https?://[^/]+/(.*)
+      - traefik.http.middlewares.portfolio-moved.redirectregex.replacement=https://lucas.${ROOT_DOMAIN}/$${1}
+      - traefik.http.middlewares.portfolio-moved.redirectregex.permanent=false
 
   # site-example:                                          # mode A example
   #   image: nginx:alpine

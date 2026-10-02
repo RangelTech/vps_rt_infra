@@ -1,12 +1,40 @@
 locals {
   dns_records = [
     { name = "@", type = "A", value = var.server_ip, ttl = 300 },
-    # Personal portfolio site (public GitHub repo lucas-rangel-portfolio),
-    # served by the site-portfolio static container below. "www" already
-    # exists in the live zone as a CNAME to the apex (predates this repo's
-    # tracked record list) and is not re-declared here: adding it as an A
-    # record conflicts with that CNAME (Hostinger: a name cannot carry both
-    # a CNAME and another record type). It already resolves to this VPS.
+    # Personal portfolio (lucas-rangel-portfolio), moved off the apex on 2026-10-02 so the apex can host the company site later.
+    { name = "lucas", type = "A", value = var.server_ip, ttl = 300 },
+    # Records below existed in the live zone but not in this file; synced from the Hostinger API on 2026-10-02.
+    # Hostinger mail (MX, SPF, DKIM, DMARC, autodiscover) and the www alias of the apex.
+    { name = "@", type = "MX", values = ["5 mx1.hostinger.com.", "10 mx2.hostinger.com."], ttl = 14400 },
+    { name = "@", type = "TXT", value = "v=spf1 include:_spf.mail.hostinger.com ~all", ttl = 3600 },
+    { name = "_dmarc", type = "TXT", value = "v=DMARC1; p=none", ttl = 3600 },
+    { name = "autoconfig", type = "CNAME", value = "autoconfig.mail.hostinger.com.", ttl = 300 },
+    { name = "autodiscover", type = "CNAME", value = "autodiscover.mail.hostinger.com.", ttl = 300 },
+    { name = "hostingermail-a._domainkey", type = "CNAME", value = "hostingermail-a.dkim.mail.hostinger.com.", ttl = 300 },
+    { name = "hostingermail-b._domainkey", type = "CNAME", value = "hostingermail-b.dkim.mail.hostinger.com.", ttl = 300 },
+    { name = "hostingermail-c._domainkey", type = "CNAME", value = "hostingermail-c.dkim.mail.hostinger.com.", ttl = 300 },
+    { name = "www", type = "CNAME", value = "rangeltech.net.", ttl = 300 },
+    # Other services on this VPS, created outside this file.
+    { name = "erp", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia-catalogo-demo", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia-educacional-demo", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia-hamburgueria-demo", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia-licita-enterprisse", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia-loja-demo", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "ia-smoke-cloud", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "pncp", type = "A", value = var.server_ip, ttl = 300 },
+    { name = "qwen", type = "A", value = var.server_ip, ttl = 300 },
+    # Hosts on other servers (Hostinger VPS for Coolify/n8n/Easypanel/Evolution and others).
+    { name = "billion", type = "A", value = "85.208.51.111", ttl = 14400 },
+    { name = "chatwoot", type = "A", value = "82.25.65.105", ttl = 300 },
+    { name = "coolify", type = "A", value = "82.25.65.105", ttl = 300 },
+    { name = "easypanel", type = "A", value = "82.25.65.105", ttl = 14400 },
+    { name = "evolution", type = "A", value = "82.25.65.105", ttl = 14400 },
+    { name = "n8n", type = "A", value = "82.25.65.105", ttl = 300 },
+    { name = "pickupclub", type = "A", value = "195.88.87.245", ttl = 14400 },
+    { name = "vscode", type = "A", value = "84.46.252.249", ttl = 14400 },
+    # "www" is a CNAME to the apex (declared above with the mail records):
+    # a name cannot carry both a CNAME and another record type.
     # Public-demo Compose profile (distributed-agent-runtime-lab, deploy/public-demo/):
     # its own isolated nginx, on the public network only for Traefik routing.
     { name = "demo", type = "A", value = var.server_ip, ttl = 300 },
@@ -55,6 +83,9 @@ locals {
 
 resource "local_file" "hostinger_zone" {
   filename = "${path.module}/hostinger-zone.json"
+  # overwrite = true replaces only the records whose name and type match an
+  # entry here; anything else in the zone stays. This list mirrors the full
+  # live zone anyway, so the file is the source of truth for every record.
   content = jsonencode({
     overwrite = true
     zone = [
@@ -62,7 +93,7 @@ resource "local_file" "hostinger_zone" {
         name    = record.name
         type    = record.type
         ttl     = record.ttl
-        records = [{ content = record.value }]
+        records = [for value in try(record.values, [record.value]) : { content = value }]
       }
     ]
   })
