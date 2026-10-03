@@ -62,7 +62,7 @@ services:
       - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=4
       - traefik.http.services.rag-chat.loadbalancer.server.port=3000
       # Search endpoint used by the portfolio's dashboards page, same origin as the site (no CORS).
-      - traefik.http.routers.rag-explore.rule=Host(`rangeltech.net`) && PathPrefix(`/api/explore`)
+      - traefik.http.routers.rag-explore.rule=(Host(`lucas.rangeltech.net`) || Host(`rangeltech.net`)) && PathPrefix(`/api/explore`)
       - traefik.http.routers.rag-explore.priority=100
       - traefik.http.routers.rag-explore.entrypoints=websecure
       - traefik.http.routers.rag-explore.tls.certresolver=letsencrypt

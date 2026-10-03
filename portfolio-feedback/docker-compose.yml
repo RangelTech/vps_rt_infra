@@ -1,0 +1,39 @@
+# Comments, likes and dislikes for the portfolio articles. Separate Compose project; only joins the shared
+# `public` network, so Traefik is the single ingress. Served on the portfolio host under /api/feedback
+# (same origin as the static site, no CORS).
+#   Host paths: /opt/portfolio-feedback/src (this folder), /opt/portfolio-feedback/data (SQLite, owned by uid 10001),
+#               /opt/portfolio-feedback/.env (FEEDBACK_ADMIN_TOKEN=...), and the published site, read only.
+name: portfolio-feedback
+services:
+  api:
+    build: /opt/portfolio-feedback/src
+    restart: unless-stopped
+    env_file: /opt/portfolio-feedback/.env
+    environment:
+      FEEDBACK_DB: /data/feedback.db
+      FEEDBACK_SITE_ROOT: /site
+    volumes:
+      - /opt/portfolio-feedback/data:/data
+      - /opt/platform/sites/portfolio/public:/site:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.5
+    networks: [public]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.portfolio-feedback.rule=Host(`lucas.rangeltech.net`) && PathPrefix(`/api/feedback`)
+      - traefik.http.routers.portfolio-feedback.priority=100
+      - traefik.http.routers.portfolio-feedback.entrypoints=websecure
+      - traefik.http.routers.portfolio-feedback.tls.certresolver=letsencrypt
+      - traefik.http.routers.portfolio-feedback.middlewares=security-headers@file,portfolio-feedback-limit
+      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.average=5
+      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.period=1s
+      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.burst=10
+      - traefik.http.services.portfolio-feedback.loadbalancer.server.port=8080
+networks:
+  public:
+    external: true
