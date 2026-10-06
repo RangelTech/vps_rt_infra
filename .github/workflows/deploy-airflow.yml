@@ -1,0 +1,64 @@
+name: Deploy Airflow
+
+# Sobe o Airflow pessoal (airflow.rangeltech.net) como projeto Compose proprio (airflow), atras do Traefik
+# existente. As DAGs e os cookies do Playwright vivem em airflow/dags/ e sao sincronizados a cada push.
+# Nao toca em /opt/platform nem em nenhum outro projeto.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "airflow/**"
+      - ".github/workflows/deploy-airflow.yml"
+
+concurrency:
+  group: deploy-airflow
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync the Compose project and DAGs
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
+            "sudo mkdir -p /opt/airflow-infra && sudo chown -R ${{ secrets.VPS_DEPLOY_USER }}:${{ secrets.VPS_DEPLOY_USER }} /opt/airflow-infra"
+          rsync -az --delete -e "ssh -i ~/.ssh/vps_rt_infra_ed25519" airflow/ \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/opt/airflow-infra/"
+
+      - name: Deploy
+        run: |
+          printf '%s' "${{ secrets.AIRFLOW_ADMIN_PASSWORD }}" | ssh -i ~/.ssh/vps_rt_infra_ed25519 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=60 \
+            "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" \
+            'chmod +x /opt/airflow-infra/deploy.sh && AIRFLOW_ADMIN_PASSWORD="$(cat)" /opt/airflow-infra/deploy.sh'
+
+      - name: Smoke test
+        run: |
+          for attempt in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://airflow.rangeltech.net/health || true)
+            [ "$code" = "200" ] && break
+            sleep 5
+          done
+          curl -sf https://airflow.rangeltech.net/health | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['metadatabase']['status']=='healthy' and d['scheduler']['status']=='healthy', d; print(d)"
+
+      - name: DAG import check and test run
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" '
+            set -e
+            C="docker compose --env-file /opt/airflow/.env -f /opt/airflow-infra/docker-compose.yml exec -T airflow-scheduler"
+            $C airflow dags list-import-errors
+            $C airflow dags list | grep teste_senior
+            $C airflow dags test teste_senior
+          '
