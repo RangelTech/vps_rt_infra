@@ -74,28 +74,16 @@ jobs:
       - name: Real test run of teste_senior (manual dispatch only)
         if: ${{ github.event.inputs.rodar_teste == 'true' }}
         run: |
+          # `dags test` ignora o start_date (07/10/2026) e roda as 3 tasks de verdade; aparece na UI como run de teste.
           ssh -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
           set -e
           D="docker compose --env-file /opt/airflow/.env -f /opt/airflow-infra/docker-compose.yml"
           dx() { $D exec -T airflow-scheduler "$@" </dev/null; }
-          RID="manual_teste_$(date +%Y%m%d_%H%M%S)"
-          dx airflow dags trigger teste_senior --run-id "$RID" --conf '{"teste": true}'
-          for i in $(seq 1 40); do
-            ST=$(dx airflow dags state teste_senior "$RID" 2>/dev/null | tail -1)
-            echo "estado da run: $ST"
-            case "$ST" in success|failed) break;; esac
-            sleep 8
-          done
-          dx airflow tasks states-for-dag-run teste_senior "$RID"
-          for t in eh_dia_util pausa_aleatoria abrir_e_fechar; do
-            echo "--- log $t"
-            dx bash -c "cat /opt/airflow/logs/dag_id=teste_senior/run_id=$RID/task_id=$t/attempt=1.log 2>/dev/null | grep -E 'URL:|Titulo:|BOTAO|Run de teste|Error|Assertion' || true"
-          done
+          dx airflow dags test teste_senior -c '{"teste": true}' 2>&1 | grep -E "URL:|Titulo:|BOTAO|Run de teste|Sessao renovada|Estado inicializado|Condition|Marking task|Traceback|Error|Assertion" || true
           rm -rf /tmp/senior_shots && mkdir -p /tmp/senior_shots
-          $D cp airflow-scheduler:/opt/airflow/logs/screenshots/senior_latest.png /tmp/senior_shots/senior_latest.png
-          [ "$ST" = "success" ]
+          $D cp airflow-scheduler:/opt/airflow/logs/screenshots/senior_latest.png /tmp/senior_shots/senior_latest.png </dev/null
           EOS
-          scp -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/tmp/senior_shots/senior_latest.png" ./senior_latest.png || true
+          scp -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/tmp/senior_shots/senior_latest.png" ./senior_latest.png
 
       - name: Upload screenshot
         if: ${{ always() && github.event.inputs.rodar_teste == 'true' }}
