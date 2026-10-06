@@ -1,6 +1,8 @@
 """Teste Senior: abre o Chromium (Playwright) com a sessao salva em estado_senior.json, espera 5s e fecha.
 
-Por enquanto nao executa nenhuma acao na plataforma; e a base para as rotinas diarias de QA.
+Valida a sessao procurando o botao "Registrar Ponto" (dentro de um iframe da tela inicial). NUNCA clica nele:
+so registra no log se achou ou nao, salva um print em /opt/airflow/logs/screenshots/ e falha a task se nao achou
+(sessao expirada). E a base para as rotinas diarias de QA.
 
 - Horarios (America/Sao_Paulo, UTC-3): 08:55, 11:55, 12:55 e 17:55, so de segunda a sexta.
 - Feriados nacionais do Brasil: a run e criada, mas a primeira task pula o resto (fica "skipped").
@@ -22,6 +24,10 @@ TZ = pendulum.timezone("America/Sao_Paulo")
 ESTADO = Path(__file__).parent / "estado_senior.json"
 URL = "https://platform.senior.com.br/senior-x/#/"
 JITTER_MAX_SEGUNDOS = 10 * 60
+# Botao "Registrar Ponto": id fixo btn-clocking-event-<numero>, dentro de um iframe (hcm-pontomobile).
+SELETOR_BOTAO = 'button[id^="btn-clocking-event"]'
+PASTA_PRINTS = Path("/opt/airflow/logs/screenshots")
+# Execucao manual de teste: dag_run.conf = {"teste": true} pula a checagem de feriado e a pausa aleatoria.
 
 
 @dag(
@@ -38,7 +44,10 @@ JITTER_MAX_SEGUNDOS = 10 * 60
 )
 def teste_senior():
     @task.short_circuit
-    def eh_dia_util() -> bool:
+    def eh_dia_util(dag_run=None) -> bool:
+        if (dag_run.conf or {}).get("teste"):
+            print("Run de teste: ignorando checagem de feriado.")
+            return True
         hoje = pendulum.now(TZ).date()
         feriado = holidays.Brazil(years=hoje.year).get(hoje)
         if feriado:
@@ -47,7 +56,10 @@ def teste_senior():
         return True
 
     @task
-    def pausa_aleatoria() -> None:
+    def pausa_aleatoria(dag_run=None) -> None:
+        if (dag_run.conf or {}).get("teste"):
+            print("Run de teste: sem pausa.")
+            return
         segundos = random.uniform(0, JITTER_MAX_SEGUNDOS)
         print(f"Pausa de {segundos / 60:.1f} min ({segundos:.0f}s) antes de abrir o navegador.")
         time.sleep(segundos)
@@ -65,6 +77,20 @@ def teste_senior():
                 page.wait_for_timeout(5000)
                 print(f"URL: {page.url}")
                 print(f"Titulo: {page.title()}")
+                # O botao fica num iframe que carrega depois; espera ate 20s por ele em qualquer frame.
+                achou = 0
+                for _ in range(20):
+                    achou = sum(f.locator(SELETOR_BOTAO).count() for f in page.frames)
+                    if achou:
+                        break
+                    page.wait_for_timeout(1000)
+                PASTA_PRINTS.mkdir(parents=True, exist_ok=True)
+                agora = pendulum.now(TZ).format("YYYYMMDD_HHmmss")
+                for nome in (f"senior_{agora}.png", "senior_latest.png"):
+                    page.screenshot(path=str(PASTA_PRINTS / nome))
+                print(f"BOTAO 'Registrar Ponto' {'ENCONTRADO' if achou else 'NAO ENCONTRADO'} (ocorrencias: {achou}). Nao foi clicado.")
+                if not achou:
+                    raise AssertionError("Botao Registrar Ponto nao encontrado: sessao expirada ou tela mudou.")
             finally:
                 browser.close()
 

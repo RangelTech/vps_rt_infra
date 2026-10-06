@@ -6,6 +6,11 @@ name: Deploy Airflow
 
 on:
   workflow_dispatch:
+    inputs:
+      rodar_teste:
+        description: "Dispara uma run real da DAG teste_senior (sem pausa) e anexa o print"
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -65,3 +70,36 @@ jobs:
             $C airflow tasks test teste_senior eh_dia_util
             $C airflow tasks test teste_senior abrir_e_fechar
           '
+
+      - name: Real test run of teste_senior (manual dispatch only)
+        if: ${{ github.event.inputs.rodar_teste == 'true' }}
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          set -e
+          D="docker compose --env-file /opt/airflow/.env -f /opt/airflow-infra/docker-compose.yml"
+          RID="manual_teste_$(date +%Y%m%d_%H%M%S)"
+          $D exec -T airflow-scheduler airflow dags trigger teste_senior --run-id "$RID" --conf '{"teste": true}'
+          for i in $(seq 1 40); do
+            ST=$($D exec -T airflow-scheduler airflow dags state teste_senior "$RID" 2>/dev/null | tail -1 | tr -d '')
+            echo "estado da run: $ST"
+            case "$ST" in success|failed) break;; esac
+            sleep 8
+          done
+          $D exec -T airflow-scheduler airflow tasks states-for-dag-run teste_senior "$RID"
+          for t in eh_dia_util pausa_aleatoria abrir_e_fechar; do
+            echo "--- log $t"
+            $D exec -T airflow-scheduler bash -c "cat /opt/airflow/logs/dag_id=teste_senior/run_id=$RID/task_id=$t/attempt=1.log 2>/dev/null | grep -E 'URL:|Titulo:|BOTAO|Run de teste|Error|Assertion' || true"
+          done
+          rm -rf /tmp/senior_shots && mkdir -p /tmp/senior_shots
+          $D cp airflow-scheduler:/opt/airflow/logs/screenshots/senior_latest.png /tmp/senior_shots/senior_latest.png
+          [ "$ST" = "success" ]
+          EOS
+          scp -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/tmp/senior_shots/senior_latest.png" ./senior_latest.png || true
+
+      - name: Upload screenshot
+        if: ${{ always() && github.event.inputs.rodar_teste == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: senior-print
+          path: senior_latest.png
+          if-no-files-found: warn
