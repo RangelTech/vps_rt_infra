@@ -61,7 +61,7 @@ jobs:
             $C airflow dags list-import-errors
             $C airflow dags list | grep teste_senior
             $C airflow dags next-execution teste_senior -n 6
-            $C airflow dags details teste_senior | grep -i -E 'timetable|start_date|catchup|timezone' || true
+            $C airflow dags details teste_senior | grep -i -E "timetable|start_date|catchup|timezone" || true
             $C airflow tasks test teste_senior eh_dia_util
             $C airflow tasks test teste_senior abrir_e_fechar
           '
