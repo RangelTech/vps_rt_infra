@@ -80,7 +80,7 @@ jobs:
           RID="manual_teste_$(date +%Y%m%d_%H%M%S)"
           $D exec -T airflow-scheduler airflow dags trigger teste_senior --run-id "$RID" --conf '{"teste": true}'
           for i in $(seq 1 40); do
-            ST=$($D exec -T airflow-scheduler airflow dags state teste_senior "$RID" 2>/dev/null | tail -1 | tr -d '')
+            ST=$($D exec -T airflow-scheduler airflow dags state teste_senior "$RID" 2>/dev/null | tail -1)
             echo "estado da run: $ST"
             case "$ST" in success|failed) break;; esac
             sleep 8
