@@ -1,8 +1,9 @@
 """Teste Senior: abre o Chromium (Playwright) com a sessao salva em estado_senior.json, espera 5s e fecha.
 
-Valida a sessao procurando o botao "Registrar Ponto" (dentro de um iframe da tela inicial). NUNCA clica nele:
-so registra no log se achou ou nao, salva um print em /opt/airflow/logs/screenshots/ e falha a task se nao achou
-(sessao expirada). E a base para as rotinas diarias de QA.
+Procura o botao "Registrar *" (dentro de um iframe da tela inicial) e CLICA nele (homologacao, coleta de evidencias
+por 21 dias). Espera 60s e registra no log da task (prefixos AUDITORIA / EVIDENCIA_*) URL, texto e HTML de todos os
+frames e eventos de console/rede apos o clique; salva prints em /opt/airflow/logs/screenshots/. Falha a task se nao
+achar o botao (sessao expirada).
 
 - Horarios (America/Sao_Paulo, UTC-3): 08:55, 11:55, 12:55 e 17:55, so de segunda a sexta.
 - Feriados nacionais do Brasil: a run e criada, mas a primeira task pula o resto (fica "skipped").
@@ -90,7 +91,7 @@ def teste_senior():
         print(f"Pausa de {segundos / 60:.1f} min ({segundos:.0f}s) antes de abrir o navegador.")
         time.sleep(segundos)
 
-    @task(execution_timeout=timedelta(minutes=3))
+    @task(execution_timeout=timedelta(minutes=5))
     def abrir_e_fechar() -> None:
         from playwright.sync_api import sync_playwright
 
@@ -106,6 +107,30 @@ def teste_senior():
                 )
 
                 page = ctx.new_page()
+
+                # Evidencias de auditoria: console do navegador e respostas de rede (so apos o clique).
+                coletar = {"ativo": False}
+                eventos = []
+
+                def _console(msg):
+                    if coletar["ativo"]:
+                        eventos.append(f"console[{msg.type}] {msg.text}"[:1000])
+
+                def _resposta(resp):
+                    if not coletar["ativo"]:
+                        return
+                    if resp.request.resource_type not in ("xhr", "fetch", "document"):
+                        return
+                    try:
+                        corpo = resp.text()[:2000]
+                    except Exception:
+                        corpo = "<sem corpo>"
+                    eventos.append(
+                        f"rede {resp.request.method} {resp.status} {resp.url} :: {corpo}"
+                    )
+
+                page.on("console", _console)
+                page.on("response", _resposta)
 
                 page.goto(URL)
                 page.wait_for_timeout(5000)
@@ -179,6 +204,7 @@ def teste_senior():
                     timeout=5000,
                 )
 
+                coletar["ativo"] = True
                 botao.click()
 
                 print("BOTAO 'Registrar *' CLICADO.")
@@ -215,17 +241,29 @@ def teste_senior():
                 )
 
                 # -----------------------------
-                # ESPERA 20 SEGUNDOS APÓS CLIQUE
+                # ESPERA 1 MINUTO APOS O CLIQUE E COLETA DE EVIDENCIAS
                 # -----------------------------
-                print(
-                    "Aguardando 20 segundos antes de fechar..."
-                )
+                print("Aguardando 60 segundos apos o clique para coletar evidencias...")
+                page.wait_for_timeout(60_000)
 
-                page.wait_for_timeout(20_000)
+                for nome in (f"senior_pos_{agora}.png", "senior_pos_latest.png"):
+                    page.screenshot(path=str(PASTA_PRINTS / nome))
 
-                print(
-                    "20 segundos concluídos. Fechando navegador."
-                )
+                print("EVIDENCIA_URL " + page.url)
+                print("EVIDENCIA_TITULO " + page.title())
+                for idx, frame in enumerate(page.frames):
+                    try:
+                        print(f"EVIDENCIA_FRAME[{idx}] url={frame.url}")
+                        print(f"EVIDENCIA_TEXTO[{idx}] " + json.dumps(
+                            frame.locator("body").inner_text(timeout=5000), ensure_ascii=False))
+                        print(f"EVIDENCIA_HTML[{idx}] " + frame.content())
+                    except Exception as e:
+                        print(f"EVIDENCIA_FRAME[{idx}] erro ao coletar: {e}")
+                for ev in eventos:
+                    print("EVIDENCIA_EVENTO " + ev)
+                print(f"EVIDENCIA_FIM ({len(eventos)} eventos de console/rede apos o clique)")
+
+                print("Coleta concluida. Fechando navegador.")
 
             finally:
                 browser.close()
