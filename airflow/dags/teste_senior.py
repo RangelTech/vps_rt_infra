@@ -61,8 +61,8 @@ def _preparar_estado() -> Path:
     description="Abre a plataforma Senior com os cookies salvos, espera 5s e fecha (dias uteis)",
     # Cron em horario de Brasilia; a run dispara no proprio horario (logical date = o instante do disparo).
     schedule=CronTriggerTimetable("55 8,11,12,17 * * 1-5", timezone="America/Sao_Paulo"),
-    # Comeca em 07/10/2026 e catchup desligado: nunca gera runs atrasadas.
-    start_date=pendulum.datetime(2026, 10, 7, tz=TZ),
+    # Comeca em 06/10/2026 17:30 (primeira run: 17:55) e catchup desligado: nunca gera runs atrasadas.
+    start_date=pendulum.datetime(2026, 10, 6, 17, 30, tz=TZ),
     catchup=False,
     max_active_runs=1,
     default_args={"retries": 1, "retry_delay": timedelta(minutes=2)},
@@ -115,6 +115,13 @@ def teste_senior():
                 for nome in (f"senior_{agora}.png", "senior_latest.png"):
                     page.screenshot(path=str(PASTA_PRINTS / nome))
                 print(f"BOTAO 'Registrar Ponto' {'ENCONTRADO' if achou else 'NAO ENCONTRADO'} (ocorrencias: {achou}). Nao foi clicado.")
+                # Linha de auditoria (filtrar por "AUDITORIA" nos logs da task). Nenhum clique e feito por esta DAG.
+                print("AUDITORIA " + json.dumps({
+                    "quando": pendulum.now(TZ).to_iso8601_string(),
+                    "url": page.url,
+                    "botao_encontrado": bool(achou),
+                    "botao_clicado": False,
+                }, ensure_ascii=False))
                 if achou:
                     # Sessao valida: guarda os cookies/tokens renovados para a proxima run.
                     tmp = ESTADO.with_suffix(".tmp")
