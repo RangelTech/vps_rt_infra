@@ -1,0 +1,31 @@
+name: Airflow status
+
+# Somente leitura: lista as runs da DAG teste_senior, o estado das tasks e as linhas AUDITORIA/EVIDENCIA do log.
+on:
+  workflow_dispatch:
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Status da DAG teste_senior
+        run: |
+          ssh -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          D="sudo docker compose --env-file /opt/airflow/.env -f /opt/airflow-infra/docker-compose.yml"
+          dx() { $D exec -T airflow-scheduler "$@" </dev/null; }
+          date
+          dx airflow dags list-runs -d teste_senior 2>&1 | tail -6
+          RID=$(dx airflow dags list-runs -d teste_senior -o json 2>/dev/null | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['run_id'] if d else '')")
+          echo "run: $RID"
+          [ -n "$RID" ] && dx airflow tasks states-for-dag-run teste_senior "$RID" 2>&1 | tail -6
+          echo "--- log (AUDITORIA/EVIDENCIA/pausa) ---"
+          $D exec -T airflow-scheduler sh -c 'f=$(ls -t /opt/airflow/logs/dag_id=teste_senior/run_id=*/task_id=*/attempt=*.log 2>/dev/null | head -3); for x in $f; do echo "## $x"; grep -E "Pausa|AUDITORIA|EVIDENCIA|BOTAO|Aguardando|Coleta|Traceback|Error" "$x" | cut -c1-600; done' </dev/null
+          EOS
