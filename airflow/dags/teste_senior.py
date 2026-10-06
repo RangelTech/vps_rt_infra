@@ -95,41 +95,138 @@ def teste_senior():
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
+
             try:
-                ctx = browser.new_context(storage_state=str(_preparar_estado()))
+                ctx = browser.new_context(
+                    storage_state=str(_preparar_estado())
+                )
+
                 page = ctx.new_page()
+
                 page.goto(URL)
                 page.wait_for_timeout(5000)
+
                 print(f"URL: {page.url}")
                 print(f"Titulo: {page.title()}")
-                # O botao fica num iframe que carrega depois; espera ate 20s por ele em qualquer frame.
-                achou = 0
+
+                # O botão fica em um iframe que carrega depois.
+                # Espera até 20 segundos procurando em todos os frames.
+                botao = None
+
                 for _ in range(20):
-                    achou = sum(f.locator(SELETOR_BOTAO).count() for f in page.frames)
-                    if achou:
+                    for frame in page.frames:
+                        locator = frame.locator(SELETOR_BOTAO)
+
+                        if locator.count() > 0:
+                            botao = locator.first
+                            break
+
+                    if botao is not None:
                         break
+
                     page.wait_for_timeout(1000)
+
+                achou = botao is not None
+
+                # Screenshot antes do clique
                 PASTA_PRINTS.mkdir(parents=True, exist_ok=True)
+
                 agora = pendulum.now(TZ).format("YYYYMMDD_HHmmss")
-                for nome in (f"senior_{agora}.png", "senior_latest.png"):
-                    page.screenshot(path=str(PASTA_PRINTS / nome))
-                print(f"BOTAO 'Registrar Ponto' {'ENCONTRADO' if achou else 'NAO ENCONTRADO'} (ocorrencias: {achou}). Nao foi clicado.")
-                # Linha de auditoria (filtrar por "AUDITORIA" nos logs da task). Nenhum clique e feito por esta DAG.
-                print("AUDITORIA " + json.dumps({
-                    "quando": pendulum.now(TZ).to_iso8601_string(),
-                    "url": page.url,
-                    "botao_encontrado": bool(achou),
-                    "botao_clicado": False,
-                }, ensure_ascii=False))
-                if achou:
-                    # Sessao valida: guarda os cookies/tokens renovados para a proxima run.
-                    tmp = ESTADO.with_suffix(".tmp")
-                    ctx.storage_state(path=str(tmp))
-                    os.replace(tmp, ESTADO)
-                    print("Sessao renovada gravada em", ESTADO)
+
+                for nome in (
+                    f"senior_{agora}.png",
+                    "senior_latest.png",
+                ):
+                    page.screenshot(
+                        path=str(PASTA_PRINTS / nome)
+                    )
+
                 if not achou:
-                    raise AssertionError("Botao Registrar Ponto nao encontrado: sessao expirada ou tela mudou.")
+                    print(
+                        "BOTAO 'Registrar *' NAO ENCONTRADO. "
+                        "Nenhum clique realizado."
+                    )
+
+                    print(
+                        "AUDITORIA "
+                        + json.dumps(
+                            {
+                                "quando": pendulum.now(TZ).to_iso8601_string(),
+                                "url": page.url,
+                                "botao_encontrado": False,
+                                "botao_clicado": False,
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+
+                    raise AssertionError(
+                        "Botao Registrar * nao encontrado: "
+                        "sessao expirada ou tela mudou."
+                    )
+
+                # -----------------------------
+                # CLIQUE NO BOTÃO
+                # -----------------------------
+                print("BOTAO 'Registrar *' ENCONTRADO.")
+
+                botao.wait_for(
+                    state="visible",
+                    timeout=5000,
+                )
+
+                botao.click()
+
+                print("BOTAO 'Registrar *' CLICADO.")
+
+                # Linha de auditoria
+                print(
+                    "AUDITORIA "
+                    + json.dumps(
+                        {
+                            "quando": pendulum.now(TZ).to_iso8601_string(),
+                            "url": page.url,
+                            "botao_encontrado": True,
+                            "botao_clicado": True,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+
+                # Sessão válida: guarda cookies/tokens renovados
+                tmp = ESTADO.with_suffix(".tmp")
+
+                ctx.storage_state(
+                    path=str(tmp)
+                )
+
+                os.replace(
+                    tmp,
+                    ESTADO,
+                )
+
+                print(
+                    "Sessao renovada gravada em",
+                    ESTADO,
+                )
+
+                # -----------------------------
+                # ESPERA 20 SEGUNDOS APÓS CLIQUE
+                # -----------------------------
+                print(
+                    "Aguardando 20 segundos antes de fechar..."
+                )
+
+                page.wait_for_timeout(20_000)
+
+                print(
+                    "20 segundos concluídos. Fechando navegador."
+                )
+
             finally:
                 browser.close()
 
