@@ -10,6 +10,8 @@ so registra no log se achou ou nao, salva um print em /opt/airflow/logs/screensh
 """
 from __future__ import annotations
 
+import json
+import os
 import random
 import time
 from datetime import timedelta
@@ -21,13 +23,37 @@ from airflow.decorators import dag, task
 from airflow.timetables.trigger import CronTriggerTimetable
 
 TZ = pendulum.timezone("America/Sao_Paulo")
-ESTADO = Path(__file__).parent / "estado_senior.json"
+# Semente versionada (login manual). A copia viva fica no volume e e regravada a cada visita bem-sucedida,
+# para o token renovado pela plataforma nao se perder (a copia em git so vale ate o token dela expirar).
+SEMENTE = Path(__file__).parent / "estado_senior.json"
+ESTADO = Path("/opt/airflow/state/estado_senior.json")
 URL = "https://platform.senior.com.br/senior-x/#/"
 JITTER_MAX_SEGUNDOS = 10 * 60
 # Botao "Registrar Ponto": id fixo btn-clocking-event-<numero>, dentro de um iframe (hcm-pontomobile).
 SELETOR_BOTAO = 'button[id^="btn-clocking-event"]'
 PASTA_PRINTS = Path("/opt/airflow/logs/screenshots")
 # Execucao manual de teste: dag_run.conf = {"teste": true} pula a checagem de feriado e a pausa aleatoria.
+
+
+def _emitido_em(caminho: Path) -> int:
+    """issuedAt (ms) do localStorage da plataforma; 0 se nao existir."""
+    try:
+        for origem in json.loads(caminho.read_text(encoding="utf-8")).get("origins", []):
+            for item in origem.get("localStorage", []):
+                if item.get("name") == "issuedAt":
+                    return int(item["value"])
+    except (OSError, ValueError, KeyError):
+        pass
+    return 0
+
+
+def _preparar_estado() -> Path:
+    """Usa a copia viva; troca pela semente do git so se a semente for um login mais novo."""
+    ESTADO.parent.mkdir(parents=True, exist_ok=True)
+    if not ESTADO.exists() or _emitido_em(SEMENTE) > _emitido_em(ESTADO):
+        ESTADO.write_bytes(SEMENTE.read_bytes())
+        print("Estado inicializado a partir da semente do repositorio.")
+    return ESTADO
 
 
 @dag(
@@ -71,7 +97,7 @@ def teste_senior():
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
             try:
-                ctx = browser.new_context(storage_state=str(ESTADO))
+                ctx = browser.new_context(storage_state=str(_preparar_estado()))
                 page = ctx.new_page()
                 page.goto(URL)
                 page.wait_for_timeout(5000)
@@ -89,6 +115,12 @@ def teste_senior():
                 for nome in (f"senior_{agora}.png", "senior_latest.png"):
                     page.screenshot(path=str(PASTA_PRINTS / nome))
                 print(f"BOTAO 'Registrar Ponto' {'ENCONTRADO' if achou else 'NAO ENCONTRADO'} (ocorrencias: {achou}). Nao foi clicado.")
+                if achou:
+                    # Sessao valida: guarda os cookies/tokens renovados para a proxima run.
+                    tmp = ESTADO.with_suffix(".tmp")
+                    ctx.storage_state(path=str(tmp))
+                    os.replace(tmp, ESTADO)
+                    print("Sessao renovada gravada em", ESTADO)
                 if not achou:
                     raise AssertionError("Botao Registrar Ponto nao encontrado: sessao expirada ou tela mudou.")
             finally:
