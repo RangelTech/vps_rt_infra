@@ -40,6 +40,8 @@ locals {
     { name = "demo", type = "A", value = var.server_ip, ttl = 300 },
     # RAG Chat public demo (portfolio repo rag-chat): its own Compose project, one Traefik router.
     { name = "rag", type = "A", value = var.server_ip, ttl = 300 },
+    # Airflow pessoal (airflow/), projeto Compose proprio atras do Traefik.
+    { name = "airflow", type = "A", value = var.server_ip, ttl = 300 },
     # BI edge: public dashboards (own nginx in front of the existing Metabase), reusable for later dashboards.
     { name = "bi", type = "A", value = var.server_ip, ttl = 300 },
     { name = "9route", type = "A", value = var.server_ip, ttl = 300 },
