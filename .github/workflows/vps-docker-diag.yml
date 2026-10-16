@@ -21,20 +21,24 @@ jobs:
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
           echo "### host"; date; uptime
-          echo "### redes dos containers que o traefik ignora"
-          for c in site-portfolio evolution-864f3da4dcae evolution-442fa1e33c6d airflow-airflow-webserver-1; do
-            printf '%s: ' "$c"; timeout 30 sudo docker inspect -f '{{.State.Status}} redes={{range $k,$v := .NetworkSettings.Networks}}{{$k}}({{$v.IPAddress}}) {{end}}' "$c" </dev/null 2>&1 | cut -c1-200
+          echo "### .env: arquivos, tamanho, datas, vars matrix (contagem)"
+          sudo ls -l --time-style=full-iso /opt/platform/compose/.env* 2>&1 | awk '{print $5, $6, $7, $9}'
+          for f in /opt/platform/compose/.env /opt/platform/compose/.env.bak-*; do
+            printf '%s: ' "$f"; sudo grep -c -E '^(SYNAPSE_VERSION|MAUTRIX_META_VERSION|MATRIX_POSTGRES_PASSWORD)=' "$f" 2>&1
           done
-          echo "### rede public: membros"
-          timeout 30 sudo docker network inspect public -f '{{range .Containers}}{{.Name}} {{end}}' </dev/null 2>&1 | cut -c1-700
-          echo "### webserver airflow: health e logs"
-          timeout 30 sudo docker inspect -f '{{.State.Health.Status}} failing={{.State.Health.FailingStreak}}' airflow-airflow-webserver-1 </dev/null 2>&1
-          timeout 30 sudo docker inspect -f '{{range .State.Health.Log}}{{.ExitCode}} {{println .Output}}{{end}}' airflow-airflow-webserver-1 </dev/null 2>&1 | tail -4 | cut -c1-200
-          timeout 40 sudo docker logs --tail 12 airflow-airflow-webserver-1 2>&1 </dev/null | cut -c1-240
-          echo "### db do airflow"
-          timeout 40 sudo docker logs --tail 5 airflow-airflow-db-1 2>&1 </dev/null | cut -c1-200
-          timeout 40 sudo docker stats --no-stream --format '{{.Name}} cpu={{.CPUPerc}} mem={{.MemUsage}}' airflow-airflow-db-1 airflow-airflow-webserver-1 airflow-airflow-scheduler-1 </dev/null 2>&1
-          echo "### mautrix-meta-facebook / infisical: por que nao sobem"
-          timeout 40 sudo docker logs --tail 4 mautrix-meta-facebook 2>&1 </dev/null | cut -c1-240
-          timeout 40 sudo docker inspect -f '{{.Name}} err={{.State.Error}}' mautrix-meta-facebook infisical </dev/null 2>&1 | cut -c1-300
+          echo "### quem escreve no compose/.env"
+          sudo grep -R -l -E 'compose/\.env|\.env' /etc/cron* /etc/systemd/system /usr/local/sbin 2>/dev/null | head -8
+          timeout 20 systemctl list-timers --no-pager 2>/dev/null | grep -i -E 'rt-|infisical|env|compose' | cut -c1-160
+          sudo find /opt/platform -maxdepth 2 -newer /opt/platform/compose/docker-compose.yml -name '.env*' 2>/dev/null | head
+          echo "### compose project dir / env-file efetivo"
+          timeout 40 sudo docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}} | env: {{index .Config.Labels "com.docker.compose.project.environment_file"}}' synapse </dev/null 2>&1 | cut -c1-200
+          echo "### os 5 com rede sem IP: detalhe"
+          for c in site-portfolio pncp-db-db-1 chatwoot-worker evolution-864f3da4dcae evolution-442fa1e33c6d; do
+            echo "-- $c"
+            timeout 30 sudo docker inspect -f 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{end}} pid={{.State.Pid}} netmode={{.HostConfig.NetworkMode}} err={{.State.Error}}' "$c" </dev/null 2>&1 | cut -c1-220
+            timeout 30 sudo docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}: ip={{$v.IPAddress}} gw={{$v.Gateway}} id={{printf "%.8s" $v.NetworkID}}{{println}}{{end}}' "$c" </dev/null 2>&1 | cut -c1-200
+            timeout 30 sudo docker logs --tail 3 "$c" 2>&1 </dev/null | cut -c1-220
+          done
+          echo "### redes docker (ids)"
+          timeout 40 sudo docker network ls --format '{{.ID}} {{.Name}} {{.Driver}}' </dev/null | grep -E 'public|internal|bridge' | head
           EOS
