@@ -39,17 +39,20 @@ if [ "${#services[@]}" -eq 0 ]; then
   exit 1
 fi
 
+# Uma unica chamada ao Docker em vez de `compose ps` + `inspect` por servico: com ~45 servicos o loop antigo
+# levava ~3 min com o host carregado (16/10/2026) e o timer religava logo depois, mantendo o healer quase sempre
+# rodando e sobrecarregando o dockerd. Mesmo criterio de antes: servico sem container em estado "running".
+project="$(basename "$COMPOSE_DIR")"
+mapfile -t running < <(docker ps --filter "label=com.docker.compose.project=$project" --filter status=running   --format '{{.Label "com.docker.compose.service"}}' | sort -u)
+
 needs_heal=()
 for service in "${services[@]}"; do
-  cid="$(docker compose ps -a -q "$service" 2>/dev/null | head -n 1 || true)"
-  if [ -z "$cid" ]; then
-    needs_heal+=("$service:no-container")
-    continue
-  fi
-
-  state="$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null || echo "missing")"
-  if [ "$state" != "running" ]; then
-    needs_heal+=("$service:$state")
+  found=0
+  for r in "${running[@]}"; do
+    if [ "$r" = "$service" ]; then found=1; break; fi
+  done
+  if [ "$found" -eq 0 ]; then
+    needs_heal+=("$service:not-running")
   fi
 done
 
@@ -59,5 +62,9 @@ if [ "${#needs_heal[@]}" -eq 0 ]; then
 fi
 
 log "healing stack; non-running services: ${needs_heal[*]}"
+if [ "${RT_HEALER_DRYRUN:-0}" = "1" ]; then
+  log "dry-run: not running compose up"
+  exit 0
+fi
 docker compose up -d --remove-orphans
 log "compose up -d finished"
