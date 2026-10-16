@@ -1,0 +1,36 @@
+name: VPS docker diag
+
+# Somente leitura e SEM chamar o docker (o daemon pode estar fora): systemd, journal e kernel.
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 6
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Diagnostico sem docker
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          echo "### host"; date; uptime; free -m | sed -n 1,2p
+          echo "### systemd docker"
+          timeout 20 systemctl is-active docker containerd 2>&1
+          timeout 20 systemctl status docker --no-pager 2>&1 | head -14 | cut -c1-220
+          echo "### journal docker (ultimos 25)"
+          timeout 30 sudo journalctl -u docker --no-pager -n 25 2>&1 </dev/null | cut -c1-260
+          echo "### kernel: OOM / erros"
+          timeout 30 sudo journalctl -k --since "-40 min" --no-pager 2>&1 </dev/null | grep -i -E 'oom|out of memory|killed|segfault|blocked for|hung_task|I/O error' | tail -10 | cut -c1-220
+          echo "### processos"
+          echo "dockerd: $(pgrep -c dockerd) containerd-shim: $(pgrep -c containerd-shim) docker-proxy: $(pgrep -c docker-proxy)"
+          ps -eo pid,etime,stat,pcpu,args --sort=-pcpu | head -8 | cut -c1-170
+          echo "### healer (log recente)"
+          timeout 20 sudo journalctl -t rt-compose-healer --no-pager -n 8 2>&1 </dev/null | cut -c1-240
+          EOS
