@@ -1,0 +1,77 @@
+name: VPS recover 3
+
+# Containers orfaos (processo vivo, task perdida no containerd, rede sem IP): encerra o processo pelo PID do host
+# (SIGINT no postgres = shutdown rapido e limpo; SIGTERM nos demais; SIGKILL so se nao sair em 90s), reconcilia o
+# estado do Docker e da `start`. Tambem grava as variaveis do Matrix no .env (atomico, verificado) e roda o healer.
+# Nao apaga volumes.
+on:
+  workflow_dispatch:
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Recuperar
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=80 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          echo "### antes"; date; uptime
+          echo "### orfaos: encerrar pelo PID do host"
+          for c in pncp-db-db-1 site-portfolio chatwoot-worker evolution-442fa1e33c6d; do
+            CID=$(sudo timeout 30 docker inspect -f '{{.Id}}' "$c" </dev/null 2>/dev/null)
+            PID=$(sudo timeout 30 docker inspect -f '{{.State.Pid}}' "$c" </dev/null 2>/dev/null)
+            IPS=$(sudo timeout 30 docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$v.IPAddress}} {{end}}' "$c" </dev/null 2>/dev/null)
+            case "$IPS" in *invalid*) ;; *) echo "$c: rede ok ($IPS), nada a fazer"; continue;; esac
+            if [ -z "$PID" ] || [ "$PID" -le 1 ] 2>/dev/null || ! sudo grep -q "$CID" "/proc/$PID/cgroup" 2>/dev/null; then
+              echo "$c: pid=$PID nao pertence ao container (ou nao existe); tentando so reconciliar"
+            else
+              case "$c" in pncp-db-db-1) SIG=INT;; *) SIG=TERM;; esac
+              echo "$c: pid=$PID SIG$SIG"
+              sudo kill -$SIG "$PID"
+              for i in $(seq 1 45); do [ -d "/proc/$PID" ] || break; sleep 2; done
+              if [ -d "/proc/$PID" ]; then echo "$c: nao saiu em 90s; SIGKILL"; sudo kill -KILL "$PID"; sleep 3; fi
+            fi
+            sudo timeout 90 docker stop -t 2 "$c" </dev/null >/dev/null 2>&1
+            sudo timeout 90 docker start "$c" </dev/null >/dev/null 2>&1
+            sleep 8
+            echo "$c: pid novo=$(sudo timeout 30 docker inspect -f '{{.State.Pid}}' "$c" </dev/null 2>/dev/null) ips=$(sudo timeout 30 docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$v.IPAddress}} {{end}}' "$c" </dev/null 2>/dev/null) status=$(sudo timeout 30 docker inspect -f '{{.State.Status}}' "$c" </dev/null 2>/dev/null)"
+          done
+          echo "### .env: variaveis do Matrix (atomico + verificado)"
+          cd /opt/platform/compose || exit 1
+          SYN=$(sudo timeout 40 docker inspect -f '{{.Config.Image}}' synapse </dev/null 2>/dev/null | sed 's/.*://'); SYN=${SYN:-v1.159.0}
+          MPW=$(sudo timeout 40 docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' matrix-postgres </dev/null 2>/dev/null | sed -n 's/^POSTGRES_PASSWORD=//p' | head -1)
+          echo "synapse=$SYN mautrix=latest senha_matrix=len ${#MPW}"
+          if [ -n "$MPW" ] && ! printf '%s' "$MPW" | grep -q "'"; then
+            MPWE=$(printf '%s' "$MPW" | sed 's/\$/$$/g')
+            sudo cp -p .env .env.new
+            sudo grep -q '^SYNAPSE_VERSION=' .env.new || printf 'SYNAPSE_VERSION=%s\n' "$SYN" | sudo tee -a .env.new >/dev/null
+            sudo grep -q '^MAUTRIX_META_VERSION=' .env.new || printf 'MAUTRIX_META_VERSION=latest\n' | sudo tee -a .env.new >/dev/null
+            sudo grep -q '^MATRIX_POSTGRES_PASSWORD=' .env.new || printf "MATRIX_POSTGRES_PASSWORD='%s'\n" "$MPWE" | sudo tee -a .env.new >/dev/null
+            echo "novo: $(sudo wc -c < .env.new) bytes (antigo: $(sudo wc -c < .env))"
+            sudo mv -f .env.new .env
+          else echo "senha do matrix-postgres indisponivel; .env nao alterado"; fi
+          echo "vars matrix no .env agora: $(sudo grep -c -E '^(SYNAPSE_VERSION|MAUTRIX_META_VERSION|MATRIX_POSTGRES_PASSWORD)=' .env)"
+          timeout 120 sudo docker compose config 2>/dev/null </dev/null | grep -E 'image:.*(mautrix|synapse)' | head -4
+          echo "### simulacao up -d (dry-run)"
+          SIM=$(timeout 300 sudo docker compose up -d --remove-orphans --dry-run 2>&1 </dev/null | grep -v 'variable is not set')
+          echo "$SIM" | sed 's/^ *//' | grep -v -E 'Running|Healthy|Waiting' | sort | uniq -c | sort -rn | head -20 | cut -c1-170
+          if echo "$SIM" | grep -q -i -E 'recreate|remov|unable|error'; then
+            echo "healer NAO executado: simulacao com recriacao/remocao/erro"
+          else
+            echo "### simulacao limpa: rodando o healer"
+            sudo timeout 900 /usr/local/sbin/rt-compose-healer 2>&1 </dev/null | grep -v 'variable is not set' | tail -8 | cut -c1-240
+          fi
+          echo "### depois"
+          timeout 90 sudo docker ps -a --filter status=exited --filter status=restarting --format '{{.Names}}\t{{.Status}}' </dev/null | grep -v -E 'weeks|months|public-demo|airflow-init' | head -12
+          sudo timeout 90 docker inspect -f '{{.Name}}|{{range $k,$v := .NetworkSettings.Networks}}{{$v.IPAddress}},{{end}}' $(sudo docker ps -q </dev/null) </dev/null 2>/dev/null | grep -c 'invalid IP' | sed 's/^/orfaos restantes: /'
+          for h in lucas.rangeltech.net airflow.rangeltech.net; do printf '%s -> ' "$h"; curl -sk -m 20 -o /dev/null -w '%{http_code}\n' --resolve $h:443:127.0.0.1 https://$h/; done
+          uptime
+          EOS
