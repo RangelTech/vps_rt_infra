@@ -20,17 +20,14 @@ jobs:
       - name: Diagnostico sem docker
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
-          echo "### host"; date; uptime; free -m | sed -n 1,2p
-          echo "### systemd docker"
-          timeout 20 systemctl is-active docker containerd 2>&1
-          timeout 20 systemctl status docker --no-pager 2>&1 | head -14 | cut -c1-220
-          echo "### journal docker (ultimos 25)"
-          timeout 30 sudo journalctl -u docker --no-pager -n 25 2>&1 </dev/null | cut -c1-260
-          echo "### kernel: OOM / erros"
-          timeout 30 sudo journalctl -k --since "-40 min" --no-pager 2>&1 </dev/null | grep -i -E 'oom|out of memory|killed|segfault|blocked for|hung_task|I/O error' | tail -10 | cut -c1-220
-          echo "### processos"
-          echo "dockerd: $(pgrep -c dockerd) containerd-shim: $(pgrep -c containerd-shim) docker-proxy: $(pgrep -c docker-proxy)"
-          ps -eo pid,etime,stat,pcpu,args --sort=-pcpu | head -8 | cut -c1-170
-          echo "### healer (log recente)"
-          timeout 20 sudo journalctl -t rt-compose-healer --no-pager -n 8 2>&1 </dev/null | cut -c1-240
+          echo "### host"; date; uptime
+          echo "### apt: o que foi atualizado hoje"
+          timeout 20 sudo tail -n 40 /var/log/apt/history.log 2>&1 | cut -c1-300
+          echo "### unattended-upgrades (log)"
+          timeout 20 sudo tail -n 15 /var/log/unattended-upgrades/unattended-upgrades.log 2>&1 | cut -c1-250
+          echo "### dpkg hoje (docker/kernel)"
+          timeout 20 sudo grep -E "$(date +%Y-%m-%d)" /var/log/dpkg.log 2>/dev/null | grep -i -E 'docker|containerd|linux-image|runc' | tail -12 | cut -c1-200
+          echo "### reboot pendente?"; ls -l /var/run/reboot-required 2>&1; cat /var/run/reboot-required.pkgs 2>/dev/null | head -5
+          echo "### docker: ativo desde"; timeout 20 systemctl show docker -p ActiveEnterTimestamp -p NRestarts 2>&1
+          echo "### timers de upgrade"; timeout 20 systemctl list-timers apt-daily.timer apt-daily-upgrade.timer --no-pager 2>&1 | head -5 | cut -c1-200
           EOS
