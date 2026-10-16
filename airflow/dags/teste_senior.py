@@ -8,6 +8,8 @@ achar o botao (sessao expirada).
 - Horarios (America/Sao_Paulo, UTC-3): 08:55, 11:55, 12:55 e 17:55, so de segunda a sexta.
 - Feriados nacionais do Brasil: a run e criada, mas a primeira task pula o resto (fica "skipped").
 - Antes de abrir o navegador, pausa aleatoria de 0 a 10 minutos para nao rodar sempre no mesmo minuto.
+- Ate 3 retries (3 min) se falhar ANTES do clique; apos o clique nao ha retry (AirflowFailException) para nao
+  duplicar a batida real.
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ from pathlib import Path
 import holidays
 import pendulum
 from airflow.decorators import dag, task
+from airflow.exceptions import AirflowFailException
 from airflow.timetables.trigger import CronTriggerTimetable
 
 TZ = pendulum.timezone("America/Sao_Paulo")
@@ -66,7 +69,7 @@ def _preparar_estado() -> Path:
     start_date=pendulum.datetime(2026, 10, 6, 17, 30, tz=TZ),
     catchup=False,
     max_active_runs=1,
-    default_args={"retries": 1, "retry_delay": timedelta(minutes=2)},
+    default_args={"retries": 3, "retry_delay": timedelta(minutes=3)},
     tags=["qa", "senior", "playwright"],
 )
 def teste_senior():
@@ -91,7 +94,7 @@ def teste_senior():
         print(f"Pausa de {segundos / 60:.1f} min ({segundos:.0f}s) antes de abrir o navegador.")
         time.sleep(segundos)
 
-    @task(execution_timeout=timedelta(minutes=5))
+    @task(execution_timeout=timedelta(minutes=8))
     def abrir_e_fechar() -> None:
         from playwright.sync_api import sync_playwright
 
@@ -110,6 +113,7 @@ def teste_senior():
 
                 # Evidencias de auditoria: console do navegador e respostas de rede (so apos o clique).
                 coletar = {"ativo": False}
+                clicou = {"v": False}
                 eventos = []
 
                 def _console(msg):
@@ -132,17 +136,18 @@ def teste_senior():
                 page.on("console", _console)
                 page.on("response", _resposta)
 
-                page.goto(URL)
+                # VPS sobrecarregada (16/10: load ~27) estourou os 30s do "load"; DOM pronto basta, o botao e esperado depois.
+                page.goto(URL, wait_until="domcontentloaded", timeout=90_000)
                 page.wait_for_timeout(5000)
 
                 print(f"URL: {page.url}")
                 print(f"Titulo: {page.title()}")
 
                 # O botão fica em um iframe que carrega depois.
-                # Espera até 20 segundos procurando em todos os frames.
+                # Espera até 45 segundos procurando em todos os frames (iframe lento com a VPS carregada).
                 botao = None
 
-                for _ in range(20):
+                for _ in range(45):
                     for frame in page.frames:
                         locator = frame.locator(SELETOR_BOTAO)
 
@@ -205,6 +210,8 @@ def teste_senior():
                 )
 
                 coletar["ativo"] = True
+                # A partir daqui a batida pode ter sido registrada: qualquer falha NAO pode gerar retry.
+                clicou["v"] = True
                 botao.click()
 
                 print("BOTAO 'Registrar *' CLICADO.")
@@ -265,6 +272,12 @@ def teste_senior():
 
                 print("Coleta concluida. Fechando navegador.")
 
+            except Exception as e:
+                if clicou["v"]:
+                    raise AirflowFailException(
+                        f"Falha apos o clique ({e!r}); sem retry para nao duplicar a batida."
+                    ) from e
+                raise
             finally:
                 browser.close()
 
