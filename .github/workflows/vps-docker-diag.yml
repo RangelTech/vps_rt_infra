@@ -21,24 +21,15 @@ jobs:
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
           echo "### host"; date; uptime
-          echo "### .env: arquivos, tamanho, datas, vars matrix (contagem)"
-          sudo ls -l --time-style=full-iso /opt/platform/compose/.env* 2>&1 | awk '{print $5, $6, $7, $9}'
-          for f in /opt/platform/compose/.env /opt/platform/compose/.env.bak-*; do
-            printf '%s: ' "$f"; sudo grep -c -E '^(SYNAPSE_VERSION|MAUTRIX_META_VERSION|MATRIX_POSTGRES_PASSWORD)=' "$f" 2>&1
-          done
-          echo "### quem escreve no compose/.env"
-          sudo grep -R -l -E 'compose/\.env|\.env' /etc/cron* /etc/systemd/system /usr/local/sbin 2>/dev/null | head -8
-          timeout 20 systemctl list-timers --no-pager 2>/dev/null | grep -i -E 'rt-|infisical|env|compose' | cut -c1-160
-          sudo find /opt/platform -maxdepth 2 -newer /opt/platform/compose/docker-compose.yml -name '.env*' 2>/dev/null | head
-          echo "### compose project dir / env-file efetivo"
-          timeout 40 sudo docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}} | env: {{index .Config.Labels "com.docker.compose.project.environment_file"}}' synapse </dev/null 2>&1 | cut -c1-200
-          echo "### os 5 com rede sem IP: detalhe"
-          for c in site-portfolio pncp-db-db-1 chatwoot-worker evolution-864f3da4dcae evolution-442fa1e33c6d; do
-            echo "-- $c"
-            timeout 30 sudo docker inspect -f 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{end}} pid={{.State.Pid}} netmode={{.HostConfig.NetworkMode}} err={{.State.Error}}' "$c" </dev/null 2>&1 | cut -c1-220
-            timeout 30 sudo docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}: ip={{$v.IPAddress}} gw={{$v.Gateway}} id={{printf "%.8s" $v.NetworkID}}{{println}}{{end}}' "$c" </dev/null 2>&1 | cut -c1-200
-            timeout 30 sudo docker logs --tail 3 "$c" 2>&1 </dev/null | cut -c1-220
-          done
-          echo "### redes docker (ids)"
-          timeout 40 sudo docker network ls --format '{{.ID}} {{.Name}} {{.Driver}}' </dev/null | grep -E 'public|internal|bridge' | head
+          echo "### contagem"; sudo timeout 60 docker ps -q </dev/null | wc -l | sed 's/^/rodando: /'
+          echo "### traefik / pgbouncer / postgres / airflow web"
+          sudo timeout 60 docker ps -a --filter name=traefik --filter name=pgbouncer --filter name=^postgres$ --filter name=airflow-airflow-webserver --filter name=site-portfolio --filter name=pncp-db-db --format '{{.Names}}\t{{.Status}}' </dev/null
+          echo "### traefik: motivo"
+          sudo timeout 30 docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} err={{.State.Error}} restarts={{.RestartCount}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' traefik </dev/null 2>&1 | cut -c1-300
+          sudo timeout 30 docker logs --tail 5 traefik 2>&1 </dev/null | cut -c1-240
+          echo "### reiniciando agora / crash loop"
+          sudo timeout 60 docker ps --filter status=restarting --format '{{.Names}}\t{{.Status}}' </dev/null
+          echo "### mais reinicios (docker inspect)"
+          sudo timeout 90 docker inspect -f '{{.Name}} restarts={{.RestartCount}} status={{.State.Status}}' $(sudo docker ps -aq </dev/null) </dev/null 2>/dev/null | sort -t= -k2 -n -r | head -6
+          echo "### portas publicas"; ss -ltn 2>/dev/null | grep -E ':(80|443|5432|5433) ' | head -5
           EOS
