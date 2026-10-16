@@ -1,6 +1,6 @@
 name: VPS docker diag
 
-# Somente leitura e SEM chamar o docker (o daemon pode estar fora): systemd, journal e kernel.
+# Somente leitura, com timeout em tudo.
 on:
   workflow_dispatch:
 
@@ -21,13 +21,14 @@ jobs:
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
           echo "### host"; date; uptime
-          echo "### apt: o que foi atualizado hoje"
-          timeout 20 sudo tail -n 40 /var/log/apt/history.log 2>&1 | cut -c1-300
-          echo "### unattended-upgrades (log)"
-          timeout 20 sudo tail -n 15 /var/log/unattended-upgrades/unattended-upgrades.log 2>&1 | cut -c1-250
-          echo "### dpkg hoje (docker/kernel)"
-          timeout 20 sudo grep -E "$(date +%Y-%m-%d)" /var/log/dpkg.log 2>/dev/null | grep -i -E 'docker|containerd|linux-image|runc' | tail -12 | cut -c1-200
-          echo "### reboot pendente?"; ls -l /var/run/reboot-required 2>&1; cat /var/run/reboot-required.pkgs 2>/dev/null | head -5
-          echo "### docker: ativo desde"; timeout 20 systemctl show docker -p ActiveEnterTimestamp -p NRestarts 2>&1
-          echo "### timers de upgrade"; timeout 20 systemctl list-timers apt-daily.timer apt-daily-upgrade.timer --no-pager 2>&1 | head -5 | cut -c1-200
+          echo "### contagem de containers"
+          timeout 60 sudo docker ps -q </dev/null | wc -l | sed 's/^/rodando: /'
+          timeout 60 sudo docker ps -aq </dev/null | wc -l | sed 's/^/total: /'
+          echo "### traefik / postgres / airflow / synapse"
+          timeout 60 sudo docker ps -a --filter name=traefik --filter name=^postgres$ --filter name=airflow --filter name=synapse --filter name=pgbouncer --format '{{.Names}}	{{.Status}}' </dev/null
+          echo "### traefik log (ultimas)"
+          timeout 40 sudo docker logs --tail 15 traefik 2>&1 </dev/null | cut -c1-260
+          echo "### containers parados que deveriam rodar (restart policy)"
+          timeout 60 sudo docker ps -a --filter status=exited --filter status=created --format '{{.Names}}	{{.Status}}' </dev/null | grep -v -E 'weeks|public-demo' | head -20
+          echo "### portas"; ss -ltn 2>/dev/null | grep -E ':(80|443|5432|5433) ' | head
           EOS
