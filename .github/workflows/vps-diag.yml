@@ -26,8 +26,7 @@ jobs:
           timeout 60 sudo docker inspect -f '{{.State.Status}} health={{.State.Health.Status}} failing={{.State.Health.FailingStreak}} started={{.State.StartedAt}} restarts={{.RestartCount}}' $W </dev/null 2>&1
           timeout 60 sudo docker inspect -f '{{range .State.Health.Log}}{{.Start}} exit={{.ExitCode}} {{println .Output}}{{end}}' $W </dev/null 2>&1 | tail -8 | cut -c1-220
           echo "### webserver: /health por dentro"
-          timeout 60 sudo docker exec $W curl -s -m 20 -o /dev/null -w 'interno %{http_code} em %{time_total}s
-' http://localhost:8080/health </dev/null 2>&1
+          timeout 60 sudo docker exec $W curl -s -m 20 -o /dev/null -w 'interno %{http_code} em %{time_total}s' http://localhost:8080/health </dev/null 2>&1
           echo "### webserver: redes"
           timeout 60 sudo docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' $W </dev/null 2>&1
           echo "### traefik: log recente sobre airflow"
