@@ -24,13 +24,15 @@ jobs:
           chmod 600 ~/.ssh/vps_rt_infra_ed25519
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
+      # postgres-tls nao esta no git (chave privada, dono uid 999 no host): o --delete a apagaria (incidentes 29/09 e
+      # 16/10/2026: postgres em crash loop por dono errado da server.key).
       - name: Rsync stack to VPS
         run: |
           rsync -az --delete \
             -e "ssh -i ~/.ssh/vps_rt_infra_ed25519" \
             compose/ configs/ apps/ scripts/ sites/ \
             "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}:/opt/platform/" \
-            --exclude ".env"
+            --exclude ".env" --exclude ".env.bak-*" --exclude "postgres-tls/"
           rsync -az \
             -e "ssh -i ~/.ssh/vps_rt_infra_ed25519" \
             services.json \
