@@ -1,0 +1,44 @@
+name: VPS fix postgres
+
+# Correcao pontual e sem perda de dados (nao toca em volumes): devolve a chave TLS do postgres ao dono certo
+# (999 = usuario postgres dentro do container) e reinicia SO o container postgres. Mesmo fix do incidente de 29/09/2026.
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 12
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Corrigir e verificar
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          set -u
+          D=/opt/platform/configs/postgres-tls
+          echo "### antes"; date; uptime; ls -ln $D
+          sudo chown 999:999 $D/server.key $D/server.crt
+          sudo chmod 600 $D/server.key
+          sudo chmod 644 $D/server.crt
+          echo "### depois"; ls -ln $D
+          echo "### restart so do postgres (dados ficam no volume)"
+          timeout 120 sudo docker restart postgres </dev/null || echo "restart demorou/falhou"
+          for i in $(seq 1 24); do
+            S=$(timeout 30 sudo docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' postgres </dev/null 2>&1)
+            echo "$(date +%T) postgres: $S"
+            case "$S" in "running healthy"*) break;; esac
+            sleep 10
+          done
+          echo "### postgres log"; timeout 30 sudo docker logs --tail 8 postgres 2>&1 </dev/null | cut -c1-250
+          echo "### synapse: dono dos dados (somente leitura)"
+          timeout 20 ls -ln /opt/platform/data/synapse 2>&1 | head -20
+          timeout 30 sudo docker inspect -f 'user={{.Config.User}} status={{.State.Status}} restarts={{.RestartCount}}' synapse </dev/null 2>&1
+          echo "### load"; uptime
+          EOS
