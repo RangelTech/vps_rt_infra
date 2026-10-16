@@ -20,16 +20,22 @@ jobs:
       - name: Diagnostico profundo
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
-          echo "### host"; date; uptime; echo "cpus=$(nproc)"; free -m | sed -n 1,2p
-          echo "### vmstat"; timeout 15 vmstat 1 4
-          echo "### top por CPU"; timeout 15 ps -eo pid,ppid,stat,pcpu,pmem,etime,args --sort=-pcpu | head -16 | cut -c1-170
-          echo "### containers com problema / reiniciando"
-          timeout 60 sudo docker ps --filter status=restarting --format '{{.Names}} {{.Status}}' </dev/null
-          timeout 60 sudo docker ps --filter health=unhealthy --format '{{.Names}} {{.Status}}' </dev/null
-          echo "### processos airflow db check / healer"
-          ps -eo pid,etime,args | grep -E 'airflow db check|compose-healer|docker compose' | grep -v grep | head -8 | cut -c1-170
-          echo "### airflow: runs/tasks teste_senior mais recentes"
-          timeout 60 sudo docker exec airflow-airflow-scheduler-1 sh -c 'ls -t /opt/airflow/logs/dag_id=teste_senior/run_id=*/task_id=*/attempt=*.log 2>/dev/null | head -3' </dev/null
-          echo "### DAG carregada (retries / goto)"
-          timeout 60 sudo docker exec airflow-airflow-scheduler-1 sh -c "grep -n -E 'retries|domcontentloaded|execution_timeout' /opt/airflow/dags/teste_senior.py" </dev/null
+          echo "### host"; date; uptime
+          W=airflow-airflow-webserver-1
+          echo "### webserver: estado e health"
+          timeout 60 sudo docker inspect -f '{{.State.Status}} health={{.State.Health.Status}} failing={{.State.Health.FailingStreak}} started={{.State.StartedAt}} restarts={{.RestartCount}}' $W </dev/null 2>&1
+          timeout 60 sudo docker inspect -f '{{range .State.Health.Log}}{{.Start}} exit={{.ExitCode}} {{println .Output}}{{end}}' $W </dev/null 2>&1 | tail -8 | cut -c1-220
+          echo "### webserver: /health por dentro"
+          timeout 60 sudo docker exec $W curl -s -m 20 -o /dev/null -w 'interno %{http_code} em %{time_total}s
+' http://localhost:8080/health </dev/null 2>&1
+          echo "### webserver: redes"
+          timeout 60 sudo docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' $W </dev/null 2>&1
+          echo "### traefik: log recente sobre airflow"
+          timeout 60 sudo docker logs --since 40m traefik 2>&1 </dev/null | grep -i -E 'airflow|unhealthy|Skipping|Filtering|error' | tail -12 | cut -c1-260
+          echo "### traefik: roteadores via API interna"
+          timeout 30 sudo docker exec traefik wget -q -O - http://localhost:8080/api/http/routers 2>/dev/null </dev/null | python3 -c "import sys,json;d=json.load(sys.stdin);print([r['name'] for r in d if 'airflow' in r['name']])" 2>&1 | head -3
+          echo "### run manual: log"
+          F=$(timeout 60 sudo docker exec airflow-airflow-scheduler-1 sh -c 'ls -t /opt/airflow/logs/dag_id=teste_senior/run_id=manual__*/task_id=abrir_e_fechar/attempt=*.log | head -1' </dev/null)
+          echo "$F"
+          timeout 60 sudo docker exec airflow-airflow-scheduler-1 sh -c "grep -E 'URL:|BOTAO|AUDITORIA|EVIDENCIA_URL|EVIDENCIA_FIM|Timeout|Error|Aguardando' '$F' | cut -c1-400" </dev/null
           EOS
