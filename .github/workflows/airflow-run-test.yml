@@ -1,0 +1,41 @@
+name: Airflow run test
+
+# Dispara UMA run manual da teste_senior com {"teste": true} (sem pausa, sem checagem de feriado), SEM redeploy.
+# ATENCAO: a DAG clica em "Registrar Ponto" (batida real em homologacao).
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Disparar e acompanhar
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=40 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          S=airflow-airflow-scheduler-1
+          RID="manual__fix_$(date +%Y%m%dT%H%M%S)"
+          echo "### antes"; date; uptime
+          timeout 120 sudo docker exec $S airflow dags trigger teste_senior --run-id "$RID" --conf '{"teste": true}' </dev/null 2>&1 | tail -4 | cut -c1-200
+          for i in $(seq 1 60); do
+            ST=$(timeout 60 sudo docker exec $S airflow dags state teste_senior "$RID" </dev/null 2>/dev/null | tail -1)
+            echo "$(date +%T) estado=$ST"
+            case "$ST" in success|failed) break;; esac
+            sleep 20
+          done
+          echo "### tasks"; timeout 60 sudo docker exec $S airflow tasks states-for-dag-run teste_senior "$RID" </dev/null 2>&1 | tail -6 | cut -c1-200
+          echo "### log (evidencias)"
+          for f in $(timeout 60 sudo docker exec $S sh -c "ls -t /opt/airflow/logs/dag_id=teste_senior/run_id=$RID/task_id=abrir_e_fechar/attempt=*.log 2>/dev/null" </dev/null); do
+            echo "## $f"
+            timeout 60 sudo docker exec $S sh -c "grep -E 'URL:|Titulo|BOTAO|AUDITORIA|EVIDENCIA_URL|EVIDENCIA_FIM|Timeout|Error|Traceback|clockingEvent' '$f' | cut -c1-500" </dev/null
+          done
+          echo "### depois"; uptime
+          EOS
