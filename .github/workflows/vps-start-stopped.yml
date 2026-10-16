@@ -1,0 +1,43 @@
+name: VPS start stopped
+
+# Da `docker start` (so isso) nos containers que cairam no reinicio do daemon (exit 128/137 ha minutos) e tem
+# restart policy ativa. Nao recria, nao mexe em .env nem em volumes.
+on:
+  workflow_dispatch:
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Iniciar parados
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=30 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          echo "### antes"; date; uptime
+          LISTA=$(timeout 60 sudo docker ps -a --filter status=exited --format '{{.Names}}|{{.Status}}' </dev/null | grep -E 'Exited \((128|137)\) .*minutes? ago' | cut -d'|' -f1)
+          # traefik e pgbouncer primeiro
+          ORD=$(printf '%s\n' $LISTA | grep -E '^(traefik|pgbouncer)$'; printf '%s\n' $LISTA | grep -v -E '^(traefik|pgbouncer)$')
+          echo "$ORD" | grep -v '^$' | sed 's/^/candidato: /'
+          for c in $ORD; do
+            [ -z "$c" ] && continue
+            POL=$(timeout 30 sudo docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$c" </dev/null 2>/dev/null)
+            case "$POL" in unless-stopped|always|on-failure)
+              printf '%s (policy=%s): ' "$c" "$POL"
+              timeout 120 sudo docker start "$c" </dev/null 2>&1 | tail -1 | cut -c1-200;;
+              *) echo "$c: policy=$POL, ignorado";;
+            esac
+          done
+          echo "### depois"
+          timeout 60 sudo docker ps -a --filter status=exited --format '{{.Names}}\t{{.Status}}' </dev/null | grep -E 'minutes? ago' | head
+          timeout 60 sudo docker ps -q </dev/null | wc -l | sed 's/^/rodando: /'
+          ss -ltn 2>/dev/null | grep -E ':(80|443|5432|5433) ' | head -5
+          uptime
+          EOS
