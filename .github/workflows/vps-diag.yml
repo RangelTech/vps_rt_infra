@@ -20,18 +20,16 @@ jobs:
       - name: Diagnostico profundo
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
-          echo "### host"; date; uptime; echo "cpus=$(nproc)"; free -m
-          echo "### vmstat (3 amostras)"; timeout 15 vmstat 1 3
-          echo "### OOM no kernel (12h)"; timeout 20 sudo journalctl -k --since "-12 hours" --no-pager 2>/dev/null </dev/null | grep -i -E 'out of memory|oom-kill|killed process|oom_reaper' | tail -10
-          echo "(fim OOM)"
-          echo "### top por CPU"; timeout 15 ps -eo pid,ppid,stat,pcpu,pmem,rss,etime,args --sort=-pcpu | head -22 | cut -c1-200
-          echo "### top por memoria"; timeout 15 ps -eo pid,ppid,pmem,rss,etime,args --sort=-rss | head -12 | cut -c1-200
-          echo "### zumbis por pai"; ps -eo ppid,stat | awk '$2 ~ /Z/ {c[$1]++} END {for (p in c) print c[p], p}' | sort -rn | head -5
-          for p in $(ps -eo ppid,stat | awk '$2 ~ /Z/ {c[$1]++} END {for (p in c) print p}' | head -3); do ps -o pid,etime,args -p "$p" | tail -1 | cut -c1-160; done
-          echo "### containers: reinicios, OOM, exit code"
-          timeout 40 sudo docker inspect -f '{{.Name}} restarts={{.RestartCount}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}} started={{.State.StartedAt}}' $(sudo docker ps -aq </dev/null) </dev/null 2>&1 | sort -t= -k2 -n -r | head -15
-          echo "### postgres (ultimas linhas)"; timeout 30 sudo docker logs --tail 25 postgres 2>&1 </dev/null | cut -c1-250
-          echo "### chatwoot-worker (ultimas linhas)"; timeout 30 sudo docker logs --tail 15 chatwoot-worker 2>&1 </dev/null | cut -c1-250
-          echo "### hermes-relay (unhealthy)"; timeout 30 sudo docker logs --tail 8 hermes-relay 2>&1 </dev/null | cut -c1-250
-          echo "### disco"; df -h / | tail -1; timeout 20 sudo docker system df </dev/null
+          echo "### host"; date; uptime
+          echo "### postgres: dono da chave TLS e estado"
+          ls -ln /opt/platform/configs/postgres-tls/ 2>&1 | head
+          timeout 60 sudo docker ps -a --filter name=^postgres$ --format '{{.Names}} {{.Status}}' </dev/null
+          echo "### postgres: log (erro)"
+          timeout 60 sudo docker logs --tail 12 postgres 2>&1 </dev/null | cut -c1-260
+          echo "### synapse: log (erro)"
+          timeout 60 sudo docker logs --tail 12 synapse 2>&1 </dev/null | cut -c1-260
+          echo "### chatwoot-worker: primeira linha de erro"
+          timeout 60 sudo docker logs --tail 400 chatwoot-worker 2>&1 </dev/null | grep -v -E '^/(usr|gems)|^\s+from ' | tail -12 | cut -c1-260
+          echo "### compose projects"
+          timeout 40 sudo docker inspect -f '{{.Name}} {{index .Config.Labels "com.docker.compose.project"}} {{index .Config.Labels "com.docker.compose.project.working_dir"}}' postgres synapse chatwoot-worker </dev/null 2>&1 | cut -c1-200
           EOS
