@@ -1,0 +1,38 @@
+name: VPS heal now
+
+# Roda UMA vez o rt-compose-healer (compose up -d dos servicos parados) e mostra por que ele nao agiu sozinho.
+# So inicia containers; nao apaga volumes.
+on:
+  workflow_dispatch:
+
+jobs:
+  heal:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Curar
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=40 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          echo "### antes"; date; uptime
+          echo "### healer: timer/log"
+          ls -l /opt/platform/.maintenance 2>&1 | head -2
+          timeout 20 systemctl is-active rt-compose-healer.timer 2>&1
+          timeout 20 sudo journalctl -u rt-compose-healer.service --no-pager -n 12 2>&1 </dev/null | cut -c1-260
+          echo "### rodando o healer agora"
+          START=$(date +%s)
+          sudo timeout 900 /usr/local/sbin/rt-compose-healer 2>&1 </dev/null | grep -v 'variable is not set' | tail -25 | cut -c1-300
+          echo "duracao: $(( $(date +%s) - START ))s"
+          echo "### depois"
+          timeout 60 sudo docker ps --filter name=traefik --filter name=^postgres$ --filter name=pgbouncer --filter name=airflow-airflow-webserver --filter name=infisical --filter name=rag-chat-backend --format '{{.Names}}\t{{.Status}}' </dev/null
+          timeout 60 sudo docker ps -q </dev/null | wc -l | sed 's/^/rodando: /'
+          ss -ltn 2>/dev/null | grep -E ':(80|443|5432|5433) ' | head -5
+          uptime
+          EOS
