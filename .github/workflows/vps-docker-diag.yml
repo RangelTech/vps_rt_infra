@@ -21,14 +21,17 @@ jobs:
         run: |
           ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=12 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
           echo "### host"; date; uptime
-          echo "### contagem de containers"
-          timeout 60 sudo docker ps -q </dev/null | wc -l | sed 's/^/rodando: /'
-          timeout 60 sudo docker ps -aq </dev/null | wc -l | sed 's/^/total: /'
-          echo "### traefik / postgres / airflow / synapse"
-          timeout 60 sudo docker ps -a --filter name=traefik --filter name=^postgres$ --filter name=airflow --filter name=synapse --filter name=pgbouncer --format '{{.Names}}	{{.Status}}' </dev/null
-          echo "### traefik log (ultimas)"
-          timeout 40 sudo docker logs --tail 15 traefik 2>&1 </dev/null | cut -c1-260
-          echo "### containers parados que deveriam rodar (restart policy)"
-          timeout 60 sudo docker ps -a --filter status=exited --filter status=created --format '{{.Names}}	{{.Status}}' </dev/null | grep -v -E 'weeks|public-demo' | head -20
-          echo "### portas"; ss -ltn 2>/dev/null | grep -E ':(80|443|5432|5433) ' | head
+          echo "### docker versao / API minima"
+          timeout 40 sudo docker version --format 'server={{.Server.Version}} api={{.Server.APIVersion}} min={{.Server.MinAPIVersion}}' </dev/null 2>&1
+          echo "### traefik: imagem e estado"
+          timeout 40 sudo docker inspect -f '{{.Config.Image}} {{.State.Status}} started={{.State.StartedAt}}' traefik </dev/null 2>&1
+          echo "### traefik: log (erros do provider docker)"
+          timeout 40 sudo docker logs --tail 40 traefik 2>&1 </dev/null | grep -i -E 'docker|provider|api version|too old|error|ERR' | tail -15 | cut -c1-300
+          echo "### traefik: rotas (API interna)"
+          timeout 30 sudo docker exec traefik wget -q -O - http://localhost:8080/api/http/routers 2>&1 </dev/null | head -c 400
+          echo
+          echo "### estado dos principais"
+          timeout 60 sudo docker ps -a --filter name=traefik --filter name=pgbouncer --filter name=infisical --filter name=rag-chat --filter name=pncp-dashboard --filter name=mautrix --filter name=airflow-airflow-webserver --format '{{.Names}}	{{.Status}}' </dev/null
+          echo "### daemon.json"; sudo cat /etc/docker/daemon.json 2>&1 | head -20
+          echo "### systemd docker override"; ls /etc/systemd/system/docker.service.d/ 2>&1
           EOS
