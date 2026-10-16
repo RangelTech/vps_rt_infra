@@ -1,0 +1,37 @@
+name: VPS diag
+
+# Somente leitura, com timeout em cada comando: o que esta pesando no host (CPU, memoria, OOM, crash loops).
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Diagnostico profundo
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          echo "### host"; date; uptime; echo "cpus=$(nproc)"; free -m
+          echo "### vmstat (3 amostras)"; timeout 15 vmstat 1 3
+          echo "### OOM no kernel (12h)"; timeout 20 sudo journalctl -k --since "-12 hours" --no-pager 2>/dev/null </dev/null | grep -i -E 'out of memory|oom-kill|killed process|oom_reaper' | tail -10
+          echo "(fim OOM)"
+          echo "### top por CPU"; timeout 15 ps -eo pid,ppid,stat,pcpu,pmem,rss,etime,args --sort=-pcpu | head -22 | cut -c1-200
+          echo "### top por memoria"; timeout 15 ps -eo pid,ppid,pmem,rss,etime,args --sort=-rss | head -12 | cut -c1-200
+          echo "### zumbis por pai"; ps -eo ppid,stat | awk '$2 ~ /Z/ {c[$1]++} END {for (p in c) print c[p], p}' | sort -rn | head -5
+          for p in $(ps -eo ppid,stat | awk '$2 ~ /Z/ {c[$1]++} END {for (p in c) print p}' | head -3); do ps -o pid,etime,args -p "$p" | tail -1 | cut -c1-160; done
+          echo "### containers: reinicios, OOM, exit code"
+          timeout 40 sudo docker inspect -f '{{.Name}} restarts={{.RestartCount}} oomkilled={{.State.OOMKilled}} exit={{.State.ExitCode}} status={{.State.Status}} started={{.State.StartedAt}}' $(sudo docker ps -aq </dev/null) </dev/null 2>&1 | sort -t= -k2 -n -r | head -15
+          echo "### postgres (ultimas linhas)"; timeout 30 sudo docker logs --tail 25 postgres 2>&1 </dev/null | cut -c1-250
+          echo "### chatwoot-worker (ultimas linhas)"; timeout 30 sudo docker logs --tail 15 chatwoot-worker 2>&1 </dev/null | cut -c1-250
+          echo "### hermes-relay (unhealthy)"; timeout 30 sudo docker logs --tail 8 hermes-relay 2>&1 </dev/null | cut -c1-250
+          echo "### disco"; df -h / | tail -1; timeout 20 sudo docker system df </dev/null
+          EOS
