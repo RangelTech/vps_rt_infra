@@ -1,0 +1,39 @@
+name: Airflow diag
+
+# Somente leitura, com timeout em cada comando: saude do host e log das ultimas runs da teste_senior.
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Diagnostico
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          echo "### host"; date; uptime; free -m; df -h / | tail -1
+          echo "### top (cpu)"; timeout 20 top -bn1 | head -15
+          echo "### containers"; timeout 40 sudo docker ps --format '{{.Names}}\t{{.Status}}' </dev/null
+          echo "### stats"; timeout 40 sudo docker stats --no-stream --format '{{.Name}}\tcpu={{.CPUPerc}}\tmem={{.MemUsage}}' </dev/null | head -30
+          SCHED=$(timeout 20 sudo docker ps --format '{{.Names}}' </dev/null | grep -i airflow | grep -i scheduler | head -1)
+          echo "### scheduler: $SCHED"
+          echo "### logs de task (teste_senior), mais recentes"
+          timeout 60 sudo docker exec "$SCHED" sh -c 'ls -t /opt/airflow/logs/dag_id=teste_senior/run_id=*/task_id=*/attempt=*.log 2>/dev/null | head -6' </dev/null
+          for f in $(timeout 60 sudo docker exec "$SCHED" sh -c 'ls -t /opt/airflow/logs/dag_id=teste_senior/run_id=*/task_id=*/attempt=*.log 2>/dev/null | head -4' </dev/null); do
+            echo "## $f"
+            timeout 60 sudo docker exec "$SCHED" sh -c "tail -n 45 '$f'" </dev/null | cut -c1-400
+          done
+          echo "### scheduler log (teste_senior, ultimas 12h)"
+          timeout 60 sudo docker logs --since 12h "$SCHED" 2>&1 </dev/null | grep -i -E 'teste_senior|Error|Traceback|timeout|killed|OOM' | tail -40 | cut -c1-300
+          echo "### OOM / kernel"
+          timeout 20 sudo dmesg -T 2>/dev/null </dev/null | grep -i -E 'out of memory|oom|killed process' | tail -5
+          EOS
