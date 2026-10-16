@@ -1,0 +1,64 @@
+name: VPS fix env
+
+# Repoe no /opt/platform/compose/.env as variaveis que o compose usa mas o .env nao tem (SYNAPSE_VERSION,
+# MAUTRIX_META_VERSION, MATRIX_POSTGRES_PASSWORD), lendo os valores dos containers JA em execucao (os que funcionam
+# hoje). Nenhum valor e impresso. Backup do .env, simulacao (--dry-run) e so entao `up -d` se nada for recriado/removido.
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/vps_rt_infra_ed25519
+          chmod 600 ~/.ssh/vps_rt_infra_ed25519
+          ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Corrigir .env
+        run: |
+          ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=40 -o ConnectionAttempts=3 -i ~/.ssh/vps_rt_infra_ed25519 "${{ secrets.VPS_DEPLOY_USER }}@${{ secrets.VPS_HOST }}" 'bash -s' <<'EOS'
+          set -u
+          cd /opt/platform/compose || exit 1
+          D="sudo timeout 60 docker"
+          echo "### antes"; date; uptime
+          echo "### variaveis ausentes segundo o compose"
+          timeout 90 sudo docker compose config -q 2>&1 </dev/null | grep -o -E '"[A-Z0-9_]+" variable is not set' | sort -u
+          sudo cp -a .env ".env.bak-$(date +%Y%m%d-%H%M)" && echo "backup do .env feito"
+          img_tag() { $D inspect -f '{{.Config.Image}}' "$1" </dev/null 2>/dev/null | sed 's/.*://'; }
+          add_var() { # nome valor
+            if sudo grep -q "^$1=" .env; then echo "$1: ja existe, mantido"; return; fi
+            if [ -z "$2" ]; then echo "$1: NAO consegui obter o valor"; return; fi
+            case "$2" in *\'*) echo "$1: valor com aspas simples, nao gravado"; return;; esac
+            V=$(printf '%s' "$2" | sed 's/\$/$$/g')
+            printf "%s='%s'\n" "$1" "$V" | sudo tee -a .env >/dev/null && echo "$1: gravado (len=${#2})"
+          }
+          SYN=$(img_tag synapse)
+          FB=$(img_tag mautrix-meta-facebook)
+          IG=$(img_tag mautrix-meta-instagram)
+          echo "tags observadas: synapse=$SYN facebook=$FB instagram=$IG"
+          if [ "$IG" != "ig-$FB" ]; then echo "AVISO: tag do instagram ($IG) nao e ig-$FB"; fi
+          MPW=$($D inspect -f '{{range .Config.Env}}{{println .}}{{end}}' matrix-postgres </dev/null 2>/dev/null | sed -n 's/^POSTGRES_PASSWORD=//p' | head -1)
+          add_var SYNAPSE_VERSION "$SYN"
+          add_var MAUTRIX_META_VERSION "$FB"
+          add_var MATRIX_POSTGRES_PASSWORD "$MPW"
+          echo "### depois: variaveis ainda ausentes"
+          timeout 90 sudo docker compose config -q 2>&1 </dev/null | grep -o -E '"[A-Z0-9_]+" variable is not set' | sort -u
+          echo "(fim da lista)"
+          echo "### simulacao do up -d (--dry-run)"
+          SIM=$(timeout 300 sudo docker compose up -d --remove-orphans --dry-run 2>&1 </dev/null | grep -v 'variable is not set')
+          echo "$SIM" | grep -E -i 'recreat|remov|creat|start' | sed 's/^ *//' | sort | uniq -c | sort -rn | head -30 | cut -c1-160
+          if echo "$SIM" | grep -q -i -E 'recreate|remov'; then
+            echo "ABORTADO: a simulacao recriaria/removeria containers; so o .env foi corrigido"; exit 0
+          fi
+          echo "### aplicando up -d (so cria/inicia o que esta parado)"
+          timeout 900 sudo docker compose up -d --remove-orphans 2>&1 </dev/null | grep -v 'variable is not set' | tail -20 | cut -c1-200
+          echo "### depois"
+          timeout 60 sudo docker ps -q </dev/null | wc -l | sed 's/^/rodando: /'
+          timeout 60 sudo docker ps -a --filter status=exited --filter status=created --filter status=restarting --format '{{.Names}}\t{{.Status}}' </dev/null | grep -v -E 'weeks|months|public-demo' | head -15
+          uptime
+          EOS
