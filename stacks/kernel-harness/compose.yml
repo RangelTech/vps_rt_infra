@@ -11,6 +11,8 @@ services:
     security_opt: ["no-new-privileges:true"]
     mem_limit: 512m
     cpus: 0.5
+    environment:
+      RT_ENV: prod
     networks: [harness]
     labels:
       - rt.service=kernel-harness
