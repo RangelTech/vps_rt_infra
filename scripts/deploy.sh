@@ -38,9 +38,10 @@ if [ ! -s "$FILE" ] || ! echo "$SHA  $FILE" | sha256sum -c - >/dev/null 2>&1; th
 fi
 
 # 2) load + checagem do image id + tag imutavel local
+GOT_ID="sha256:$(gunzip -c "$FILE" | tar -xO manifest.json | python3 -c "import sys,json,re;print(re.sub(r'^.*/','',json.load(sys.stdin)[0]['Config']).replace('.json',''))")"
+[ "$GOT_ID" = "$IMG_ID" ] || { echo "image id (digest da config) divergente: esperado $IMG_ID, obtido $GOT_ID" >&2; exit 3; }
 LOADED="$(gunzip -c "$FILE" | docker load | sed -n 's/^Loaded image: //p' | head -n1)"
-GOT_ID="$(docker image inspect --format '{{.Id}}' "$LOADED")"
-[ "$GOT_ID" = "$IMG_ID" ] || { echo "image id divergente: esperado $IMG_ID, obtido $GOT_ID" >&2; exit 3; }
+[ -n "$LOADED" ] || { echo "docker load nao informou a imagem" >&2; exit 3; }
 docker tag "$LOADED" "$NEW_TAG"
 
 up() { # $1 = tag
