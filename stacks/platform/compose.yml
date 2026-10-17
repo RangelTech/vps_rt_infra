@@ -188,35 +188,6 @@ services:
       - traefik.http.routers.uptime.middlewares=security-headers@file
       - traefik.http.services.uptime.loadbalancer.server.port=3001
 
-  infisical-postgres:
-    image: postgres:${POSTGRES_VERSION}
-    container_name: infisical-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: infisical
-      POSTGRES_USER: infisical
-      POSTGRES_PASSWORD: ${INFISICAL_DB_PASSWORD}
-      TZ: ${TIMEZONE}
-    volumes:
-      - ../data/infisical-postgres:/var/lib/postgresql/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  infisical-redis:
-    image: redis:${REDIS_VERSION}
-    container_name: infisical-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${INFISICAL_REDIS_PASSWORD}
-    volumes:
-      - ../data/infisical-redis:/data
-    networks:
-      - internal
-
   infisical:
     image: infisical/infisical:${INFISICAL_VERSION}
     container_name: infisical
@@ -364,86 +335,6 @@ services:
   ##      (also add the subdomain to terraform/dns.tf in that case)
   ## ---------------------------------------------------------------------
 
-  site-portfolio:
-    # Served at lucas.<root domain>; the apex redirects there (2026-10-02).
-    # Static export of the public repo lucas-rangel-portfolio (Next.js
-    # `output: "export"`). Content in ../sites/portfolio/public is rsynced
-    # by .github/workflows/deploy-portfolio.yml from a pinned release tag;
-    # it is never committed to this repository.
-    image: nginx:alpine
-    container_name: site-portfolio
-    restart: unless-stopped
-    volumes:
-      - ../sites/portfolio/public:/usr/share/nginx/html:ro
-    networks:
-      - public
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=public
-      - traefik.http.routers.site-portfolio.rule=Host(`lucas.${ROOT_DOMAIN}`)
-      - traefik.http.routers.site-portfolio.entrypoints=websecure
-      - traefik.http.routers.site-portfolio.tls.certresolver=letsencrypt
-      - traefik.http.routers.site-portfolio.middlewares=security-headers@file
-      - traefik.http.services.site-portfolio.loadbalancer.server.port=80
-      # The apex and www keep old links working until the company site takes
-      # the apex: temporary redirect to the same path on lucas.
-      - traefik.http.routers.site-portfolio-apex.rule=Host(`${ROOT_DOMAIN}`) || Host(`www.${ROOT_DOMAIN}`)
-      - traefik.http.routers.site-portfolio-apex.entrypoints=websecure
-      - traefik.http.routers.site-portfolio-apex.tls.certresolver=letsencrypt
-      - traefik.http.routers.site-portfolio-apex.middlewares=portfolio-moved
-      - traefik.http.routers.site-portfolio-apex.service=site-portfolio
-      - traefik.http.middlewares.portfolio-moved.redirectregex.regex=^https?://[^/]+/(.*)
-      - traefik.http.middlewares.portfolio-moved.redirectregex.replacement=https://lucas.${ROOT_DOMAIN}/$${1}
-      - traefik.http.middlewares.portfolio-moved.redirectregex.permanent=false
-
-  # site-example:                                          # mode A example
-  #   image: nginx:alpine
-  #   container_name: site-example
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ../sites/example/public:/usr/share/nginx/html:ro
-  #   networks:
-  #     - public
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.docker.network=public
-  #     - traefik.http.routers.site-example.rule=Host(`example-client.com`) || Host(`www.example-client.com`)
-  #     - traefik.http.routers.site-example.entrypoints=websecure
-  #     - traefik.http.routers.site-example.tls.certresolver=letsencrypt
-  #     - traefik.http.routers.site-example.middlewares=security-headers@file
-  #     - traefik.http.services.site-example.loadbalancer.server.port=80
-
-  # site-example2:                                          # mode B example
-  #   image: nginx:alpine
-  #   container_name: site-example2
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ../sites/example2/public:/usr/share/nginx/html:ro
-  #   networks:
-  #     - public
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.docker.network=public
-  #     - traefik.http.routers.site-example2.rule=Host(`example2.${ROOT_DOMAIN}`)
-  #     - traefik.http.routers.site-example2.entrypoints=websecure
-  #     - traefik.http.routers.site-example2.tls.certresolver=letsencrypt
-  #     - traefik.http.routers.site-example2.middlewares=security-headers@file
-  #     - traefik.http.services.site-example2.loadbalancer.server.port=80
-
-  ## ---------------------------------------------------------------------
-  ## Hermes Relay (SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md, Fase B)
-  ## Slice 1 (29/09/2026): conexao WSS persistente autenticada por
-  ## dispositivo (apps/hermes-relay/main.py), rodando aqui e nao no Cloud
-  ## Run porque a spec exige infra que segure WebSocket de longa duracao
-  ## (secao 12). PENDENTE antes de expor de verdade: registro DNS
-  ## `hermes-relay.${ROOT_DOMAIN}` (terraform/dns.tf ja tem o registro;
-  ## falta aplicar com a HOSTINGER_API_KEY, que nao estava disponivel na
-  ## maquina que criou este servico) -- sem DNS, o router Traefik abaixo
-  ## fica inerte (nao resolve, nao emite certificado, nao recebe trafego).
-  ## Ainda nao despacha comandos nem publica eventos pro backend -- so
-  ## prova o transporte + autenticacao contra hermes_device_credentials.
-  ## ---------------------------------------------------------------------
-
 networks:
   internal:
     name: internal
@@ -453,4 +344,5 @@ networks:
     name: public
     driver: bridge
   dbnet:
+    external: true
     name: dbnet

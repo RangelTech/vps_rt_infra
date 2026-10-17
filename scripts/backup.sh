@@ -15,7 +15,9 @@ SEC="$BASE/secrets"
 OUT="$BASE/data/backups"
 TAG="${BACKUP_TAG:-daily}"
 MIN_DUMP_BYTES="${MIN_DUMP_BYTES:-2000}"
-PG_INCLUDE='^(postgres|infisical-postgres|matrix-postgres|evolution-pg-.*|airflow-airflow-db-1)$'
+PG_INCLUDE='^(postgres|matrix-postgres|evolution-pg-.*)$'
+# bancos grandes e reconstruiveis a partir da fonte: nao entram no dump logico diario (pncp = 15 GB, embeddings/OBTs do PNCP e SIOPE)
+SKIP_DBS="${BACKUP_SKIP_DBS:-pncp}"
 
 # guarda de host: so roda na VPS Contabo da Rangel Tech (nunca em outra maquina)
 [ "$(hostname)" = "vmi3468840" ] || { echo "host inesperado: $(hostname) - abortando" >&2; exit 2; }
@@ -35,6 +37,7 @@ for c in $(docker ps --format '{{.Names}}' | grep -E "$PG_INCLUDE" || true); do
   dbs="$(docker exec "$c" psql -U "$user" -d postgres -Atc "select datname from pg_database where not datistemplate and datname<>'postgres'" 2>/dev/null || true)"
   if [ -z "$dbs" ]; then echo "AVISO: $c sem bancos listados"; fail=1; continue; fi
   for db in $dbs; do
+    case " $SKIP_DBS " in *" $db "*) echo "skip $c/$db (BACKUP_SKIP_DBS)"; continue;; esac
     f="$STAGE/pg/$c.$db.dump"
     if docker exec "$c" pg_dump -U "$user" -Fc "$db" > "$f" 2>"$f.err"; then
       sz="$(stat -c %s "$f")"
