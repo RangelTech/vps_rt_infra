@@ -9,7 +9,6 @@ locals {
     "bridge|A"       = { name = "bridge", type = "A", ttl = 300, value = var.vps_ip }
     "chat|A"         = { name = "chat", type = "A", ttl = 300, value = var.vps_ip }
     "demo|A"         = { name = "demo", type = "A", ttl = 300, value = var.vps_ip }
-    "hermes-relay|A" = { name = "hermes-relay", type = "A", ttl = 300, value = var.vps_ip }
     "ia|A"           = { name = "ia", type = "A", ttl = 300, value = var.vps_ip }
     "infisical|A"    = { name = "infisical", type = "A", ttl = 300, value = var.vps_ip }
     "lucas|A"        = { name = "lucas", type = "A", ttl = 300, value = var.vps_ip }
