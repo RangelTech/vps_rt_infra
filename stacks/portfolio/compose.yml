@@ -15,7 +15,7 @@ x-hardened: &hardened
 services:
   web:
     <<: *hardened
-    image: ${PORTFOLIO_WEB_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/portfolio-web.lock}
+    image: ${PORTFOLIO_WEB_IMAGE:-invalid.local/nao-implantado:none}
     container_name: portfolio-web
     cap_add: [CHOWN, SETGID, SETUID, NET_BIND_SERVICE]
     read_only: true
@@ -62,7 +62,7 @@ services:
 
   api:
     <<: *hardened
-    image: ${PORTFOLIO_API_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/portfolio-api.lock}
+    image: ${PORTFOLIO_API_IMAGE:-invalid.local/nao-implantado:none}
     container_name: portfolio-api
     env_file: /opt/platform/secrets/portfolio-api.env
     read_only: true

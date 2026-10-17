@@ -3,7 +3,7 @@
 # Segredos: /opt/platform/secrets/chatwoot-rails.env e chatwoot-bridge.env (0600). Evolution/Matrix NAO sao tocados por esta stack.
 name: chatwoot
 x-rails: &rails
-  image: ${CHATWOOT_RAILS_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/chatwoot-rails.lock}
+  image: ${CHATWOOT_RAILS_IMAGE:-invalid.local/nao-implantado:none}
   env_file: /opt/platform/secrets/chatwoot-rails.env
   restart: unless-stopped
   cap_drop: [ALL]
@@ -64,7 +64,7 @@ services:
       - traefik.enable=false
 
   bridge:
-    image: ${CHATWOOT_BRIDGE_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/chatwoot-bridge.lock}
+    image: ${CHATWOOT_BRIDGE_IMAGE:-invalid.local/nao-implantado:none}
     container_name: chatwoot-bridge
     env_file: /opt/platform/secrets/chatwoot-bridge.env
     restart: unless-stopped
