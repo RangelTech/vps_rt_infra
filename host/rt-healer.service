@@ -1,0 +1,10 @@
+[Unit]
+Description=rt-healer: recoloca containers caidos por stack (sem down, sem remove-orphans)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/platform/scripts/rt-healer.sh
+Nice=10
+SyslogIdentifier=rt-healer
