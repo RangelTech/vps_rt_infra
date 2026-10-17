@@ -7,6 +7,59 @@
       "stack": "kernel-harness",
       "compose_service": "harness",
       "layer": "A"
+    },
+    {
+      "service": "agent-platform-backend",
+      "repo": "RangelTech/agent-platform",
+      "stack": "agent-platform",
+      "compose_service": "backend",
+      "layer": "B"
+    },
+    {
+      "service": "kernel-llm",
+      "repo": "RangelTech/kernel-llm",
+      "stack": "kernel-llm",
+      "compose_service": "kernel",
+      "layer": "B"
+    },
+    {
+      "service": "litellm",
+      "repo": "RangelTech/litellm-router",
+      "stack": "litellm",
+      "compose_service": "litellm",
+      "layer": "B"
+    },
+    {
+      "service": "chatwoot-rails",
+      "repo": "RangelTech/chatwoot-rt",
+      "stack": "chatwoot",
+      "compose_service": "chatwoot-web,chatwoot-worker",
+      "layer": "B",
+      "manifest_asset": "release-manifest.chatwoot-rails.json"
+    },
+    {
+      "service": "chatwoot-bridge",
+      "repo": "RangelTech/chatwoot-rt",
+      "stack": "chatwoot",
+      "compose_service": "bridge",
+      "layer": "B",
+      "manifest_asset": "release-manifest.chatwoot-bridge.json"
+    },
+    {
+      "service": "portfolio-web",
+      "repo": "LucasRangelSSouza/lucas-rangel-portfolio",
+      "stack": "portfolio",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.portfolio-web.json"
+    },
+    {
+      "service": "portfolio-api",
+      "repo": "LucasRangelSSouza/lucas-rangel-portfolio",
+      "stack": "portfolio",
+      "compose_service": "api",
+      "layer": "B",
+      "manifest_asset": "release-manifest.portfolio-api.json"
     }
   ]
 }

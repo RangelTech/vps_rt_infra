@@ -30,8 +30,8 @@ awk -v n="$now" -v w="$WINDOW" '$1 > n - w' "$ATT" > "$ATT.new" && mv "$ATT.new"
 attempts_for() { awk -v k="$1" '$2 == k' "$ATT" | wc -l; }
 
 # servicos com restart != no/vazio do compose (um por linha)
-restartable_services() { # project file
-  docker compose -p "$1" -f "$2" config --format json 2>/dev/null | python3 -c '
+restartable_services() { # project file [envfile]
+  docker compose -p "$1" -f "$2" ${3:+--env-file "$3"} config --format json 2>/dev/null | python3 -c '
 import json, sys
 try:
     cfg = json.load(sys.stdin)
@@ -44,8 +44,8 @@ for name, svc in (cfg.get("services") or {}).items():
 '
 }
 
-heal_stack() { # project file
-  local project="$1" file="$2" svc cname state key n
+heal_stack() { # project file [envfile]
+  local project="$1" file="$2" envf="${3:-}" svc cname state key n
   [[ "$project" =~ $SKIP_RE ]] && { log "stack $project ignorada"; return; }
   local targets=()
   while IFS= read -r svc; do
@@ -68,10 +68,10 @@ heal_stack() { # project file
     echo "$now $key" >> "$ATT"
     targets+=("$svc")
     log "$key ($cname) fora do ar, tentativa $((n + 1))/$MAX_ATTEMPTS"
-  done < <(restartable_services "$project" "$file")
+  done < <(restartable_services "$project" "$file" "$envf")
 
   for svc in "${targets[@]}"; do
-    if docker compose -p "$project" -f "$file" up -d --no-build --pull never --no-deps "$svc"; then
+    if docker compose -p "$project" -f "$file" ${envf:+--env-file "$envf"} up -d --no-build --pull never --no-deps "$svc"; then
       log "$project/$svc: up -d ok"
     else
       log "$project/$svc: up -d FALHOU" >&2
@@ -95,5 +95,16 @@ for d in "$BASE"/compose/*/; do
   name="$(basename "$d")"
   f="$(find_compose_file "${d%/}")" || continue
   heal_stack "$name" "$f"
+done
+
+# stacks versionadas (/opt/platform/stacks/<nome>/compose.yml) com .release.env escrito pelo deploy.sh
+for d in "$BASE"/stacks/*/; do
+  [ -d "$d" ] || continue
+  name="$(basename "$d")"
+  f="${d}compose.yml"
+  [ -f "$f" ] || continue
+  e="${d}.release.env"
+  [ -f "$e" ] || e=""
+  heal_stack "$name" "$f" "$e"
 done
 exit 0
