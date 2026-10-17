@@ -46,4 +46,4 @@ jobs:
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" \
-            "chmod +x /opt/platform/scripts/deploy.sh && /opt/platform/scripts/deploy.sh '${{ inputs.service }}'"
+            "sudo -n chmod +x /opt/platform/scripts/deploy.sh && sudo -n /opt/platform/scripts/deploy.sh '${{ inputs.service }}'"
