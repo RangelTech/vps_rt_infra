@@ -1,0 +1,16 @@
+service=litellm
+stack=litellm
+compose_service=litellm
+layer=B
+repo=RangelTech/litellm-router
+version=v0.1.0
+commit=341acca
+artifact_url=https://github.com/RangelTech/litellm-router/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=3a6bdee76e6e60eae5f9136b21c61c34b02fdd33ee1c82b0379c71adf8815a4b
+image_id=sha256:f6d594ded64bb7d7b50c596fe97270036d5c1c66585d0998cb92b82f84406226
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=240
+env_required=DATABASE_URL,REDIS_URL,LITELLM_MASTER_KEY,LITELLM_SALT_KEY,STORE_MODEL_IN_DB
+previous_version=
+previous_image_id=
