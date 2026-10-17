@@ -7,4 +7,5 @@ Requires=docker.service
 Type=oneshot
 ExecStart=/opt/platform/scripts/rt-healer.sh
 Nice=10
+Environment=RT_MAIN_PROJECT=compose
 SyslogIdentifier=rt-healer
