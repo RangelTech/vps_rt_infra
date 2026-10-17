@@ -58,7 +58,7 @@ jobs:
       - name: Smoke test
         run: |
           for attempt in $(seq 1 10); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "https://rangeltech.net/")
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://lucas.rangeltech.net/")
             [ "$code" = "200" ] && exit 0
             sleep 3
           done
