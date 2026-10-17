@@ -1,0 +1,56 @@
+name: terraform-dns
+on:
+  pull_request:
+    paths: ["terraform/dns/**", "scripts/tfstate-sync.sh", ".github/workflows/terraform.yml"]
+  push:
+    branches: [main]
+    paths: ["terraform/dns/**", "scripts/tfstate-sync.sh"]
+  workflow_dispatch:
+concurrency:
+  group: terraform-dns
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    environment: production
+    defaults: { run: { working-directory: terraform/dns } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "1.9.8", terraform_wrapper: false }
+      - name: rclone
+        run: curl -fsSL https://rclone.org/install.sh | sudo bash
+      - name: plan (somente leitura; sem lock de estado)
+        env:
+          TF_VAR_hostinger_api_token: ${{ secrets.HOSTINGER_API_KEY }}
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+        run: |
+          export RCLONE_CONFIG="$RUNNER_TEMP/rclone.conf"; echo "$RCLONE_CONFIG_B64" | base64 -d > "$RCLONE_CONFIG"
+          rclone copyto gdrive-crypt:dns/terraform.tfstate terraform.tfstate || true
+          terraform init -input=false
+          terraform fmt -check
+          terraform plan -input=false -parallelism=2 -no-color
+  apply:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    defaults: { run: { working-directory: terraform/dns } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "1.9.8", terraform_wrapper: false }
+      - name: rclone
+        run: curl -fsSL https://rclone.org/install.sh | sudo bash
+      - name: apply (estado criptografado no Drive, com trava)
+        env:
+          TF_VAR_hostinger_api_token: ${{ secrets.HOSTINGER_API_KEY }}
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+        run: |
+          export RCLONE_CONFIG="$RUNNER_TEMP/rclone.conf"; echo "$RCLONE_CONFIG_B64" | base64 -d > "$RCLONE_CONFIG"
+          bash ../../scripts/tfstate-sync.sh pull .
+          trap 'bash ../../scripts/tfstate-sync.sh push . || true' EXIT
+          terraform init -input=false
+          terraform apply -input=false -auto-approve -parallelism=2 -no-color

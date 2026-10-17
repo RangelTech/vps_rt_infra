@@ -38,7 +38,9 @@ for c in $(docker ps --format '{{.Names}}' | grep -E "$PG_INCLUDE" || true); do
     f="$STAGE/pg/$c.$db.dump"
     if docker exec "$c" pg_dump -U "$user" -Fc "$db" > "$f" 2>"$f.err"; then
       sz="$(stat -c %s "$f")"
-      if [ "$sz" -lt "$MIN_DUMP_BYTES" ]; then echo "FALHA: dump pequeno demais ($sz B): $c/$db"; fail=1; else echo "ok  $c/$db ${sz}B"; fi
+      nt="$(docker exec "$c" psql -U "$user" -d "$db" -Atc "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema')" 2>/dev/null || echo 1)"
+      if [ "$nt" = "0" ]; then echo "ok  $c/$db ${sz}B (banco vazio)"
+      elif [ "$sz" -lt "$MIN_DUMP_BYTES" ]; then echo "FALHA: dump pequeno demais ($sz B): $c/$db"; fail=1; else echo "ok  $c/$db ${sz}B"; fi
       rm -f "$f.err"
     else
       echo "FALHA: pg_dump $c/$db: $(head -c 200 "$f.err")"; fail=1
