@@ -1,0 +1,49 @@
+name: Deploy
+# Unico caminho de deploy. Baixa/valida o artefato NA VPS (scripts/deploy.sh), healthcheck real, rollback automatico.
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Servico (precisa ter releases/<servico>.lock)"
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: deploy-${{ inputs.service }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar entrada
+        run: |
+          test -f "releases/${{ inputs.service }}.lock"
+          echo "${{ inputs.service }}" | grep -Eq '^[a-z0-9-]+$'
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Enviar somente os arquivos necessarios (sem --delete)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          STACK="$(grep '^stack=' releases/${{ inputs.service }}.lock | cut -d= -f2)"
+          test -d "stacks/$STACK"
+          $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "mkdir -p /opt/platform/releases /opt/platform/scripts /opt/platform/stacks/$STACK"
+          rsync -az -e "$SSH" "releases/${{ inputs.service }}.lock" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/releases/"
+          rsync -az -e "$SSH" scripts/deploy.sh scripts/lib.sh "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/scripts/"
+          rsync -az -e "$SSH" "stacks/$STACK/compose.yml" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/stacks/$STACK/compose.yml"
+      - name: Deploy (falha o job se o healthcheck falhar)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" \
+            "chmod +x /opt/platform/scripts/deploy.sh && /opt/platform/scripts/deploy.sh '${{ inputs.service }}'"

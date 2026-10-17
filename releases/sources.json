@@ -1,0 +1,12 @@
+{
+  "_doc": "Fontes permitidas de artefatos. O release-intake so aceita manifestos destes repos/servicos. Camada A = deploy automatico; B = manual.",
+  "sources": [
+    {
+      "service": "kernel-harness",
+      "repo": "RangelTech/kernel-harness",
+      "stack": "kernel-harness",
+      "compose_service": "harness",
+      "layer": "A"
+    }
+  ]
+}

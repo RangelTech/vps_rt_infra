@@ -40,3 +40,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Sessao do Playwright do Airflow pessoal (cookies vivos): nunca versionar
+airflow/
+**/estado_senior.json

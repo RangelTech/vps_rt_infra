@@ -1,0 +1,13 @@
+service=kernel-harness
+stack=kernel-harness
+compose_service=harness
+layer=A
+repo=RangelTech/kernel-harness
+version=v0.1.1
+commit=d821d26
+artifact_url=https://github.com/RangelTech/kernel-harness/releases/download/v0.1.1/image.tar.gz
+artifact_sha256=759deae96bad38357dcd3d01631a2902d0f938f60b0383c24193bc9675a06abc
+image_id=sha256:697c86ecd881b5d40229ed6262f6a483a06ef8d2d778ad0071633a4ecbfed770
+manifest_version=1
+previous_version=
+previous_image_id=

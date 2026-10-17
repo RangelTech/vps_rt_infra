@@ -1,0 +1,39 @@
+name: Release intake
+# Le releases das fontes permitidas (releases/sources.json), valida o manifesto e grava releases/<servico>.lock.
+# Camada A: dispara o deploy automaticamente. Nenhum repo de produto conhece a VPS ou tem credenciais.
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: release-intake
+  cancel-in-progress: false
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar e atualizar locks
+        id: intake
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/release_intake.py
+      - name: Commit dos locks
+        if: steps.intake.outputs.updated != ''
+        run: |
+          git config user.name "rt-release-intake"
+          git config user.email "release-intake@rangeltech.net"
+          git add releases/*.lock
+          git commit -m "release-intake: ${{ steps.intake.outputs.updated }}"
+          git push
+      - name: Disparar deploy (Camada A)
+        if: steps.intake.outputs.updated != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for s in ${{ steps.intake.outputs.updated }}; do
+            gh workflow run deploy.yml -f service="$s"
+          done
