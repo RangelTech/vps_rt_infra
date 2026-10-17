@@ -1,0 +1,36 @@
+# Stack do agent-platform (backend FastAPI + SPA embutida, porta 8090). Camada B.
+# Imagem vem do artefato da release (scripts/deploy.sh); nunca build aqui. Segredos de runtime em /opt/platform/secrets/agent-platform-backend.env (0600).
+# Um unico escritor de migrations/bootstrap: nunca rode 2 replicas.
+name: agent-platform
+services:
+  backend:
+    image: ${AGENT_PLATFORM_BACKEND_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/agent-platform-backend.lock}
+    container_name: agent-platform-backend
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/agent-platform-backend.env
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    cpus: 1.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    networks: [public, internal, dbnet]
+    labels:
+      - rt.service=agent-platform-backend
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.agent-platform.loadbalancer.server.port=8090
+      - traefik.http.routers.agent-platform.rule=Host(`ia.rangeltech.net`)
+      - traefik.http.routers.agent-platform.entrypoints=websecure
+      - traefik.http.routers.agent-platform.tls.certresolver=letsencrypt
+      - traefik.http.routers.agent-platform.middlewares=security-headers@file
+      - traefik.http.routers.agent-platform.service=agent-platform
+networks:
+  public:
+    external: true
+  internal:
+    external: true
+  dbnet:
+    external: true

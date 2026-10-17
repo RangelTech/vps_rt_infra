@@ -1,0 +1,94 @@
+# Stack do Chatwoot RT (Rails web + Sidekiq worker + migrate one-shot, e a bridge FastAPI). Camada B.
+# Duas imagens: CHATWOOT_RAILS_IMAGE (web, worker, migrate) e CHATWOOT_BRIDGE_IMAGE (bridge).
+# Segredos: /opt/platform/secrets/chatwoot-rails.env e chatwoot-bridge.env (0600). Evolution/Matrix NAO sao tocados por esta stack.
+name: chatwoot
+x-rails: &rails
+  image: ${CHATWOOT_RAILS_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/chatwoot-rails.lock}
+  env_file: /opt/platform/secrets/chatwoot-rails.env
+  restart: unless-stopped
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+  networks: [public, internal, dbnet]
+
+services:
+  chatwoot-web:
+    <<: *rails
+    container_name: chatwoot-web
+    mem_limit: 2g
+    cpus: 2
+    labels:
+      - rt.service=chatwoot-rails
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.chatwoot-web.loadbalancer.server.port=3000
+      - traefik.http.routers.chatwoot-web.rule=Host(`chat.rangeltech.net`)
+      - traefik.http.routers.chatwoot-web.entrypoints=websecure
+      - traefik.http.routers.chatwoot-web.tls.certresolver=letsencrypt
+      - traefik.http.routers.chatwoot-web.middlewares=security-headers@file
+      - traefik.http.routers.chatwoot-web.service=chatwoot-web
+      # paginas legais ficam no front do agent-platform (ia.): redireciona
+      - traefik.http.routers.chatwoot-legal.rule=Host(`chat.rangeltech.net`) && (PathPrefix(`/politica-de-privacidade`) || PathPrefix(`/termos-de-uso`) || PathPrefix(`/exclusao-de-dados`))
+      - traefik.http.routers.chatwoot-legal.priority=150
+      - traefik.http.routers.chatwoot-legal.entrypoints=websecure
+      - traefik.http.routers.chatwoot-legal.tls.certresolver=letsencrypt
+      - traefik.http.routers.chatwoot-legal.middlewares=security-headers@file,legal-pages-redirect@file
+      - traefik.http.routers.chatwoot-legal.service=chatwoot-web
+
+  chatwoot-worker:
+    <<: *rails
+    container_name: chatwoot-worker
+    command: ["./rt-worker.sh"]
+    mem_limit: 2g
+    cpus: 2
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f sidekiq >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    labels:
+      - rt.service=chatwoot-rails
+      - rt.layer=B
+      - traefik.enable=false
+
+  chatwoot-migrate:
+    <<: *rails
+    container_name: chatwoot-migrate
+    restart: "no"
+    profiles: ["oneshot"]
+    command: ["bundle", "exec", "rails", "db:chatwoot_prepare"]
+    mem_limit: 2g
+    labels:
+      - traefik.enable=false
+
+  bridge:
+    image: ${CHATWOOT_BRIDGE_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/chatwoot-bridge.lock}
+    container_name: chatwoot-bridge
+    env_file: /opt/platform/secrets/chatwoot-bridge.env
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    networks: [public, internal, dbnet]
+    labels:
+      - rt.service=chatwoot-bridge
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.chatwoot-bridge.loadbalancer.server.port=8100
+      - traefik.http.routers.chatwoot-bridge.rule=Host(`bridge.rangeltech.net`)
+      - traefik.http.routers.chatwoot-bridge.entrypoints=websecure
+      - traefik.http.routers.chatwoot-bridge.tls.certresolver=letsencrypt
+      - traefik.http.routers.chatwoot-bridge.middlewares=security-headers@file
+      - traefik.http.routers.chatwoot-bridge.service=chatwoot-bridge
+networks:
+  public:
+    external: true
+  internal:
+    external: true
+  dbnet:
+    external: true

@@ -1,0 +1,35 @@
+# 9Router: provedor OpenAI-compativel TEMPORARIO para QA/testes (spec 03, D-45). So rede interna: sem rota Traefik, sem DNS.
+# Fork descontinuado que usa conta pessoal: sai quando houver provedor definitivo. Dados em /opt/platform/data/ninerouter (entram no backup).
+# Camada B (imagem de terceiros fixada por digest; aplicar com scripts/apply-stack.sh ninerouter).
+name: ninerouter
+services:
+  ninerouter:
+    image: decolua/9router@sha256:5fc7020f3cf1ca6831bffe80314ecab9dde915d27ee3c479a4bb66f45dabbc27
+    container_name: ninerouter
+    restart: unless-stopped
+    environment:
+      PORT: "20128"
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - /opt/platform/data/ninerouter:/app/data
+    mem_limit: 768m
+    cpus: 1
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:20128/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks: [internal, public]
+networks:
+  internal:
+    external: true
+  public:
+    external: true

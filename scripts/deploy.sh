@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy de UM servico a partir do releases/<servico>.lock (roda NA VPS, chamado pelo workflow deploy.yml por SSH).
 #   1) baixa o artefato (docker-archive) da GitHub Release e VERIFICA sha256 e image id;
-#   2) confere as variaveis de runtime exigidas (env_required) em /opt/platform/secrets/<stack>.env;
+#   2) confere as variaveis de runtime exigidas (env_required) em /opt/platform/secrets/<servico>.env;
 #   3) docker load + tag local imutavel;
 #   4) pre-deploy opcional (one-shot do compose, ex.: migracao do Rails); falhou => aborta sem trocar nada;
 #   5) docker compose up -d (sem build) SO dos servicos do lock; stacks com varias imagens mantem as outras variaveis no .release.env;
@@ -29,7 +29,7 @@ VAR="$(echo "$SERVICE" | tr 'a-z-' 'A-Z_')_IMAGE"
 STATE="$BASE/state"; ART="$BASE/data/artifacts"; mkdir -p "$STATE" "$ART"
 COMPOSE="$BASE/stacks/$STACK/compose.yml"
 ENVF="$BASE/stacks/$STACK/.release.env"
-SECF="$BASE/secrets/$STACK.env"
+SECF="$BASE/secrets/$SERVICE.env"
 SHORT="${IMG_ID#sha256:}"; SHORT="${SHORT:0:12}"
 NEW_TAG="rt/$SERVICE:$SHORT"
 PREV_TAG="$(cat "$STATE/$SERVICE.current" 2>/dev/null || true)"

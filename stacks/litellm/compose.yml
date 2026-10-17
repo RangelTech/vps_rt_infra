@@ -1,0 +1,26 @@
+# Stack do LiteLLM (gateway de modelos; porta 4000, SO rede interna). Camada B.
+# Providers/modelos/Teams ficam no banco `litellm` (STORE_MODEL_IN_DB). Segredos em /opt/platform/secrets/litellm.env (0600).
+name: litellm
+services:
+  litellm:
+    image: ${LITELLM_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/litellm.lock}
+    container_name: litellm
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/litellm.env
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    cpus: 1.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    networks: [public, internal, dbnet]   # public so para egress aos provedores; sem labels Traefik
+    labels:
+      - rt.service=litellm
+      - rt.layer=B
+      - traefik.enable=false
+networks:
+  public:
+    external: true
+  internal:
+    external: true
+  dbnet:
+    external: true

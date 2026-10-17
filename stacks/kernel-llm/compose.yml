@@ -1,0 +1,28 @@
+# Stack do kernel-llm legado (um processo FastAPI com o grafo LangGraph; porta 8080, SO rede interna). Camada B.
+# Convive com o kernel-harness (outro stack) ate a spec 04. Sem rota Traefik: o backend chama http://kernel-llm:8080 com bearer INTERNAL_TOKEN.
+name: kernel-llm
+services:
+  kernel:
+    image: ${KERNEL_LLM_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/kernel-llm.lock}
+    container_name: kernel-llm
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/kernel-llm.env
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1536m
+    cpus: 2
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    networks: [public, internal, dbnet]   # public so para egress (tools/web); sem labels Traefik
+    labels:
+      - rt.service=kernel-llm
+      - rt.layer=B
+      - traefik.enable=false
+networks:
+  public:
+    external: true
+  internal:
+    external: true
+  dbnet:
+    external: true
