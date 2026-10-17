@@ -1,0 +1,16 @@
+service=agent-platform-backend
+stack=agent-platform
+compose_service=backend
+layer=B
+repo=RangelTech/agent-platform
+version=v0.1.0
+commit=ace4460
+artifact_url=https://github.com/RangelTech/agent-platform/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=81a3d9a607904431ea55310351282efaa416bbf547ed729e7f2469f6b1a6f615
+image_id=sha256:fca1845c1bbf3923770b69171ecf11d284ff39f4958131cb55a259a91db11454
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=120
+env_required=DATABASE_URL,ENCRYPTION_KEY,MASTER_EMAIL,MASTER_PASSWORD,PUBLIC_BASE_URL,KERNEL_URL,KERNEL_INTERNAL_TOKEN,STORAGE_BACKEND,S3_ENDPOINT_URL,S3_PUBLIC_BASE_URL,S3_BUCKET,BRIDGE_URL,BRIDGE_ADMIN_TOKEN
+previous_version=
+previous_image_id=
