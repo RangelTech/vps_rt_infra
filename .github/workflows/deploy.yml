@@ -39,7 +39,7 @@ jobs:
           $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "mkdir -p /opt/platform/releases /opt/platform/scripts /opt/platform/stacks/$STACK"
           rsync -az -e "$SSH" "releases/${{ inputs.service }}.lock" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/releases/"
           rsync -az -e "$SSH" scripts/deploy.sh scripts/lib.sh "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/scripts/"
-          rsync -az -e "$SSH" "stacks/$STACK/compose.yml" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/stacks/$STACK/compose.yml"
+          rsync -az --exclude .release.env -e "$SSH" "stacks/$STACK/" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/stacks/$STACK/"
       - name: Deploy (falha o job se o healthcheck falhar)
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}

@@ -35,5 +35,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           for s in ${{ steps.intake.outputs.updated }}; do
-            gh workflow run deploy.yml -f service="$s"
+            if grep -q '^layer=A' "releases/$s.lock"; then gh workflow run deploy.yml -f service="$s"; else echo "$s: camada B, deploy manual (gh workflow run deploy.yml -f service=$s)"; fi
           done

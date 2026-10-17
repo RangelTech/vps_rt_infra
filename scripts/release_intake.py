@@ -43,10 +43,11 @@ def main():
             print(f"[{svc}] sem release: {e}")
             continue
         assets = {a["name"]: a for a in rel.get("assets", [])}
-        if "release-manifest.json" not in assets:
-            print(f"[{svc}] release {rel['tag_name']} sem release-manifest.json - ignorado")
+        man_name = s.get("manifest_asset", "release-manifest.json")
+        if man_name not in assets:
+            print(f"[{svc}] release {rel['tag_name']} sem {man_name} - ignorado")
             continue
-        m = json.load(gh(assets["release-manifest.json"]["browser_download_url"], "application/octet-stream"))
+        m = json.load(gh(assets[man_name]["browser_download_url"], "application/octet-stream"))
         # --- validacao
         assert m.get("schema") == 1, "schema invalido"
         assert m.get("repo") == repo, f"repo do manifesto ({m.get('repo')}) != fonte permitida ({repo})"
@@ -74,6 +75,9 @@ def main():
             "artifact_sha256": art["sha256"],
             "image_id": art["image_id"],
             "manifest_version": str(m["schema"]),
+            "pre_deploy_service": (m.get("pre_deploy") or {}).get("compose_service", ""),
+            "healthcheck_timeout": str((m.get("healthcheck") or {}).get("timeout_s", 90)),
+            "env_required": ",".join((m.get("env") or {}).get("required", [])),
             "previous_version": cur.get("version", ""),
             "previous_image_id": cur.get("image_id", ""),
         }
