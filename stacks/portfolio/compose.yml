@@ -1,10 +1,9 @@
-# Stack "portfolio" (spec 02): tudo que e vitrine publica da Rangel Tech, num projeto Compose so.
-#   web       nginx: site do portfolio (lucas.) + proxy do Metabase publico (bi.), absorve o antigo pncp-dashboard-edge
-#   metabase  Metabase da demo (metadados e fonte de dados no Postgres PRINCIPAL, rede dbnet)
-#   rag-*     demo do RAG chat (backend, embed isolado com a credencial de embedding, web Next.js)
-#   feedback  API de comentarios/likes do portfolio (SQLite)
-# Segredos NAO ficam aqui: env_file em /opt/rag-chat, /opt/portfolio-feedback e stacks/portfolio/metabase.env (so na VPS).
-# Subir: scripts/apply-stack.sh portfolio
+# Stack "portfolio" (spec 02/03): vitrine publica da Rangel Tech, 3 containers, imagens por artefato (repo lucas-rangel-portfolio).
+#   web       nginx: site (lucas.), UI do RAG (rag.) e proxy do Metabase (bi., porta 8081). Conteudo estatico embutido na imagem.
+#   api       UM processo Python: rotas /api/answer, /api/explore, /api/health do RAG + /api/feedback + embed in-process (EMBED_PROVIDER=none)
+#   metabase  Metabase da demo (metadados e fontes no Postgres PRINCIPAL, rede dbnet)
+# Segredos so na VPS: /opt/platform/secrets/portfolio-api.env e stacks/portfolio/metabase.env. Imagens: PORTFOLIO_WEB_IMAGE / PORTFOLIO_API_IMAGE.
+# Camada B. Deploy: workflow deploy.yml (service=portfolio-api / portfolio-web).
 name: portfolio
 
 x-hardened: &hardened
@@ -16,27 +15,30 @@ x-hardened: &hardened
 services:
   web:
     <<: *hardened
-    image: nginx:alpine
+    image: ${PORTFOLIO_WEB_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/portfolio-web.lock}
+    container_name: portfolio-web
     cap_add: [CHOWN, SETGID, SETUID, NET_BIND_SERVICE]
     read_only: true
     tmpfs: [/var/cache/nginx, /var/run, /tmp]
     mem_limit: 128m
-    volumes:
-      - /opt/platform/sites/portfolio/public:/usr/share/nginx/html:ro
-      - ./nginx:/etc/nginx/conf.d:ro
     networks: [public, portfolio]
     labels:
+      - rt.service=portfolio-web
+      - rt.layer=B
       - traefik.enable=true
       - traefik.docker.network=public
-      # site (lucas.): porta 80
       - traefik.http.services.portfolio-site.loadbalancer.server.port=80
+      - traefik.http.services.portfolio-bi.loadbalancer.server.port=8081
+      # site (lucas.)
       - traefik.http.routers.site-portfolio.rule=Host(`lucas.rangeltech.net`)
+      - traefik.http.routers.site-portfolio.priority=10
       - traefik.http.routers.site-portfolio.entrypoints=websecure
       - traefik.http.routers.site-portfolio.tls.certresolver=letsencrypt
       - traefik.http.routers.site-portfolio.middlewares=security-headers@file
       - traefik.http.routers.site-portfolio.service=portfolio-site
       # raiz e www redirecionam para lucas. ate o site institucional assumir a raiz
       - traefik.http.routers.site-portfolio-apex.rule=Host(`rangeltech.net`) || Host(`www.rangeltech.net`)
+      - traefik.http.routers.site-portfolio-apex.priority=10
       - traefik.http.routers.site-portfolio-apex.entrypoints=websecure
       - traefik.http.routers.site-portfolio-apex.tls.certresolver=letsencrypt
       - traefik.http.routers.site-portfolio-apex.middlewares=portfolio-moved
@@ -44,16 +46,80 @@ services:
       - traefik.http.middlewares.portfolio-moved.redirectregex.regex=^https?://[^/]+/(.*)
       - traefik.http.middlewares.portfolio-moved.redirectregex.replacement=https://lucas.rangeltech.net/$${1}
       - traefik.http.middlewares.portfolio-moved.redirectregex.permanent=false
-      # bi.: porta 8080 (proxy do Metabase, ver nginx/bi.conf)
-      - traefik.http.services.portfolio-bi.loadbalancer.server.port=8080
+      # UI do RAG (rag.), estatica
+      - traefik.http.routers.rag-chat.rule=Host(`rag.rangeltech.net`)
+      - traefik.http.routers.rag-chat.priority=10
+      - traefik.http.routers.rag-chat.entrypoints=websecure
+      - traefik.http.routers.rag-chat.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-chat.middlewares=security-headers@file
+      - traefik.http.routers.rag-chat.service=portfolio-site
+      # bi. -> proxy do Metabase
       - traefik.http.routers.bi.rule=Host(`bi.rangeltech.net`)
+      - traefik.http.routers.bi.priority=10
       - traefik.http.routers.bi.entrypoints=websecure
       - traefik.http.routers.bi.tls.certresolver=letsencrypt
       - traefik.http.routers.bi.service=portfolio-bi
 
+  api:
+    <<: *hardened
+    image: ${PORTFOLIO_API_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/portfolio-api.lock}
+    container_name: portfolio-api
+    env_file: /opt/platform/secrets/portfolio-api.env
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - /opt/portfolio-feedback/data:/data
+      - /opt/rag-chat/data:/rag-data:ro
+    mem_limit: 2g
+    cpus: 1.5
+    networks: [public, internal, dbnet]
+    labels:
+      - rt.service=portfolio-api
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.portfolio-api.loadbalancer.server.port=8080
+      # RAG: pergunta (limite so aqui), busca e health no host rag.
+      - traefik.http.routers.rag-answer.rule=Host(`rag.rangeltech.net`) && PathPrefix(`/api/answer`)
+      - traefik.http.routers.rag-answer.priority=120
+      - traefik.http.routers.rag-answer.entrypoints=websecure
+      - traefik.http.routers.rag-answer.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-answer.middlewares=security-headers@file,rag-chat-limit
+      - traefik.http.routers.rag-answer.service=portfolio-api
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.average=1
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.period=3s
+      - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=4
+      - traefik.http.routers.rag-api.rule=Host(`rag.rangeltech.net`) && PathPrefix(`/api`)
+      - traefik.http.routers.rag-api.priority=100
+      - traefik.http.routers.rag-api.entrypoints=websecure
+      - traefik.http.routers.rag-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-api.middlewares=security-headers@file
+      - traefik.http.routers.rag-api.service=portfolio-api
+      # busca do portfolio (mesma origem do site)
+      - traefik.http.routers.rag-explore.rule=(Host(`lucas.rangeltech.net`) || Host(`rangeltech.net`)) && PathPrefix(`/api/explore`)
+      - traefik.http.routers.rag-explore.priority=100
+      - traefik.http.routers.rag-explore.entrypoints=websecure
+      - traefik.http.routers.rag-explore.tls.certresolver=letsencrypt
+      - traefik.http.routers.rag-explore.middlewares=security-headers@file,rag-explore-limit
+      - traefik.http.routers.rag-explore.service=portfolio-api
+      - traefik.http.middlewares.rag-explore-limit.ratelimit.average=2
+      - traefik.http.middlewares.rag-explore-limit.ratelimit.period=3s
+      - traefik.http.middlewares.rag-explore-limit.ratelimit.burst=6
+      # feedback do portfolio
+      - traefik.http.routers.portfolio-feedback.rule=Host(`lucas.rangeltech.net`) && PathPrefix(`/api/feedback`)
+      - traefik.http.routers.portfolio-feedback.priority=100
+      - traefik.http.routers.portfolio-feedback.entrypoints=websecure
+      - traefik.http.routers.portfolio-feedback.tls.certresolver=letsencrypt
+      - traefik.http.routers.portfolio-feedback.middlewares=security-headers@file,portfolio-feedback-limit
+      - traefik.http.routers.portfolio-feedback.service=portfolio-api
+      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.average=5
+      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.period=1s
+      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.burst=10
+
   metabase:
     <<: *hardened
     image: metabase/metabase:v0.58.34@sha256:abd7e4d9162e4dff67d5958d29e55b1e79de8029c51fddfdc12d9903ad126873
+    container_name: portfolio-metabase
     user: "2000:2000"
     read_only: true
     env_file: ./metabase.env # MB_DB_PASS, MB_ENCRYPTION_SECRET_KEY (so na VPS)
@@ -83,111 +149,12 @@ services:
       start_period: 240s
     networks: [portfolio, dbnet]
 
-  rag-backend:
-    <<: *hardened
-    image: rag-chat-backend
-    build: /opt/rag-chat/src/backend
-    env_file: /opt/rag-chat/.env # URLs de banco apontam para o host `postgres`
-    environment:
-      RAG_INDEX_PATH: /data/index.db
-    volumes:
-      - /opt/rag-chat/data:/data:ro
-    read_only: true
-    mem_limit: 2200m
-    networks:
-      portfolio: { aliases: [backend] }
-      egress: {}
-      dbnet: {}
-
-  rag-embed:
-    <<: *hardened
-    image: rag-chat-embed
-    build: /opt/rag-chat/src/backend
-    command: ["python", "-m", "rag_chat_backend.embed_service"]
-    env_file: /opt/rag-chat/embed.env # unica copia da credencial de embedding
-    volumes:
-      - /opt/rag-chat/secrets/embed-sa.json:/run/secrets/embed-sa.json:ro
-    read_only: true
-    mem_limit: 192m
-    networks:
-      portfolio: { aliases: [embed] }
-      egress: {}
-
-  rag-web:
-    <<: *hardened
-    image: rag-chat-web
-    build: /opt/rag-chat/src
-    environment:
-      RAG_CHAT_BACKEND_URL: http://backend:8080
-    depends_on: [rag-backend]
-    read_only: true
-    tmpfs: [/tmp]
-    mem_limit: 384m
-    networks: [portfolio, public]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=public
-      - traefik.http.services.rag-chat.loadbalancer.server.port=3000
-      - traefik.http.routers.rag-chat.rule=Host(`rag.rangeltech.net`)
-      - traefik.http.routers.rag-chat.entrypoints=websecure
-      - traefik.http.routers.rag-chat.tls.certresolver=letsencrypt
-      - traefik.http.routers.rag-chat.middlewares=security-headers@file
-      - traefik.http.routers.rag-chat.service=rag-chat
-      # limite so no endpoint de pergunta
-      - traefik.http.routers.rag-chat-api.rule=Host(`rag.rangeltech.net`) && PathPrefix(`/api/answer`)
-      - traefik.http.routers.rag-chat-api.priority=100
-      - traefik.http.routers.rag-chat-api.entrypoints=websecure
-      - traefik.http.routers.rag-chat-api.tls.certresolver=letsencrypt
-      - traefik.http.routers.rag-chat-api.middlewares=security-headers@file,rag-chat-limit
-      - traefik.http.routers.rag-chat-api.service=rag-chat
-      - traefik.http.middlewares.rag-chat-limit.ratelimit.average=1
-      - traefik.http.middlewares.rag-chat-limit.ratelimit.period=3s
-      - traefik.http.middlewares.rag-chat-limit.ratelimit.burst=4
-      # busca usada pela pagina de dashboards do portfolio (mesma origem do site)
-      - traefik.http.routers.rag-explore.rule=(Host(`lucas.rangeltech.net`) || Host(`rangeltech.net`)) && PathPrefix(`/api/explore`)
-      - traefik.http.routers.rag-explore.priority=100
-      - traefik.http.routers.rag-explore.entrypoints=websecure
-      - traefik.http.routers.rag-explore.tls.certresolver=letsencrypt
-      - traefik.http.routers.rag-explore.middlewares=security-headers@file,rag-explore-limit
-      - traefik.http.routers.rag-explore.service=rag-chat
-      - traefik.http.middlewares.rag-explore-limit.ratelimit.average=2
-      - traefik.http.middlewares.rag-explore-limit.ratelimit.period=3s
-      - traefik.http.middlewares.rag-explore-limit.ratelimit.burst=6
-
-  feedback:
-    <<: *hardened
-    image: portfolio-feedback-api
-    build: /opt/portfolio-feedback/src
-    env_file: /opt/portfolio-feedback/.env
-    environment:
-      FEEDBACK_DB: /data/feedback.db
-      FEEDBACK_SITE_ROOT: /site
-    volumes:
-      - /opt/portfolio-feedback/data:/data
-      - /opt/platform/sites/portfolio/public:/site:ro
-    read_only: true
-    tmpfs: [/tmp]
-    mem_limit: 128m
-    cpus: 0.5
-    networks: [public]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=public
-      - traefik.http.services.portfolio-feedback.loadbalancer.server.port=8080
-      - traefik.http.routers.portfolio-feedback.rule=Host(`lucas.rangeltech.net`) && PathPrefix(`/api/feedback`)
-      - traefik.http.routers.portfolio-feedback.priority=100
-      - traefik.http.routers.portfolio-feedback.entrypoints=websecure
-      - traefik.http.routers.portfolio-feedback.tls.certresolver=letsencrypt
-      - traefik.http.routers.portfolio-feedback.middlewares=security-headers@file,portfolio-feedback-limit
-      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.average=5
-      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.period=1s
-      - traefik.http.middlewares.portfolio-feedback-limit.ratelimit.burst=10
-
 networks:
   portfolio:
     internal: true
-  egress: {}
   public:
+    external: true
+  internal:
     external: true
   dbnet:
     external: true
