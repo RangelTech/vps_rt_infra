@@ -1,0 +1,456 @@
+services:
+  traefik:
+    image: traefik:${TRAEFIK_VERSION}
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5432:5432"
+      - "5433:5433"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ../configs/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ../data/traefik:/letsencrypt
+    networks:
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik.${ROOT_DOMAIN}`)
+      - traefik.http.routers.traefik.entrypoints=websecure
+      - traefik.http.routers.traefik.tls.certresolver=letsencrypt
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.middlewares=admin-auth@docker,security-headers@file
+      - traefik.http.middlewares.admin-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
+
+  postgres:
+    # Achado 19/08/2026: este compose apontava para o postgres oficial puro
+    # (mesmo bug de drift do achado 17/08 com o TLS) - a extensao vector
+    # existia no catalogo (pg_extension, persistido no volume de dados) mas a
+    # lib vector.so nao existe na imagem oficial, so em pgvector/pgvector.
+    # Um docker compose up a partir deste arquivo recriava o container com a
+    # imagem errada e quebrava RAG/memoria silenciosamente ate alguem tentar
+    # usar embeddings (erro real: could not access file "$libdir/vector").
+    # NAO trocar de volta para a imagem oficial - precisa ser a variante
+    # pgvector, na mesma major version (16) do volume de dados existente.
+    image: pgvector/pgvector:pg16
+    container_name: postgres
+    restart: unless-stopped
+    # SSL exigido por quem conecta via porta pública direta (kernel no Cloud
+    # Run, fora da VPS — ver postgres-direct acima). Achado em 17/08/2026: o
+    # mount de /etc/postgres-tls e o `command` de SSL existiam ao vivo na VPS
+    # mas nunca tinham sido commitados aqui — um `docker compose up` a partir
+    # deste arquivo tirava o TLS do Postgres sem ninguém perceber. Certs já
+    # existem em configs/postgres-tls/ (server.crt/server.key).
+    command:
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/etc/postgres-tls/server.crt
+      - -c
+      - ssl_key_file=/etc/postgres-tls/server.key
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=12GB
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - max_connections=200
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - random_page_cost=1.1
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../data/postgres:/var/lib/postgresql/data
+      - ../configs/postgres-tls:/etc/postgres-tls:ro
+    networks:
+      - internal
+      - public
+      - dbnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      # Acesso direto (sem pgbouncer) pro kernel no Cloud Run — ver
+      # comentário no entrypoint postgres-direct em configs/traefik/traefik.yml.
+      - traefik.enable=true
+      - traefik.tcp.routers.postgres-direct.rule=HostSNI(`*`)
+      - traefik.tcp.routers.postgres-direct.entrypoints=postgres-direct
+      - traefik.tcp.routers.postgres-direct.service=postgres-direct
+      - traefik.tcp.services.postgres-direct.loadbalancer.server.port=5432
+
+  pgbouncer:
+    image: edoburu/pgbouncer:${PGBOUNCER_VERSION}
+    container_name: pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_ADMIN_USER}
+      DB_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 30
+      ADMIN_USERS: ${PGBOUNCER_ADMIN_USER}
+      AUTH_TYPE: plain
+      AUTH_USER: ${POSTGRES_ADMIN_USER}
+      AUTH_QUERY: SELECT usename, passwd FROM pg_shadow WHERE usename=$1
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.tcp.routers.pgbouncer.rule=HostSNI(`*`)
+      - traefik.tcp.routers.pgbouncer.entrypoints=postgres
+      - traefik.tcp.routers.pgbouncer.service=pgbouncer
+      - traefik.tcp.services.pgbouncer.loadbalancer.server.port=5432
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    container_name: redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --aclfile /data/users.acl --maxmemory 2gb --maxmemory-policy noeviction
+    # Porta publicada + rede `public` (21/08/2026, infra-04): LiteLLM e
+    # chatwoot-web rodam no Cloud Run (fora da VPS), precisam de rota
+    # externa pro Redis (DB 2 e DB 1 respectivamente). Isso já estava
+    # aplicado ao vivo desde 19/08 mas nunca tinha sido sincronizado pro
+    # compose -- achado real (21/08/2026): qualquer `docker compose up -d`
+    # subsequente (inclusive o healer automático, rt-compose-healer.timer)
+    # recriava o container só com a rede `internal`, cortando o Redis dos
+    # dois Cloud Run de vez sem aviso nenhum.
+    ports:
+      - "6379:6379"
+    volumes:
+      - ../data/redis:/data
+    networks:
+      - internal
+      - public
+
+  minio:
+    image: quay.io/minio/minio:${MINIO_VERSION}
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../data/minio:/data
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.minio-api.rule=Host(`storage.${ROOT_DOMAIN}`)
+      - traefik.http.routers.minio-api.entrypoints=websecure
+      - traefik.http.routers.minio-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.minio-api.middlewares=security-headers@file
+      - traefik.http.routers.minio-api.service=minio-api
+      - traefik.http.services.minio-api.loadbalancer.server.port=9000
+      - traefik.http.routers.minio-console.rule=Host(`minio-admin.${ROOT_DOMAIN}`)
+      - traefik.http.routers.minio-console.entrypoints=websecure
+      - traefik.http.routers.minio-console.tls.certresolver=letsencrypt
+      - traefik.http.routers.minio-console.middlewares=admin-auth@docker,security-headers@file
+      - traefik.http.routers.minio-console.service=minio-console
+      - traefik.http.services.minio-console.loadbalancer.server.port=9001
+      - traefik.http.middlewares.admin-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:${UPTIME_KUMA_VERSION}
+    container_name: uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - ../data/uptime-kuma:/app/data
+    networks:
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.uptime.rule=Host(`uptime.${ROOT_DOMAIN}`)
+      - traefik.http.routers.uptime.entrypoints=websecure
+      - traefik.http.routers.uptime.tls.certresolver=letsencrypt
+      - traefik.http.routers.uptime.middlewares=security-headers@file
+      - traefik.http.services.uptime.loadbalancer.server.port=3001
+
+  infisical-postgres:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: infisical-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infisical
+      POSTGRES_USER: infisical
+      POSTGRES_PASSWORD: ${INFISICAL_DB_PASSWORD}
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../data/infisical-postgres:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infisical-redis:
+    image: redis:${REDIS_VERSION}
+    container_name: infisical-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${INFISICAL_REDIS_PASSWORD}
+    volumes:
+      - ../data/infisical-redis:/data
+    networks:
+      - internal
+
+  infisical:
+    image: infisical/infisical:${INFISICAL_VERSION}
+    container_name: infisical
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      SITE_URL: https://infisical.${ROOT_DOMAIN}
+      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY}
+      AUTH_SECRET: ${INFISICAL_AUTH_SECRET}
+      # DB_CONNECTION_URI/REDIS_URL embed the password directly in a URL and
+      # are NOT url-encoded here — Infisical's pg-connection-string parser
+      # chokes on raw "@"/"#"/etc in the credential (found the hard way:
+      # first deploy crash-looped on "Invalid URL" until INFISICAL_DB_PASSWORD/
+      # INFISICAL_REDIS_PASSWORD were regenerated alphanumeric-only). Keep
+      # those two GitHub secrets alphanumeric on any future rotation.
+      DB_CONNECTION_URI: postgres://infisical:${INFISICAL_DB_PASSWORD}@postgres:5432/infisical
+      REDIS_URL: redis://infisical:${INFISICAL_REDIS_PASSWORD}@redis:6379/3
+      TZ: ${TIMEZONE}
+    networks:
+      - internal
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.infisical.rule=Host(`infisical.${ROOT_DOMAIN}`)
+      - traefik.http.routers.infisical.entrypoints=websecure
+      - traefik.http.routers.infisical.tls.certresolver=letsencrypt
+      # No extra basic-auth layer here (unlike pgadmin/prometheus/loki): those
+      # services have weak/no built-in auth, whereas Infisical has full
+      # project auth + MFA-capable login + Machine Identity (Universal Auth)
+      # for CI. Stacking basic auth in front would block the CI client_id/
+      # client_secret login flow at the proxy. Same reasoning as grafana above
+      # (also no admin-auth middleware).
+      - traefik.http.routers.infisical.middlewares=security-headers@file
+      - traefik.http.services.infisical.loadbalancer.server.port=8080
+
+  ## ---------------------------------------------------------------------
+  ## Matrix (Synapse) + mautrix-meta (Facebook/Instagram bridges)
+  ## correcao-01-execucao-completa.md secao 4. Private, non-federating
+  ## homeserver used only as a bridge engine for the RAtende Connector
+  ## extension's captured cookies. Dedicated Postgres (own blast radius,
+  ## same reasoning as the infisical-postgres block above) with 3
+  ## databases in locale C (Synapse requires it, see configs/matrix-postgres/
+  ## init-db.sh comment). Exactly 2 mautrix-meta processes, forever --
+  ## every tenant's Facebook/Instagram connections log into these same 2
+  ## processes ("puppeting"), no per-connection container.
+  ## ---------------------------------------------------------------------
+
+  matrix-postgres:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: matrix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: matrix_admin
+      POSTGRES_PASSWORD: ${MATRIX_POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      TZ: ${TIMEZONE}
+    volumes:
+      - ../data/matrix-postgres:/var/lib/postgresql/data
+      - ../configs/matrix-postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix_admin -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  synapse:
+    image: matrixdotorg/synapse:${SYNAPSE_VERSION}
+    container_name: synapse
+    restart: unless-stopped
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+    environment:
+      SYNAPSE_CONFIG_PATH: /etc/synapse/homeserver.yaml
+    volumes:
+      # 28/08/2026, achado real: config files bind-montados DENTRO do
+      # caminho de outro volume (../data/synapse:/data +
+      # .../homeserver.yaml:/data/homeserver.yaml) pode virar diretorio
+      # vazio dono de root se a criacao do container correr com o
+      # compose-healer (systemd timer que roda `docker compose up -d` a
+      # cada minuto) no meio da subida -- Docker materializa um stub
+      # vazio quando o mount aninhado nao resolve a tempo. Path totalmente
+      # separado (/etc/synapse, nunca dentro de /data) elimina a classe
+      # inteira desse bug -- so /data guarda estado real (signing key,
+      # media), nunca overlap com bind mount de config.
+      - ../data/synapse:/data
+      - ../configs/synapse/homeserver.yaml:/etc/synapse/homeserver.yaml:ro
+      - ../configs/synapse/log.config:/etc/synapse/log.config:ro
+      - ../configs/synapse/registrations:/etc/synapse/registrations:ro
+    networks:
+      - internal
+
+  mautrix-meta-facebook:
+    image: dock.mau.dev/mautrix/meta:${MAUTRIX_META_VERSION}
+    container_name: mautrix-meta-facebook
+    restart: unless-stopped
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+      synapse:
+        condition: service_started
+    volumes:
+      - ../data/mautrix-meta-facebook:/data
+      - ../configs/mautrix-meta/facebook-config.yaml:/data/config.yaml:ro
+      - ../configs/synapse/registrations/facebook.yaml:/data/registration.yaml:ro
+    networks:
+      # internal: talks to synapse/matrix-postgres. public: needs real
+      # internet egress to reach facebook.com -- `internal: true` on the
+      # `internal` network blocks ALL outbound routing by design (achado
+      # real 28/08/2026, primeiro deploy: "server misbehaving" no DNS
+      # embutido do Docker porque o bridge só tinha a rede internal).
+      - internal
+      - public
+
+  mautrix-meta-instagram:
+    image: dock.mau.dev/mautrix/meta:ig-${MAUTRIX_META_VERSION}
+    container_name: mautrix-meta-instagram
+    restart: unless-stopped
+    depends_on:
+      matrix-postgres:
+        condition: service_healthy
+      synapse:
+        condition: service_started
+    volumes:
+      - ../data/mautrix-meta-instagram:/data
+      - ../configs/mautrix-meta/instagram-config.yaml:/data/config.yaml:ro
+      - ../configs/synapse/registrations/instagram.yaml:/data/registration.yaml:ro
+    networks:
+      - internal
+      - public
+
+  ## ---------------------------------------------------------------------
+  ## Client static sites
+  ## One nginx:alpine container per client, serving files from
+  ## ../sites/<slug>/public. Two modes — see sites/README.md for the full
+  ## onboarding runbook before copying a block for a new client:
+  ##   A) client has their own domain -> Host(`their-domain.com`)
+  ##   B) client has no domain yet    -> Host(`<slug>.${ROOT_DOMAIN}`)
+  ##      (also add the subdomain to terraform/dns.tf in that case)
+  ## ---------------------------------------------------------------------
+
+  site-portfolio:
+    # Served at lucas.<root domain>; the apex redirects there (2026-10-02).
+    # Static export of the public repo lucas-rangel-portfolio (Next.js
+    # `output: "export"`). Content in ../sites/portfolio/public is rsynced
+    # by .github/workflows/deploy-portfolio.yml from a pinned release tag;
+    # it is never committed to this repository.
+    image: nginx:alpine
+    container_name: site-portfolio
+    restart: unless-stopped
+    volumes:
+      - ../sites/portfolio/public:/usr/share/nginx/html:ro
+    networks:
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.site-portfolio.rule=Host(`lucas.${ROOT_DOMAIN}`)
+      - traefik.http.routers.site-portfolio.entrypoints=websecure
+      - traefik.http.routers.site-portfolio.tls.certresolver=letsencrypt
+      - traefik.http.routers.site-portfolio.middlewares=security-headers@file
+      - traefik.http.services.site-portfolio.loadbalancer.server.port=80
+      # The apex and www keep old links working until the company site takes
+      # the apex: temporary redirect to the same path on lucas.
+      - traefik.http.routers.site-portfolio-apex.rule=Host(`${ROOT_DOMAIN}`) || Host(`www.${ROOT_DOMAIN}`)
+      - traefik.http.routers.site-portfolio-apex.entrypoints=websecure
+      - traefik.http.routers.site-portfolio-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.site-portfolio-apex.middlewares=portfolio-moved
+      - traefik.http.routers.site-portfolio-apex.service=site-portfolio
+      - traefik.http.middlewares.portfolio-moved.redirectregex.regex=^https?://[^/]+/(.*)
+      - traefik.http.middlewares.portfolio-moved.redirectregex.replacement=https://lucas.${ROOT_DOMAIN}/$${1}
+      - traefik.http.middlewares.portfolio-moved.redirectregex.permanent=false
+
+  # site-example:                                          # mode A example
+  #   image: nginx:alpine
+  #   container_name: site-example
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../sites/example/public:/usr/share/nginx/html:ro
+  #   networks:
+  #     - public
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.docker.network=public
+  #     - traefik.http.routers.site-example.rule=Host(`example-client.com`) || Host(`www.example-client.com`)
+  #     - traefik.http.routers.site-example.entrypoints=websecure
+  #     - traefik.http.routers.site-example.tls.certresolver=letsencrypt
+  #     - traefik.http.routers.site-example.middlewares=security-headers@file
+  #     - traefik.http.services.site-example.loadbalancer.server.port=80
+
+  # site-example2:                                          # mode B example
+  #   image: nginx:alpine
+  #   container_name: site-example2
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../sites/example2/public:/usr/share/nginx/html:ro
+  #   networks:
+  #     - public
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.docker.network=public
+  #     - traefik.http.routers.site-example2.rule=Host(`example2.${ROOT_DOMAIN}`)
+  #     - traefik.http.routers.site-example2.entrypoints=websecure
+  #     - traefik.http.routers.site-example2.tls.certresolver=letsencrypt
+  #     - traefik.http.routers.site-example2.middlewares=security-headers@file
+  #     - traefik.http.services.site-example2.loadbalancer.server.port=80
+
+  ## ---------------------------------------------------------------------
+  ## Hermes Relay (SPEC_HERMES_INTEGRADO_RIA_ATENDIMENTO.md, Fase B)
+  ## Slice 1 (29/09/2026): conexao WSS persistente autenticada por
+  ## dispositivo (apps/hermes-relay/main.py), rodando aqui e nao no Cloud
+  ## Run porque a spec exige infra que segure WebSocket de longa duracao
+  ## (secao 12). PENDENTE antes de expor de verdade: registro DNS
+  ## `hermes-relay.${ROOT_DOMAIN}` (terraform/dns.tf ja tem o registro;
+  ## falta aplicar com a HOSTINGER_API_KEY, que nao estava disponivel na
+  ## maquina que criou este servico) -- sem DNS, o router Traefik abaixo
+  ## fica inerte (nao resolve, nao emite certificado, nao recebe trafego).
+  ## Ainda nao despacha comandos nem publica eventos pro backend -- so
+  ## prova o transporte + autenticacao contra hermes_device_credentials.
+  ## ---------------------------------------------------------------------
+
+networks:
+  internal:
+    name: internal
+    driver: bridge
+    internal: true
+  public:
+    name: public
+    driver: bridge
+  dbnet:
+    name: dbnet
