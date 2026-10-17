@@ -1,11 +1,10 @@
-## Dynamic Traefik configuration
-## Protects the Traefik dashboard, pgAdmin and MinIO console with basic auth.
-## The htpasswd line is injected via TRAEFIK_BASIC_AUTH in compose/.env and
-## consumed as a Docker label on each service instead of here, this file is
-## reserved for extra middlewares/TLS options shared across routers.
+## Dynamic Traefik configuration (spec 03, M6): so middlewares e opcoes TLS compartilhadas.
+## Todos os roteadores de aplicacao vem de LABELS dos containers (stacks/*/compose.yml);
+## as rotas e servicos do Cloud Run (GCP morta) foram removidos.
 
 http:
   middlewares:
+    # paginas legais ficam no front do agent-platform (ia.); o chat. apenas redireciona
     legal-pages-redirect:
       redirectRegex:
         regex: "^https://chat.rangeltech.net/(politica-de-privacidade|termos-de-uso|exclusao-de-dados)$"
@@ -20,93 +19,6 @@ http:
         frameDeny: true
         contentTypeNosniff: true
         browserXssFilter: true
-
-  # Cutover real (infra-01 secao 5, 21/08/2026): ia.rangeltech.net passa a
-  # apontar pro backend no Cloud Run (rangel-tech) em vez do container
-  # agentllm-backend na VPS. Prioridade mais alta que o router baseado em
-  # label do container (Docker provider) pra nao ficar ambiguo enquanto os
-  # dois ainda existem lado a lado. passHostHeader=false e obrigatorio: o
-  # Cloud Run roteia pelo Host header pro *.run.app do proprio servico, nao
-  # pelo dominio customizado (sem isso da erro do Google Front End).
-  #
-  # Frontend simplificado de volta pro padrao antigo (21/08/2026, pedido do
-  # dono): sem separacao em Cloud Storage/CDN, o backend serve a SPA inteira
-  # (_mount_spa, mesmo Dockerfile de sempre) -- router ia-static-assets e
-  # bucket rangel-tech-frontend removidos, /assets/* volta a ser so mais uma
-  # rota do agentllm-backend-cloudrun abaixo.
-  routers:
-    agentllm-backend-cloudrun:
-      rule: "Host(`ia.rangeltech.net`)"
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-      priority: 100
-      service: agentllm-backend-cloudrun
-      middlewares:
-        - security-headers
-    chatwoot-legal-redirect:
-      rule: "Host(`chat.rangeltech.net`) && (PathPrefix(`/politica-de-privacidade`) || PathPrefix(`/termos-de-uso`) || PathPrefix(`/exclusao-de-dados`))"
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-      priority: 150
-      service: agentllm-backend-cloudrun
-      middlewares:
-        - security-headers
-        - legal-pages-redirect
-
-    chatwoot-web-cloudrun:
-      rule: "Host(`chat.rangeltech.net`)"
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-      priority: 100
-      service: chatwoot-web-cloudrun
-      middlewares:
-        - security-headers
-
-    chatwoot-bridge-cloudrun:
-      rule: "Host(`bridge.rangeltech.net`)"
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-      priority: 100
-      service: chatwoot-bridge-cloudrun
-      middlewares:
-        - security-headers
-
-  services:
-    chatwoot-web-cloudrun:
-      loadBalancer:
-        passHostHeader: false
-        servers:
-          - url: "https://chatwoot-web-pujq3pjmca-uc.a.run.app"
-    agentllm-backend-cloudrun:
-      loadBalancer:
-        passHostHeader: false
-        servers:
-          - url: "https://agent-llm-backend-pujq3pjmca-uc.a.run.app"
-    chatwoot-bridge-cloudrun:
-      loadBalancer:
-        passHostHeader: false
-        servers:
-          - url: "https://chatwoot-bridge-pujq3pjmca-uc.a.run.app"
-
-  serversTransports:
-    # The public-demo profile's nginx terminates its own internal TLS with a
-    # self-signed certificate (see vps_rt_infra/demo/README.md and
-    # patch_compose_for_traefik.py) -- that cert is never client-facing,
-    # only used for this one Traefik-to-nginx hop, so skipping verification
-    # on it is safe. A Docker-label-defined serversTransport was tried first
-    # and silently failed to register ("servers transport not found ...
-    # @docker"); defining it here, alongside this file's other one-off
-    # config, is the documented, working path.
-    demo-backend-tls:
-      insecureSkipVerify: true
 
 tls:
   options:
