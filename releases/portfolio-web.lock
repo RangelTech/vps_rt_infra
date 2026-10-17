@@ -1,0 +1,16 @@
+service=portfolio-web
+stack=portfolio
+compose_service=web
+layer=B
+repo=LucasRangelSSouza/lucas-rangel-portfolio
+version=v0.1.1
+commit=51dcf07
+artifact_url=https://github.com/LucasRangelSSouza/lucas-rangel-portfolio/releases/download/v0.1.1/portfolio-web.image.tar.gz
+artifact_sha256=530dd7b96886d576f8eac1591f88826b8922565bfc1a2c755c9fe2eded82e25d
+image_id=sha256:61601027f4c924cb69ef20203575dca1335062baa447b2284d9490d96b2ad0ea
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=

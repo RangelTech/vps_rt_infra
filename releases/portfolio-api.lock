@@ -1,0 +1,16 @@
+service=portfolio-api
+stack=portfolio
+compose_service=api
+layer=B
+repo=LucasRangelSSouza/lucas-rangel-portfolio
+version=v0.1.1
+commit=51dcf07
+artifact_url=https://github.com/LucasRangelSSouza/lucas-rangel-portfolio/releases/download/v0.1.1/portfolio-api.image.tar.gz
+artifact_sha256=fe39b1a7ad83084738b8d76ca9015f8a8f302a04b3515e2a015e77691ec91b4d
+image_id=sha256:8c6f2353fa7e554c4f3e0cd0d8119e347f58556036f1cbb439cd8b38956a7003
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=RAG_DATABASE_URL,RAG_SQL_DATABASE_URL,FEEDBACK_ADMIN_TOKEN
+previous_version=
+previous_image_id=
