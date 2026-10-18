@@ -33,7 +33,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
         run: |
-          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=60"
           STACK="$(grep '^stack=' releases/${{ inputs.service }}.lock | cut -d= -f2)"
           test -d "stacks/$STACK"
           $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "mkdir -p /opt/platform/releases /opt/platform/scripts /opt/platform/stacks/$STACK"
@@ -45,5 +45,5 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=60 "$VPS_DEPLOY_USER@$VPS_HOST" \
             "sudo -n chmod +x /opt/platform/scripts/deploy.sh && sudo -n /opt/platform/scripts/deploy.sh '${{ inputs.service }}'"
