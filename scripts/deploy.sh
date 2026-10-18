@@ -90,6 +90,14 @@ wait_healthy() { # espera o HEALTHCHECK de cada container alvo
   return 0
 }
 
+# Bootstrap de 1a subida (stacks com ordem propria, ex.: kernel-harness precisa de redis+init-home antes dos workers):
+# carrega a imagem e grava a variavel em .release.env, sem subir nada. Uso: RT_BOOTSTRAP_ONLY=1 deploy.sh <servico>
+if [ "${RT_BOOTSTRAP_ONLY:-0}" = "1" ]; then
+  set_image "$NEW_TAG"
+  rt_log "bootstrap: $SERVICE $VERSION carregado ($NEW_TAG); nada foi iniciado"
+  exit 0
+fi
+
 # 4) pre-deploy (one-shot): roda com a imagem NOVA, antes de trocar os containers
 if [ -n "$PRE" ]; then
   set_image "$NEW_TAG"

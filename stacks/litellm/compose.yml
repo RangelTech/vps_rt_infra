@@ -12,7 +12,7 @@ services:
     mem_limit: 1g
     cpus: 1.5
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
-    networks: [public, internal, dbnet]   # public so para egress aos provedores; sem labels Traefik
+    networks: [public, internal, dbnet, harness_llm]   # public so para egress aos provedores; harness_llm: rede sem internet dos workers Hermes; sem labels Traefik
     labels:
       - rt.service=litellm
       - rt.layer=B
@@ -24,3 +24,6 @@ networks:
     external: true
   dbnet:
     external: true
+  harness_llm:
+    external: true
+    name: kernel-harness-llm

@@ -1,22 +1,133 @@
-# Stack do kernel-harness (Camada A). Imagem vem do artefato da release (ver scripts/deploy.sh); nunca build aqui.
+# Stack do kernel-harness (spec 04): Redis dedicado + kernel (API/fila/broker) + pool de workers Hermes.
+# Imagens vem dos artefatos das releases (scripts/deploy.sh); nunca build aqui.
+#   KERNEL_HARNESS_IMAGE  <- releases/kernel-harness.lock  (servico kernel-harness)
+#   RT_HERMES_IMAGE       <- releases/rt-hermes.lock        (servico rt-hermes)
+# Segredos: /opt/platform/secrets/kernel-harness.env (kernel) e rt-hermes.env (workers), 0600.
+# Primeira subida: docker compose --profile init run --rm init-home  (uma vez; recria so se a config base mudar).
+# Isolamento: workers ficam em redes `internal: true` (sem internet): so falam com o kernel (broker) e com o LiteLLM.
 name: kernel-harness
+
+x-hermes: &hermes
+  image: ${RT_HERMES_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rt-hermes.lock}
+  restart: unless-stopped
+  command: ["gateway", "run"]
+  env_file: /opt/platform/secrets/rt-hermes.env
+  environment:
+    RT_BROKER_URL: http://kernel-harness:8080/broker/v1/call
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 2g
+  cpus: 2
+  pids_limit: 512
+  tmpfs: [/tmp]
+  logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+  networks: [harness, llm]
+  labels:
+    - rt.service=rt-hermes
+    - rt.layer=A
+    - traefik.enable=false
+
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: kernel-harness-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "384mb", "--maxmemory-policy", "noeviction"]
+    volumes: ["redis:/data"]
+    mem_limit: 512m
+    cpus: 0.5
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
+    networks: [harness]
+    labels: [rt.service=kernel-harness-redis, rt.layer=A, traefik.enable=false]
+
+  # one-shot: prepara o HERMES_HOME (perfil default multiplex) de cada worker e as pastas compartilhadas
+  init-home:
+    image: ${RT_HERMES_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rt-hermes.lock}
+    user: "0"
+    restart: "no"
+    entrypoint: ["/opt/hermes/.venv/bin/python", "/initsrc/init_home.py"]
+    env_file: /opt/platform/secrets/rt-hermes.env
+    environment:
+      HOMEDIRS: "/homes/1,/homes/2"
+      LLM_URL: http://litellm:4000/v1
+      MAXCONC: "4"
+    volumes:
+      - /opt/platform/stacks/kernel-harness/init_home.py:/initsrc/init_home.py:ro
+      - home1:/homes/1
+      - home2:/homes/2
+      - profiles:/opt/data/profiles
+      - tenant_skills:/skills/tenant
+      - users:/srv/hermes/users
+    networks: [harness]
+    profiles: ["init"]
+
+  hermes-w1:
+    <<: *hermes
+    container_name: rt-hermes-w1
+    volumes:
+      - home1:/opt/data
+      - profiles:/opt/data/profiles
+      - tenant_skills:/skills/tenant:ro
+      - users:/srv/hermes/users:ro
+
+  hermes-w2:
+    <<: *hermes
+    container_name: rt-hermes-w2
+    volumes:
+      - home2:/opt/data
+      - profiles:/opt/data/profiles
+      - tenant_skills:/skills/tenant:ro
+      - users:/srv/hermes/users:ro
+
   harness:
     image: ${KERNEL_HARNESS_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/kernel-harness.lock}
     container_name: kernel-harness
     restart: unless-stopped
+    user: "10000:10000"
+    env_file: /opt/platform/secrets/kernel-harness.env
+    environment:
+      REDIS_URL: redis://kernel-harness-redis:6379/0
+      BACKEND_URL: http://agent-platform-backend:8090
+      LITELLM_URL: http://litellm:4000
+      HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":4},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":4}]'
+      PROFILES_ROOT: /opt/data/profiles
+      USERS_ROOT: /srv/hermes/users
+      TENANT_SKILLS_ROOT: /skills/tenant
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    mem_limit: 512m
-    cpus: 0.5
-    environment:
-      RT_ENV: prod
-    networks: [harness]
+    mem_limit: 1g
+    cpus: 1.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    volumes:
+      - profiles:/opt/data/profiles
+      - tenant_skills:/skills/tenant
+      - users:/srv/hermes/users
+    networks: [harness, internal, public]   # public so para egress (Mercado Pago, SMTP, bancos do cliente)
     labels:
       - rt.service=kernel-harness
       - rt.layer=A
+      - traefik.enable=false
+
 networks:
   harness:
     name: kernel-harness-net
+    internal: true
+  llm:
+    name: kernel-harness-llm
+    internal: true
+  internal:
+    external: true
+  public:
+    external: true
+
+volumes:
+  redis: {}
+  profiles: {}
+  tenant_skills: {}
+  users: {}
+  home1: {}
+  home2: {}
