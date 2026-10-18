@@ -67,6 +67,7 @@ def main():
             "service": svc,
             "stack": s["stack"],
             "compose_service": s.get("compose_service", svc),
+            "image_only": "true" if s.get("image_only") else "",
             "layer": s.get("layer", "A"),
             "repo": repo,
             "version": m["version"],

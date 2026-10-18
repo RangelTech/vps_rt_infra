@@ -1,0 +1,97 @@
+# Stack do runtime-manager (spec 04 §9): RM + docker-socket-proxy + rt-edge (borda dos apps *.apps). Camada B.
+# Imagens vem das releases do repo runtime-manager (deploy.sh):
+#   RUNTIME_MANAGER_IMAGE, EDGE_IMAGE (servicos) e WORKSPACE_IMAGE, EXECUTOR_IMAGE (so imagem: o RM cria os containers).
+# Segredos: /opt/platform/secrets/runtime-manager.env (0600).
+name: runtime-manager
+
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: rt-docker-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      VOLUMES: "1"
+      IMAGES: "1"
+      EXEC: "1"
+      POST: "1"
+      DELETE: "1"
+      INFO: "1"
+      PING: "1"
+      VERSION: "1"
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [rm]
+    mem_limit: 64m
+    labels: [rt.service=rt-docker-proxy, rt.layer=B, traefik.enable=false]
+
+  runtime-manager:
+    image: ${RUNTIME_MANAGER_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/runtime-manager.lock}
+    container_name: runtime-manager
+    restart: unless-stopped
+    user: "0"   # grava em /srv/rt (dirs dos tenants) e fala com o Docker so pelo proxy (corpo validado por politica)
+    env_file: /opt/platform/secrets/runtime-manager.env
+    environment:
+      RM_DOCKER_HOST: http://docker-socket-proxy:2375
+      RM_APPS_DOMAIN: apps.rangeltech.net
+      RM_WORKSPACE_IMAGE: ${WORKSPACE_IMAGE:-}
+      RM_EXECUTOR_IMAGE: ${EXECUTOR_IMAGE:-}
+      RM_ALLOWED_IMAGES: "rt/"
+      RM_TENANTS_ROOT: /srv/rt/tenants
+      RM_HERMES_ROOT: /srv/rt/hermes
+      RM_EXECUTOR_ROOT: /srv/rt/executor
+      RM_EDGE_DIR: /etc/rt-edge/dynamic
+      RM_TRAEFIK_DIR: /var/lib/rt/traefik-unused
+      RM_EDGE_FRONT_URL: http://rt-edge:8080
+      RM_EDGE_CONTAINER: rt-edge
+      RM_QUOTA_BACKEND: fake
+      RM_FIREWALL_BACKEND: "null"
+      RM_POOL_SIZE: "0"
+      RM_WAKE_URL: http://runtime-manager:8080
+      RM_BACKUP_DIR: /var/lib/rt/backups
+      RM_FORENSICS_DIR: /var/lib/rt/forensics
+    volumes:
+      - /srv/rt:/srv/rt
+      - edge-dynamic:/etc/rt-edge/dynamic
+      - rmdata:/var/lib/rt
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    networks: [rm, internal, dbnet]
+    depends_on: [docker-socket-proxy]
+    labels: [rt.service=runtime-manager, rt.layer=B, traefik.enable=false]
+
+  rt-edge:
+    image: ${EDGE_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/edge.lock}
+    container_name: rt-edge
+    restart: unless-stopped
+    volumes: ["edge-dynamic:/etc/traefik/dynamic:ro"]
+    mem_limit: 256m
+    cpus: 0.5
+    networks: [public]
+    labels:
+      - rt.service=rt-edge
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.routers.rt-apps.rule=HostRegexp(`^[a-z0-9-]+\.apps\.rangeltech\.net$`)
+      - traefik.http.routers.rt-apps.entrypoints=websecure
+      - traefik.http.routers.rt-apps.tls.certresolver=letsencrypt
+      - traefik.http.routers.rt-apps.priority=1
+      - traefik.http.routers.rt-apps.service=rt-apps
+      - traefik.http.services.rt-apps.loadbalancer.server.port=8080
+
+networks:
+  rm:
+    name: rt-rm-net
+    internal: true
+  internal:
+    external: true
+  dbnet:
+    external: true
+  public:
+    external: true
+
+volumes:
+  edge-dynamic: {}
+  rmdata: {}

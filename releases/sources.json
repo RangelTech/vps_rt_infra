@@ -69,6 +69,38 @@
       "compose_service": "api",
       "layer": "B",
       "manifest_asset": "release-manifest.portfolio-api.json"
+    },
+    {
+      "service": "runtime-manager",
+      "repo": "RangelTech/runtime-manager",
+      "stack": "runtime-manager",
+      "layer": "B",
+      "manifest_asset": "release-manifest.runtime-manager.json",
+      "compose_service": "runtime-manager"
+    },
+    {
+      "service": "edge",
+      "repo": "RangelTech/runtime-manager",
+      "stack": "runtime-manager",
+      "layer": "B",
+      "manifest_asset": "release-manifest.edge.json",
+      "compose_service": "rt-edge"
+    },
+    {
+      "service": "workspace",
+      "repo": "RangelTech/runtime-manager",
+      "stack": "runtime-manager",
+      "layer": "B",
+      "manifest_asset": "release-manifest.workspace.json",
+      "image_only": true
+    },
+    {
+      "service": "executor",
+      "repo": "RangelTech/runtime-manager",
+      "stack": "runtime-manager",
+      "layer": "B",
+      "manifest_asset": "release-manifest.executor.json",
+      "image_only": true
     }
   ]
 }
