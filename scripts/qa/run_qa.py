@@ -199,6 +199,120 @@ def q12_portfolio(sess):
     record("Q12", "portfolio unificado (site, RAG chat, Metabase)", ok, "; ".join(evid))
 
 
+def clear_site_cookies(sess, host):
+    cdp.cmd("Network.enable", {}, sess)
+    ck = cdp.cmd("Network.getCookies", {"urls": [f"https://{host}/"]}, sess)["result"]["cookies"]
+    for c in ck:
+        cdp.cmd("Network.deleteCookies", {"name": c["name"], "domain": c["domain"], "path": c["path"]}, sess)
+    return len(ck)
+
+
+def chatwoot_state(sess):
+    """Devolve (logado, texto): logado quando /app mostra o dashboard e nao a tela de login."""
+    cdp.goto(sess, "https://chat.rangeltech.net/app/", 6)
+    url = cdp.ev(sess, "location.pathname") or ""
+    txt = cdp.ev(sess, "document.body.innerText") or ""
+    logged = ("/login" not in url) and ("sign in" not in txt.lower()[:400]) and ("entrar" not in txt.lower()[:300])
+    return logged, url, txt[:200]
+
+
+def q5_sso(sess, creds):
+    evid = []
+    # estado inicial: sem sessao do Chatwoot
+    clear_site_cookies(sess, "chat.rangeltech.net")
+    clear_site_cookies(sess, "ia.rangeltech.net")
+    l0, u0, _ = chatwoot_state(sess)
+    shot(sess, "q5_chat_antes")
+    evid.append(f"antes_logado={l0}")
+    # login digitado na plataforma (dispara a popup de SSO)
+    login_ui(sess, creds["qa_sso_email"], creds["qa_sso_password"], "q5_ia")
+    time.sleep(8)
+    # confere a sessao do Chatwoot na MESMA sessao de navegador
+    l1, u1, t1 = chatwoot_state(sess)
+    shot(sess, "q5_chat_depois")
+    evid.append(f"depois_logado={l1} url={u1}")
+    # logout na plataforma derruba a sessao do Chatwoot
+    cdp.goto(sess, "https://ia.rangeltech.net/dashboard", 4)
+    sair = [x for x in cdp.ui(sess, 30) if x[0] == "button" and x[1].strip() == "Sair"]
+    if sair:
+        cdp.click(sess, sair[0][2], sair[0][3])
+        time.sleep(6)
+    l2, u2, _ = chatwoot_state(sess)
+    shot(sess, "q5_chat_pos_logout")
+    evid.append(f"pos_logout_logado={l2}")
+    record("Q5", "login sincronizado plataforma<->Chatwoot (entrada e saida)", (not l0) and l1 and (not l2), "; ".join(evid))
+
+
+def q6_chatwoot_login(sess, creds):
+    clear_site_cookies(sess, "chat.rangeltech.net")
+    cdp.goto(sess, "https://chat.rangeltech.net/app/login", 6)
+    inputs = [x for x in cdp.ui(sess, 20) if x[0] == "input"]
+    if len(inputs) < 2:
+        record("Q6", "login direto no Chatwoot", False, "campos nao encontrados")
+        return
+    for (x, y), text in ((inputs[0][2:4], creds["chatwoot_email"]), (inputs[1][2:4], creds["chatwoot_password"])):
+        cdp.click(sess, x, y)
+        cdp.select_all(sess)
+        cdp.typ(sess, text)
+    shot(sess, "q6_login_preenchido")
+    btn = [x for x in cdp.ui(sess, 30) if x[0] == "button"]
+    cdp.click(sess, btn[-1][2], btn[-1][3]) if btn else cdp.key(sess, "Enter", "Enter", 13)
+    ok = wait_for(sess, "location.pathname.indexOf('/login')<0 ? location.pathname : null", 40)
+    time.sleep(3)
+    shot(sess, "q6_logado")
+    txt = cdp.ev(sess, "document.body.innerText") or ""
+    record("Q6", "login direto no Chatwoot e caixa de entrada", ok is not None and "Conversations" in txt or "Conversas" in txt, f"path={ok}")
+
+
+def http_json(url, method, body=None, headers=None, timeout=120):
+    r = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body is not None else None,
+                               headers=dict({"Content-Type": "application/json", "User-Agent": "rt-qa"}, **(headers or {})))
+    try:
+        return json.load(urllib.request.urlopen(r, timeout=timeout))
+    except urllib.error.HTTPError as e:
+        return {"_http": e.code, "_body": e.read().decode()[:300]}
+
+
+def q7_inbox_ia(sess, creds):
+    """Mensagem entra pelo inbox de API do Chatwoot -> Agent Bot -> bridge -> kernel -> resposta no Chatwoot (+ tela)."""
+    cw = "https://chat.rangeltech.net"
+    tok = creds["qa_cw_api_token"]
+    ident = creds["qa_cw_inbox_identifier"]
+    acc = creds["qa_cw_account"]
+    ct = http_json(f"{cw}/public/api/v1/inboxes/{ident}/contacts", "POST", {"identifier": f"qa-{int(time.time())}", "name": "Cliente QA"})
+    src = ct["source_id"]
+    conv = http_json(f"{cw}/public/api/v1/inboxes/{ident}/contacts/{src}/conversations", "POST", {})["id"]
+    pergunta = "Ola! Qual a capital do Brasil? Responda em uma frase."
+    http_json(f"{cw}/public/api/v1/inboxes/{ident}/contacts/{src}/conversations/{conv}/messages", "POST", {"content": pergunta})
+    t0 = time.time()
+    reply = None
+    while time.time() - t0 < 150 and not reply:
+        time.sleep(4)
+        msgs = http_json(f"{cw}/api/v1/accounts/{acc}/conversations/{conv}/messages", "GET", None, {"api_access_token": tok})
+        for m in msgs.get("payload", []):
+            if m.get("message_type") == 1 and m.get("content"):
+                reply = m["content"]
+    lat = round(time.time() - t0, 1)
+    ok_reply = bool(reply) and "Bras" in reply
+    # tela: login digitado no Chatwoot e abre a conversa
+    clear_site_cookies(sess, "chat.rangeltech.net")
+    cdp.goto(sess, "https://chat.rangeltech.net/app/login", 6)
+    inputs = [x for x in cdp.ui(sess, 20) if x[0] == "input"]
+    for (x, y), text in ((inputs[0][2:4], creds["chatwoot_email"]), (inputs[1][2:4], creds["chatwoot_password"])):
+        cdp.click(sess, x, y)
+        cdp.select_all(sess)
+        cdp.typ(sess, text)
+    btn = [x for x in cdp.ui(sess, 30) if x[0] == "button"]
+    cdp.click(sess, btn[-1][2], btn[-1][3])
+    time.sleep(6)
+    cdp.goto(sess, f"https://chat.rangeltech.net/app/accounts/{acc}/conversations/{conv}", 8)
+    txt = cdp.ev(sess, "document.body.innerText") or ""
+    shot(sess, "q7_conversa_chatwoot")
+    on_screen = "Bras" in txt and "capital do Brasil" in txt
+    record("Q7", "mensagem pelo inbox do Chatwoot respondida pela IA (bot -> bridge -> kernel -> Chatwoot)", ok_reply and on_screen,
+           f"resposta_api={ok_reply} em {lat}s; na_tela={on_screen}; conversa={conv}")
+
+
 def main():
     global OUT
     args = [a for a in sys.argv[1:]]
@@ -210,7 +324,7 @@ def main():
     OUT = out or os.path.join(os.getcwd(), "qa-" + datetime.date.today().isoformat())
     os.makedirs(OUT, exist_ok=True)
     creds = json.load(open(VAULT, encoding="utf-8"))
-    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q12"]
+    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q5", "q6", "q7", "q12"]
     tab, sess = cdp.new_tab("about:blank")
     try:
         if "q1" in todo:
@@ -219,6 +333,12 @@ def main():
             q2_login(sess, creds)
         if "q3" in todo:
             q3_chat(sess)
+        if "q5" in todo:
+            q5_sso(sess, creds)
+        if "q6" in todo:
+            q6_chatwoot_login(sess, creds)
+        if "q7" in todo:
+            q7_inbox_ia(sess, creds)
         if "q12" in todo:
             q12_portfolio(sess)
     finally:

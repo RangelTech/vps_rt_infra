@@ -15,9 +15,12 @@ mkdir -p "$SEC"; chmod 700 "$SEC"
 
 ev() { grep -m1 "^$2=" "$1" 2>/dev/null | cut -d= -f2- | sed -E "s/^[\"']//; s/[\"']$//"; }
 gen() { head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c "${1:-32}"; }
+setv_force() { # arquivo chave valor (sobrescreve)
+  touch "$1"; grep -v "^$2=" "$1" > "$1.tmp" || true; printf '%s=%s\n' "$2" "$3" >> "$1.tmp"; mv "$1.tmp" "$1"; chmod 600 "$1"
+}
 have() { [ -s "$1" ] && grep -Eq "^$2=.+" "$1"; }
 setv() { # arquivo chave valor  (so grava se ainda nao existir)
-  have "$1" "$2" && return 0
+  grep -q "^$2=" "$1" 2>/dev/null && return 0
   printf '%s=%s\n' "$2" "$3" >> "$1"
 }
 PGU="$(ev $CPE POSTGRES_ADMIN_USER)"
@@ -66,6 +69,18 @@ docker run --rm --network internal --entrypoint sh -e MR="$MROOT" -e MP="$MPW" -
   (mc admin user info l "$MU" >/dev/null 2>&1 || mc admin user add l "$MU" "$MK" >/dev/null) &&
   mc admin policy attach l chatwoot-rw --user "$MU" >/dev/null 2>&1; echo minio_ok'
 
+echo "== MinIO: usuario de servico do agent-platform e kernel (bucket teste-ia)"
+MAF="$SEC/.minio_agent.keys"
+if [ ! -s "$MAF" ]; then printf 'agent-svc\n%s\n' "$(gen 40)" > "$MAF"; chmod 600 "$MAF"; fi
+AUSER="$(sed -n 1p "$MAF")"; AKEY="$(sed -n 2p "$MAF")"
+docker run --rm --network internal --entrypoint sh -e MR="$MROOT" -e MP="$MPW" -e MU="$AUSER" -e MK="$AKEY" minio/mc:latest -c '
+  mc alias set l http://minio:9000 "$MR" "$MP" >/dev/null &&
+  mc mb --ignore-existing l/teste-ia >/dev/null &&
+  printf "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:*\"],\"Resource\":[\"arn:aws:s3:::teste-ia\",\"arn:aws:s3:::teste-ia/*\"]}]}" > /tmp/p2.json &&
+  (mc admin policy create l agent-rw /tmp/p2.json >/dev/null 2>&1 || true) ;
+  (mc admin user info l "$MU" >/dev/null 2>&1 || mc admin user add l "$MU" "$MK" >/dev/null) &&
+  mc admin policy attach l agent-rw --user "$MU" >/dev/null 2>&1; echo minio_agent_ok'
+
 echo "== env: agent-platform-backend"
 F="$SEC/agent-platform-backend.env"; touch "$F"; chmod 600 "$F"
 setv "$F" DATABASE_URL "$AGENT_DB_URL"
@@ -90,6 +105,10 @@ setv "$F" PLATFORM_BACKEND_URL "http://agent-platform-backend:8090"
 setv "$F" ENABLE_STUB_CONTROL "false"
 for k in STORAGE_BACKEND S3_ENDPOINT_URL S3_REGION S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_PREFIX S3_PUBLIC_BASE_URL; do setv "$F" "$k" "$(ev $LEG_AGENT $k)"; done
 
+for f in "$SEC/agent-platform-backend.env" "$SEC/kernel-llm.env"; do
+  setv_force "$f" S3_ACCESS_KEY_ID "$AUSER"; setv_force "$f" S3_SECRET_ACCESS_KEY "$AKEY"
+  setv_force "$f" S3_ENDPOINT_URL "http://minio:9000"
+done
 echo "== env: litellm"
 F="$SEC/litellm.env"; touch "$F"; chmod 600 "$F"
 setv "$F" DATABASE_URL "postgresql://litellm_app:$(cat "$LITELLM_PW_FILE")@postgres:5432/litellm"
