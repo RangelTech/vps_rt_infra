@@ -108,7 +108,7 @@ services:
       - profiles:/opt/data/profiles
       - tenant_skills:/skills/tenant
       - users:/srv/hermes/users
-    networks: [harness, internal, public]   # public so para egress (Mercado Pago, SMTP, bancos do cliente)
+    networks: [harness, internal, dbnet, public]   # dbnet: fontes de dados do cliente hospedadas no Postgres da plataforma; public: egress (Mercado Pago, SMTP)
     labels:
       - rt.service=kernel-harness
       - rt.layer=A
@@ -122,6 +122,8 @@ networks:
     name: kernel-harness-llm
     internal: true
   internal:
+    external: true
+  dbnet:
     external: true
   public:
     external: true
