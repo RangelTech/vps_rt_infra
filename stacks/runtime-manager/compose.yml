@@ -41,7 +41,7 @@ services:
       RM_HERMES_ROOT: /srv/rt/hermes
       RM_EXECUTOR_ROOT: /srv/rt/executor
       RM_EDGE_DIR: /etc/rt-edge/dynamic
-      RM_TRAEFIK_DIR: /var/lib/rt/traefik-unused
+      RM_TRAEFIK_DIR: /etc/traefik/dynamic.d   # file provider do Traefik da plataforma (rotas Host(...) com TLS por app)
       RM_EDGE_FRONT_URL: http://rt-edge:8080
       RM_EDGE_CONTAINER: rt-edge
       RM_QUOTA_BACKEND: fake
@@ -54,6 +54,7 @@ services:
       - /srv/rt:/srv/rt
       - edge-dynamic:/etc/rt-edge/dynamic
       - rmdata:/var/lib/rt
+      - /opt/platform/data/traefik-dynamic:/etc/traefik/dynamic.d
     mem_limit: 512m
     cpus: 1
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
@@ -71,15 +72,10 @@ services:
     networks: [public]
     labels:
       - rt.service=rt-edge
+      - rt.managed=true   # o RM so conecta/inspeciona containers gerenciados (liga o edge a rede de cada tenant)
+      - rt.role=edge
       - rt.layer=B
-      - traefik.enable=true
-      - traefik.docker.network=public
-      - traefik.http.routers.rt-apps.rule=HostRegexp(`^[a-z0-9-]+\.apps\.rangeltech\.net$`)
-      - traefik.http.routers.rt-apps.entrypoints=websecure
-      - traefik.http.routers.rt-apps.tls.certresolver=letsencrypt
-      - traefik.http.routers.rt-apps.priority=1
-      - traefik.http.routers.rt-apps.service=rt-apps
-      - traefik.http.services.rt-apps.loadbalancer.server.port=8080
+      - traefik.enable=false
 
 networks:
   rm:
