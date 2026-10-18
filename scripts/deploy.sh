@@ -92,7 +92,8 @@ wait_healthy() { # espera o HEALTHCHECK de cada container alvo
 
 # Bootstrap de 1a subida (stacks com ordem propria, ex.: kernel-harness precisa de redis+init-home antes dos workers):
 # carrega a imagem e grava a variavel em .release.env, sem subir nada. Uso: RT_BOOTSTRAP_ONLY=1 deploy.sh <servico>
-if [ "${RT_BOOTSTRAP_ONLY:-0}" = "1" ]; then
+IMAGE_ONLY="$(rt_lock_get "$LOCK" image_only)"
+if [ "${RT_BOOTSTRAP_ONLY:-0}" = "1" ] || [ "$IMAGE_ONLY" = "true" ]; then
   set_image "$NEW_TAG"
   rt_log "bootstrap: $SERVICE $VERSION carregado ($NEW_TAG); nada foi iniciado"
   exit 0
