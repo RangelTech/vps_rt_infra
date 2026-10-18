@@ -18,9 +18,15 @@ jobs:
         run: python3 -m py_compile scripts/release_intake.py
       - name: compose config por stack
         run: |
+          sudo mkdir -p /opt/platform/secrets
           for f in stacks/*/compose.yml; do
-            echo "== $f"
-            KERNEL_HARNESS_IMAGE=x docker compose -f "$f" config -q
+            echo "== $f"; d="$(dirname "$f")"
+            # arquivos de segredo nao existem no runner: cria vazios so para o `config` validar o YAML
+            grep -oE 'env_file: */opt/platform/secrets/[A-Za-z0-9_.-]+' "$f" | awk '{print $NF}' | sort -u | while read -r e; do sudo touch "$e"; done
+            grep -oE 'env_file: *\./[A-Za-z0-9_.-]+\.env' "$f" | awk '{print $NF}' | sort -u | while read -r e; do touch "$d/${e#./}"; done
+            vars="$(grep -oE '\$\{[A-Z0-9_]+_IMAGE' "$f" | sed 's/^..//' | sort -u | sed 's/$/=x/' | tr '\n' ' ')"
+            # shellcheck disable=SC2086
+            env $vars docker compose -f "$f" config -q
           done
       - name: gitleaks
         run: |

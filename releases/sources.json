@@ -6,7 +6,16 @@
       "repo": "RangelTech/kernel-harness",
       "stack": "kernel-harness",
       "compose_service": "harness",
-      "layer": "A"
+      "layer": "B",
+      "manifest_asset": "release-manifest.kernel-harness.json"
+    },
+    {
+      "service": "rt-hermes",
+      "repo": "RangelTech/kernel-harness",
+      "stack": "kernel-harness",
+      "compose_service": "hermes-w1,hermes-w2",
+      "layer": "B",
+      "manifest_asset": "release-manifest.rt-hermes.json"
     },
     {
       "service": "agent-platform-backend",
