@@ -45,12 +45,12 @@ if [ ! -s "$FILE" ] || ! echo "$SHA  $FILE" | sha256sum -c - >/dev/null 2>&1; th
   mv "$FILE.part" "$FILE"
 fi
 
-# 2) variaveis de runtime exigidas (fail-fast, so os NOMES sao verificados)
+# 2) variaveis de runtime exigidas (fail-fast: a variavel precisa existir no arquivo; valor vazio e permitido, ex.: S3_PUBLIC_BASE_URL)
 if [ -n "$ENV_REQ" ]; then
   missing=""
   IFS=',' read -r -a REQ_LIST <<< "$ENV_REQ"
   for v in "${REQ_LIST[@]}"; do
-    grep -Eq "^${v}=.+" "$SECF" 2>/dev/null || missing="$missing $v"
+    grep -Eq "^${v}=" "$SECF" 2>/dev/null || missing="$missing $v"
   done
   [ -z "$missing" ] || { echo "variaveis de runtime ausentes em $SECF:$missing - abortando" >&2; exit 4; }
 fi
