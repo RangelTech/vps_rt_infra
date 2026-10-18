@@ -1,0 +1,17 @@
+service=edge
+stack=runtime-manager
+compose_service=rt-edge
+image_only=
+layer=B
+repo=RangelTech/runtime-manager
+version=v0.1.1
+commit=f569245
+artifact_url=https://github.com/RangelTech/runtime-manager/releases/download/v0.1.1/edge.image.tar.gz
+artifact_sha256=e0cd069fc0c4bb0f96b870ea150daf12778c029098470332d834270555a0cfc1
+image_id=sha256:f48a77b16dfb81a7ceea2611285d2d10fcaa56fc93e3c88075110bea830f214c
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=

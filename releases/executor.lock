@@ -1,0 +1,17 @@
+service=executor
+stack=runtime-manager
+compose_service=executor
+image_only=true
+layer=B
+repo=RangelTech/runtime-manager
+version=v0.1.1
+commit=f569245
+artifact_url=https://github.com/RangelTech/runtime-manager/releases/download/v0.1.1/executor.image.tar.gz
+artifact_sha256=d76406deda2b0952997530095176d3380cb11c13c593950cd32938c44e910d06
+image_id=sha256:13331dbdc3e6f5f18be026812b7ca684d5946f02c0427e3b8bae395cedeb39e8
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=

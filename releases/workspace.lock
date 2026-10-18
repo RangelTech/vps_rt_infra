@@ -1,0 +1,17 @@
+service=workspace
+stack=runtime-manager
+compose_service=workspace
+image_only=true
+layer=B
+repo=RangelTech/runtime-manager
+version=v0.1.1
+commit=f569245
+artifact_url=https://github.com/RangelTech/runtime-manager/releases/download/v0.1.1/workspace.image.tar.gz
+artifact_sha256=c2e38a2ea3f538d87111b47e993c6a5f8c5f64b67cff299c9f0cef252917a65d
+image_id=sha256:30cd927a63716de716471bb283b01d93d7b79873597ae779feb6d70236f5328e
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=

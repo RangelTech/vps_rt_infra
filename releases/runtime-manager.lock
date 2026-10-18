@@ -1,0 +1,17 @@
+service=runtime-manager
+stack=runtime-manager
+compose_service=runtime-manager
+image_only=
+layer=B
+repo=RangelTech/runtime-manager
+version=v0.1.1
+commit=f569245
+artifact_url=https://github.com/RangelTech/runtime-manager/releases/download/v0.1.1/runtime-manager.image.tar.gz
+artifact_sha256=01c6d71f0d0f56794c8b4b5a9b2a556f3cab437d233c3166692c1e00e64c236a
+image_id=sha256:98c675b33e9c69fa762acc6906f78b3d7cbc287da0addb0b9e293aacc9338ee1
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=RM_DATABASE_URL,RM_SERVICE_KEYS,RM_ADMIN_SERVICES,RM_DOMAIN_SECRET,RM_DOCKER_HOST,RM_APPS_DOMAIN
+previous_version=
+previous_image_id=
