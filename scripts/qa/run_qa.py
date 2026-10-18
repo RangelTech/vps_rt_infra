@@ -176,8 +176,13 @@ def q12_portfolio(sess):
     ok &= rag_ok
     # --- Metabase (bi.): login digitado
     mb = json.load(open(VAULT.replace("ia-master.json", "metabase-admin.json"), encoding="utf-8"))
+    clear_site_cookies(sess, "bi.rangeltech.net")
     cdp.goto(sess, "https://bi.rangeltech.net/auth/login", 3)
-    wait_for(sess, "document.querySelectorAll('input').length>=2", 30)
+    ready = wait_for(sess, "document.querySelectorAll('input').length>=2", 90)
+    if not ready:
+        shot(sess, "q12_bi_nao_carregou")
+        cdp.goto(sess, "https://bi.rangeltech.net/auth/login", 6)
+        wait_for(sess, "document.querySelectorAll('input').length>=2", 60)
     inputs = [x for x in cdp.ui(sess, 20) if x[0] == "input"]
     if len(inputs) >= 2:
         for (x, y), text in ((inputs[0][2:4], mb["email"]), (inputs[1][2:4], mb["password"])):
@@ -355,6 +360,110 @@ def q4_anexo(creds):
     record("Q4", "anexo e download por URL assinada (fora da VPS)", marcador in got and deny == 403, f"conteudo_ok={marcador in got}; sem_assinatura_http={deny}")
 
 
+def q9_backup():
+    out = ssh("sudo -n cat /opt/platform/data/backups/last_ok.json", 60).stdout.strip()
+    try:
+        j = json.loads(out)
+        age_h = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(j["finished_at"]).astimezone(datetime.timezone.utc)).total_seconds() / 3600
+    except Exception as e:  # noqa: BLE001
+        record("Q9", "backup diario com os bancos novos", False, f"last_ok ilegivel: {e}")
+        return
+    snap = ssh("sudo -n bash -c 'set -a; . /opt/platform/secrets/restic.env; set +a; export RCLONE_CONFIG=/opt/platform/secrets/rclone.conf; restic ls latest --tag daily 2>/dev/null | grep -c \"\\.dump$\"'", 120).stdout.strip().splitlines()
+    n = int(snap[-1]) if snap and snap[-1].isdigit() else 0
+    names = ssh("sudo -n bash -c 'set -a; . /opt/platform/secrets/restic.env; set +a; export RCLONE_CONFIG=/opt/platform/secrets/rclone.conf; restic ls latest --tag daily 2>/dev/null | grep \"\\.dump$\"'", 120).stdout
+    need = ["agent_llm", "chatwoot_prod", "chatwoot_bridge", "litellm", "infisical", "metabase"]
+    miss = [x for x in need if x not in names]
+    record("Q9", "backup diario (<24h) com dumps dos bancos novos", age_h < 24 and not miss and n >= 10, f"idade={age_h:.1f}h dumps={n} faltando={miss}")
+
+
+def q10_seguranca():
+    import socket as so
+    abertas = []
+    for port in (5432, 5433, 6379, 8080, 8090, 4000, 3000, 9000, 9001, 20128):
+        try:
+            c = so.create_connection(("66.94.101.153", port), timeout=4)
+            c.close()
+            abertas.append(port)
+        except Exception:  # noqa: BLE001
+            pass
+    # kernel e litellm inacessiveis por hostname publico
+    pub = []
+    for h in ("kernel.rangeltech.net", "litellm.rangeltech.net", "9route.rangeltech.net"):
+        try:
+            so.gethostbyname(h)
+            pub.append(h)
+        except Exception:  # noqa: BLE001
+            pass
+    # token interno exigido pelo kernel
+    code = ssh("sudo -n docker exec agent-platform-backend python -c \"import urllib.request as u\ntry: print(u.urlopen(u.Request('http://kernel-llm:8080/v1/runs',data=b'{}',headers={'Content-Type':'application/json'})).status)\nexcept Exception as e: print(getattr(e,'code',e))\"", 60).stdout.strip().splitlines()
+    code = code[-1] if code else "?"
+    ssh_pw = ssh("sudo -n sshd -T | grep -E '^(passwordauthentication|permitrootlogin)'", 30).stdout.replace("\n", " ")
+    hdr = urllib.request.urlopen("https://ia.rangeltech.net/", timeout=20).headers
+    sts = "Strict-Transport-Security" in hdr
+    ok = (not abertas) and (not pub) and code in ("401", "403", "422") and "passwordauthentication no" in ssh_pw and sts
+    record("Q10", "seguranca (portas, servicos internos, token, ssh, HSTS)", ok, f"portas_abertas={abertas} dns_publico={pub} kernel_sem_token={code} ssh=[{ssh_pw.strip()}] hsts={sts}")
+
+
+def q11_carga():
+    ia = "https://ia.rangeltech.net"
+    # reaproveita login e chat HTTP: 20 sequenciais + 5 paralelos
+    c = json.load(open(VAULT, encoding="utf-8"))
+    tok = http_json(ia + "/api/auth/login", "POST", {"email": c["qa_admin_email"], "password": c["qa_admin_password"]})["token"]
+    import concurrent.futures as cf
+
+    def one(_):
+        t0 = time.time()
+        r = urllib.request.Request(ia + "/api/chat/send", method="POST", data=json.dumps({"message": "Responda apenas: ok", "chat_id": None, "template_id": None}).encode(),
+                                   headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"})
+        try:
+            body = urllib.request.urlopen(r, timeout=180).read().decode()
+            return ("event: done" in body, time.time() - t0)
+        except Exception:  # noqa: BLE001
+            return (False, time.time() - t0)
+
+    seq = [one(i) for i in range(20)]
+    with cf.ThreadPoolExecutor(5) as ex:
+        par = list(ex.map(one, range(5)))
+    allr = seq + par
+    okn = sum(1 for a, _ in allr if a)
+    lat = sorted(t for a, t in allr if a)
+    p95 = lat[int(len(lat) * 0.95) - 1] if lat else 0
+    mem = ssh("sudo -n docker stats --no-stream --format '{{.Name}} {{.MemPerc}}' | sort -k2 -r -n | head -3; sudo -n free -m | sed -n 2p", 60).stdout.replace("\n", " | ")
+    record("Q11", "carga leve (20 sequenciais + 5 paralelas)", okn == 25, f"ok={okn}/25 p95={p95:.1f}s mem=[{mem.strip()}]")
+
+
+def q13_providers():
+    mk = ssh("sudo -n grep -m1 '^LITELLM_MASTER_KEY=' /opt/platform/secrets/litellm.env | cut -d= -f2-", 30).stdout.strip()
+    script = ("import json,urllib.request,subprocess,sys\n"
+              "mk=sys.stdin.readline().strip()\n"
+              "ip=subprocess.check_output(['docker','inspect','litellm','--format','{{range $k,$v := .NetworkSettings.Networks}}{{$v.IPAddress}} {{end}}']).decode().split()[0]\n"
+              "def call(m,p,b=None):\n"
+              "  r=urllib.request.Request(f'http://{ip}:4000'+p,method=m,data=json.dumps(b).encode() if b is not None else None,headers={'Authorization':'Bearer '+mk,'Content-Type':'application/json'})\n"
+              "  try: return json.load(urllib.request.urlopen(r,timeout=120))\n"
+              "  except urllib.error.HTTPError as e: return {'_http':e.code,'_b':e.read().decode()[:120]}\n"
+              "out=[]\n"
+              "for m in [x['model_name'] for x in call('GET','/model/info')['data']]:\n"
+              "  r=call('POST','/chat/completions',{'model':m,'messages':[{'role':'user','content':'ok?'}],'max_tokens':8})\n"
+              "  out.append((m,'OK' if 'choices' in r else 'SEM_CREDITO' if r.get('_http')==401 else 'FALHA:'+str(r.get('_http'))))\n"
+              "print(json.dumps(out))\n")
+    import subprocess
+    r = subprocess.run(["ssh", "-i", SSH_KEY, "-o", "IdentitiesOnly=yes", "deploy@66.94.101.153", "sudo -n python3 -c " + json.dumps(script).replace('"', '\\"').join(["\"", "\""]) if False else "sudo -n python3 -"],
+                       input=mk + "\n" + "", capture_output=True, text=True, timeout=400)
+    # o script e enviado por stdin depois da chave: reenvia de forma simples
+    r = subprocess.run(["ssh", "-i", SSH_KEY, "-o", "IdentitiesOnly=yes", "deploy@66.94.101.153", "sudo -n tee /tmp/q13.py >/dev/null"], input=script, capture_output=True, text=True, timeout=60)
+    r = subprocess.run(["ssh", "-i", SSH_KEY, "-o", "IdentitiesOnly=yes", "deploy@66.94.101.153", "sudo -n python3 /tmp/q13.py; sudo -n rm -f /tmp/q13.py"], input=mk + "\n", capture_output=True, text=True, timeout=400)
+    try:
+        res = json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception:  # noqa: BLE001
+        record("Q13", "provedores do LiteLLM", False, f"saida invalida: {r.stdout[-120:]} {r.stderr[-120:]}")
+        return
+    ninerouter_ok = any(m.startswith("ninerouter") and st == "OK" for m, st in res)
+    real_fail = [m for m, st in res if st.startswith("FALHA")]
+    sem = [m for m, st in res if st == "SEM_CREDITO"]
+    record("Q13", "provedores do LiteLLM (9Router responde; sem credito nao conta como falha)", ninerouter_ok and not real_fail,
+           f"ok={sum(1 for _, st in res if st == 'OK')}/{len(res)} sem_credito={sem} falhas={real_fail}")
+
+
 def main():
     global OUT
     args = [a for a in sys.argv[1:]]
@@ -366,7 +475,7 @@ def main():
     OUT = out or os.path.join(os.getcwd(), "qa-" + datetime.date.today().isoformat())
     os.makedirs(OUT, exist_ok=True)
     creds = json.load(open(VAULT, encoding="utf-8"))
-    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q12"]
+    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q9", "q10", "q11", "q12", "q13"]
     tab, sess = cdp.new_tab("about:blank")
     try:
         if "q1" in todo:
@@ -383,8 +492,16 @@ def main():
             q6_chatwoot_login(sess, creds)
         if "q7" in todo:
             q7_inbox_ia(sess, creds)
+        if "q9" in todo:
+            q9_backup()
+        if "q10" in todo:
+            q10_seguranca()
+        if "q11" in todo:
+            q11_carga()
         if "q12" in todo:
             q12_portfolio(sess)
+        if "q13" in todo:
+            q13_providers()
     finally:
         pass
     with open(os.path.join(OUT, "qa-report.md"), "w", encoding="utf-8") as fh:
