@@ -313,6 +313,47 @@ def q7_inbox_ia(sess, creds):
            f"resposta_api={ok_reply} em {lat}s; na_tela={on_screen}; conversa={conv}")
 
 
+SSH_KEY = os.environ.get("QA_SSH_KEY", r"C:\\Users\\lucas.rangel\\Desktop\\new_ragente\\repos\\personal-skills\\secrets\\rt-infra-deploy-ssh\\vps_rt_infra_deploy_v3")
+
+
+def ssh(cmd, timeout=120):
+    import subprocess
+    return subprocess.run(["ssh", "-i", SSH_KEY, "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes", "deploy@66.94.101.153", cmd],
+                          capture_output=True, text=True, timeout=timeout)
+
+
+def q4_anexo(creds):
+    """Upload pela API, URL assinada gerada pelo backend, download de FORA da VPS; sem assinatura deve negar."""
+    import uuid
+    ia = "https://ia.rangeltech.net"
+    t = http_json(ia + "/api/auth/login", "POST", {"email": creds["qa_admin_email"], "password": creds["qa_admin_password"]})["token"]
+    bd = uuid.uuid4().hex
+    marcador = f"QA anexo {int(time.time())}"
+    body = (f"--{bd}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"qa-anexo.txt\"\r\nContent-Type: text/plain\r\n\r\n{marcador}\r\n--{bd}--\r\n").encode()
+    r = urllib.request.Request(ia + "/api/files", method="POST", data=body, headers={"Authorization": "Bearer " + t, "Content-Type": "multipart/form-data; boundary=" + bd})
+    try:
+        up = json.load(urllib.request.urlopen(r, timeout=120))
+    except urllib.error.HTTPError as e:
+        record("Q4", "anexo e download por URL assinada", False, f"upload HTTP {e.code}")
+        return
+    fid = up["id"]
+    sp = f"s3://teste-ia/agent-llm/tenants/{creds['qa_tenant_id']}/files/{fid}/qa-anexo.txt"
+    if not sp.startswith("s3://"):
+        record("Q4", "anexo e download por URL assinada", False, f"storage_path inesperado: {sp[:60]}")
+        return
+    py = ("sudo -n docker exec agent-platform-backend python -c \"import sys;sys.path.insert(0,'/srv');from app.artifacts_io import signed_download_url as s;print(s('" + sp + "'))\"")
+    url = ssh(py).stdout.strip().splitlines()[-1]
+    try:
+        got = urllib.request.urlopen(url, timeout=30).read().decode()
+    except Exception as e:  # noqa: BLE001
+        got = f"ERRO {e}"
+    try:
+        deny = urllib.request.urlopen(url.split("?")[0], timeout=30).status
+    except urllib.error.HTTPError as e:
+        deny = e.code
+    record("Q4", "anexo e download por URL assinada (fora da VPS)", marcador in got and deny == 403, f"conteudo_ok={marcador in got}; sem_assinatura_http={deny}")
+
+
 def main():
     global OUT
     args = [a for a in sys.argv[1:]]
@@ -324,7 +365,7 @@ def main():
     OUT = out or os.path.join(os.getcwd(), "qa-" + datetime.date.today().isoformat())
     os.makedirs(OUT, exist_ok=True)
     creds = json.load(open(VAULT, encoding="utf-8"))
-    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q5", "q6", "q7", "q12"]
+    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q12"]
     tab, sess = cdp.new_tab("about:blank")
     try:
         if "q1" in todo:
@@ -333,6 +374,8 @@ def main():
             q2_login(sess, creds)
         if "q3" in todo:
             q3_chat(sess)
+        if "q4" in todo:
+            q4_anexo(creds)
         if "q5" in todo:
             q5_sso(sess, creds)
         if "q6" in todo:

@@ -6,8 +6,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "5432:5432"
-      - "5433:5433"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
@@ -85,10 +83,6 @@ services:
       # Acesso direto (sem pgbouncer) pro kernel no Cloud Run — ver
       # comentário no entrypoint postgres-direct em configs/traefik/traefik.yml.
       - traefik.enable=true
-      - traefik.tcp.routers.postgres-direct.rule=HostSNI(`*`)
-      - traefik.tcp.routers.postgres-direct.entrypoints=postgres-direct
-      - traefik.tcp.routers.postgres-direct.service=postgres-direct
-      - traefik.tcp.services.postgres-direct.loadbalancer.server.port=5432
 
   pgbouncer:
     image: edoburu/pgbouncer:${PGBOUNCER_VERSION}
@@ -115,10 +109,6 @@ services:
       - public
     labels:
       - traefik.enable=true
-      - traefik.tcp.routers.pgbouncer.rule=HostSNI(`*`)
-      - traefik.tcp.routers.pgbouncer.entrypoints=postgres
-      - traefik.tcp.routers.pgbouncer.service=pgbouncer
-      - traefik.tcp.services.pgbouncer.loadbalancer.server.port=5432
 
   redis:
     image: redis:${REDIS_VERSION}
@@ -133,8 +123,6 @@ services:
     # subsequente (inclusive o healer automático, rt-compose-healer.timer)
     # recriava o container só com a rede `internal`, cortando o Redis dos
     # dois Cloud Run de vez sem aviso nenhum.
-    ports:
-      - "6379:6379"
     volumes:
       - ../data/redis:/data
     networks:
