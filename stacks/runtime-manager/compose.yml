@@ -71,6 +71,8 @@ services:
     networks: [public]
     labels:
       - rt.service=rt-edge
+      - rt.managed=true   # o RM so conecta/inspeciona containers gerenciados (liga o edge a rede de cada tenant)
+      - rt.role=edge
       - rt.layer=B
       - traefik.enable=true
       - traefik.docker.network=public
