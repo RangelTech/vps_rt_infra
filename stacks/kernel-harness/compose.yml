@@ -1,4 +1,4 @@
-# Stack do kernel-harness (spec 04): Redis dedicado + kernel (API/fila/broker) + pool de workers Hermes.
+# Stack do kernel-harness (spec 04): kernel (API/fila/broker) + pool de workers Hermes.
 # Imagens vem dos artefatos das releases (scripts/deploy.sh); nunca build aqui.
 #   KERNEL_HARNESS_IMAGE  <- releases/kernel-harness.lock  (servico kernel-harness)
 #   RT_HERMES_IMAGE       <- releases/rt-hermes.lock        (servico rt-hermes)
@@ -29,21 +29,6 @@ x-hermes: &hermes
     - traefik.enable=false
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: kernel-harness-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "384mb", "--maxmemory-policy", "noeviction"]
-    volumes: ["redis:/data"]
-    mem_limit: 512m
-    cpus: 0.5
-    cap_drop: [ALL]
-    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]   # entrypoint do redis (root) entra em appendonlydir 0700 e troca de dono
-    security_opt: ["no-new-privileges:true"]
-    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
-    networks: [harness]
-    labels: [rt.service=kernel-harness-redis, rt.layer=A, traefik.enable=false]
-
   # one-shot: prepara o HERMES_HOME (perfil default multiplex) de cada worker e as pastas compartilhadas
   init-home:
     image: ${RT_HERMES_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rt-hermes.lock}
@@ -90,7 +75,6 @@ services:
     user: "10000:10000"
     env_file: /opt/platform/secrets/kernel-harness.env
     environment:
-      REDIS_URL: redis://kernel-harness-redis:6379/0
       BACKEND_URL: http://agent-platform-backend:8090
       LITELLM_URL: http://litellm:4000
       HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":4},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":4}]'
@@ -108,7 +92,7 @@ services:
       - profiles:/opt/data/profiles
       - tenant_skills:/skills/tenant
       - users:/srv/hermes/users
-    networks: [harness, internal, dbnet, public]   # dbnet: fontes de dados do cliente hospedadas no Postgres da plataforma; public: egress (Mercado Pago, SMTP)
+    networks: [harness, internal, dbnet, public]   # internal: Redis central (usuario ACL kernelharness, db 3)   # dbnet: fontes de dados do cliente hospedadas no Postgres da plataforma; public: egress (Mercado Pago, SMTP)
     labels:
       - rt.service=kernel-harness
       - rt.layer=A
@@ -129,7 +113,6 @@ networks:
     external: true
 
 volumes:
-  redis: {}
   profiles: {}
   tenant_skills: {}
   users: {}
