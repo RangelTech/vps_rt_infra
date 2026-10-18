@@ -104,7 +104,8 @@ def q2_login(sess, creds):
     login_ui(sess, creds["qa_admin_email"], creds["qa_admin_password"], "q2_admin_relogin")
 
 
-def q3_chat(sess):
+def q3_chat(sess, creds):
+    login_ui(sess, creds["qa_admin_email"], creds["qa_admin_password"], "q3_login")
     cdp.goto(sess, "https://ia.rangeltech.net/chat", 4)
     shot(sess, "q3_chat_vazio")
     box = [x for x in cdp.ui(sess, 80) if x[0] == "textarea"]
@@ -373,7 +374,7 @@ def main():
         if "q2" in todo:
             q2_login(sess, creds)
         if "q3" in todo:
-            q3_chat(sess)
+            q3_chat(sess, creds)
         if "q4" in todo:
             q4_anexo(creds)
         if "q5" in todo:
