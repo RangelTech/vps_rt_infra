@@ -137,6 +137,68 @@ def q3_chat(sess):
            f"resposta={'sim' if answer else 'nao'} em {lat}s; historico={persisted}")
 
 
+def wait_for(sess, js, timeout=40, step=2):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        v = cdp.ev(sess, js)
+        if v:
+            return v
+        time.sleep(step)
+    return None
+
+
+def q12_portfolio(sess):
+    evid = []
+    ok = True
+    # --- site (lucas.)
+    cdp.goto(sess, "https://lucas.rangeltech.net/", 4)
+    title = cdp.ev(sess, "document.title") or ""
+    shot(sess, "q12_site")
+    fb = cdp.ev(sess, "fetch('/api/feedback/health').then(r=>r.status)", True)
+    site_ok = "Lucas Rangel" in title and fb == 200
+    evid.append(f"site={'ok' if site_ok else 'FALHA'} (titulo={title[:30]}, feedback={fb})")
+    ok &= site_ok
+    # --- RAG chat (rag.): pergunta digitada e resposta
+    cdp.goto(sess, "https://rag.rangeltech.net/", 5)
+    box = wait_for(sess, "(()=>{const e=document.querySelector('textarea');if(!e)return null;const r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()", 20)
+    if box:
+        cdp.click(sess, box[0], box[1])
+        cdp.typ(sess, "O que e o PNCP?")
+        shot(sess, "q12_rag_digitada")
+        cdp.key(sess, "Enter", "Enter", 13)
+        ans = wait_for(sess, "(()=>{const t=document.body.innerText;return /Portal Nacional/i.test(t)?t.slice(-400):null})()", 90, 3)
+        shot(sess, "q12_rag_resposta")
+        rag_ok = ans is not None
+    else:
+        rag_ok = False
+    evid.append(f"rag={'ok' if rag_ok else 'FALHA'}")
+    ok &= rag_ok
+    # --- Metabase (bi.): login digitado
+    mb = json.load(open(VAULT.replace("ia-master.json", "metabase-admin.json"), encoding="utf-8"))
+    cdp.goto(sess, "https://bi.rangeltech.net/auth/login", 3)
+    wait_for(sess, "document.querySelectorAll('input').length>=2", 30)
+    inputs = [x for x in cdp.ui(sess, 20) if x[0] == "input"]
+    if len(inputs) >= 2:
+        for (x, y), text in ((inputs[0][2:4], mb["email"]), (inputs[1][2:4], mb["password"])):
+            cdp.click(sess, x, y)
+            cdp.select_all(sess)
+            cdp.typ(sess, text)
+        shot(sess, "q12_bi_login")
+        btn = [x for x in cdp.ui(sess, 30) if x[0] == "button" and ("sign" in x[1].lower() or "entrar" in x[1].lower() or "log" in x[1].lower())]
+        if btn:
+            cdp.click(sess, btn[0][2], btn[0][3])
+        else:
+            cdp.key(sess, "Enter", "Enter", 13)
+        home = wait_for(sess, "(()=>{const u=location.pathname;return u.indexOf('/auth/login')<0?u:null})()", 40)
+        shot(sess, "q12_bi_logado")
+        bi_ok = home is not None
+    else:
+        bi_ok = False
+    evid.append(f"bi_login={'ok' if bi_ok else 'FALHA'}")
+    ok &= bi_ok
+    record("Q12", "portfolio unificado (site, RAG chat, Metabase)", ok, "; ".join(evid))
+
+
 def main():
     global OUT
     args = [a for a in sys.argv[1:]]
@@ -148,7 +210,7 @@ def main():
     OUT = out or os.path.join(os.getcwd(), "qa-" + datetime.date.today().isoformat())
     os.makedirs(OUT, exist_ok=True)
     creds = json.load(open(VAULT, encoding="utf-8"))
-    todo = [a.lower() for a in args] or ["q1", "q2", "q3"]
+    todo = [a.lower() for a in args] or ["q1", "q2", "q3", "q12"]
     tab, sess = cdp.new_tab("about:blank")
     try:
         if "q1" in todo:
@@ -157,6 +219,8 @@ def main():
             q2_login(sess, creds)
         if "q3" in todo:
             q3_chat(sess)
+        if "q12" in todo:
+            q12_portfolio(sess)
     finally:
         pass
     with open(os.path.join(OUT, "qa-report.md"), "w", encoding="utf-8") as fh:
