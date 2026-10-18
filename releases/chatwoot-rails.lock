@@ -1,0 +1,16 @@
+service=chatwoot-rails
+stack=chatwoot
+compose_service=chatwoot-web,chatwoot-worker
+layer=B
+repo=RangelTech/chatwoot-rt
+version=v0.1.1
+commit=91118d9
+artifact_url=https://github.com/RangelTech/chatwoot-rt/releases/download/v0.1.1/chatwoot-rails.image.tar.gz
+artifact_sha256=2e113e6d62c5add835e4e7583f186dae6268dbeb342e7e2bb29d946431fac4bd
+image_id=sha256:e79d08bd31d60a1f63c3caebae513ff4d803f69e655630788d2759b4adf95563
+manifest_version=1
+pre_deploy_service=chatwoot-migrate
+healthcheck_timeout=240
+env_required=SECRET_KEY_BASE,POSTGRES_HOST,POSTGRES_DATABASE,POSTGRES_USERNAME,POSTGRES_PASSWORD,REDIS_URL,FRONTEND_URL,ACTIVE_STORAGE_SERVICE,STORAGE_BUCKET_NAME,STORAGE_ENDPOINT,STORAGE_ACCESS_KEY_ID,STORAGE_SECRET_ACCESS_KEY,BRIDGE_URL,BRIDGE_ADMIN_TOKEN
+previous_version=
+previous_image_id=

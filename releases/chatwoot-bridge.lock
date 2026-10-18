@@ -1,0 +1,16 @@
+service=chatwoot-bridge
+stack=chatwoot
+compose_service=bridge
+layer=B
+repo=RangelTech/chatwoot-rt
+version=v0.1.1
+commit=91118d9
+artifact_url=https://github.com/RangelTech/chatwoot-rt/releases/download/v0.1.1/chatwoot-bridge.image.tar.gz
+artifact_sha256=95554ccaa9d8e311cc823ba68829813b4bdf1f408fd6ac9853cd0cd5776097ac
+image_id=sha256:c08e6e712f4450a30a993aa403e9178c1e7f039f2058de6c442fd2a31d88d997
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=DATABASE_URL,ENCRYPTION_KEY,BRIDGE_ADMIN_TOKEN,BRIDGE_PUBLIC_URL,CHATWOOT_BASE_URL,CHATWOOT_PLATFORM_TOKEN,AGENT_PLATFORM_URL
+previous_version=
+previous_image_id=
