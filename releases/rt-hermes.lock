@@ -1,0 +1,16 @@
+service=rt-hermes
+stack=kernel-harness
+compose_service=hermes-w1,hermes-w2
+layer=B
+repo=RangelTech/kernel-harness
+version=v0.2.0
+commit=563cde3
+artifact_url=https://github.com/RangelTech/kernel-harness/releases/download/v0.2.0/rt-hermes.image.tar.gz
+artifact_sha256=75e6d8daae0e31afde9e9755c9f9304a1da91509d632c922a08be608e53f1c99
+image_id=sha256:b9716d881cf43d2ce6e7129a47fd865e7f9c324b522db212916a74ce860485b4
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=120
+env_required=RT_BROKER_URL,RT_BROKER_TOKEN
+previous_version=
+previous_image_id=
