@@ -31,7 +31,7 @@ providers:
     exposedByDefault: false
     network: public
   file:
-    filename: /etc/traefik/dynamic.yml
+    directory: /etc/traefik/dynamic.d   # 00-main.yml (dynamic.yml) + rotas por app escritas pelo runtime-manager
     watch: true
 
 certificatesResolvers:
