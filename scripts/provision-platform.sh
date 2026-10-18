@@ -107,7 +107,9 @@ for k in STORAGE_BACKEND S3_ENDPOINT_URL S3_REGION S3_BUCKET S3_ACCESS_KEY_ID S3
 
 for f in "$SEC/agent-platform-backend.env" "$SEC/kernel-llm.env"; do
   setv_force "$f" S3_ACCESS_KEY_ID "$AUSER"; setv_force "$f" S3_SECRET_ACCESS_KEY "$AKEY"
-  setv_force "$f" S3_ENDPOINT_URL "http://minio:9000"
+  # endpoint publico: as URLs presign (bucket privado) precisam abrir no navegador; S3_PUBLIC_BASE_URL fica vazio de proposito
+  setv_force "$f" S3_ENDPOINT_URL "https://storage.rangeltech.net"
+  setv_force "$f" S3_PUBLIC_BASE_URL ""
 done
 echo "== env: litellm"
 F="$SEC/litellm.env"; touch "$F"; chmod 600 "$F"
