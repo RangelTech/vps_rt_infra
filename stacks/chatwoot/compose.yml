@@ -30,7 +30,8 @@ services:
       - traefik.enable=true
       - traefik.docker.network=public
       - traefik.http.services.chatwoot-web.loadbalancer.server.port=3000
-      - traefik.http.routers.chatwoot-web.rule=Host(`chat.rangeltech.net`)
+      - traefik.http.routers.chatwoot-web.rule=Host(`chat.rangeltech.net`) || Host(`ia.rangeltech.net`)
+      - traefik.http.routers.chatwoot-web.priority=100
       - traefik.http.routers.chatwoot-web.entrypoints=websecure
       - traefik.http.routers.chatwoot-web.tls.certresolver=letsencrypt
       - traefik.http.routers.chatwoot-web.middlewares=security-headers@file

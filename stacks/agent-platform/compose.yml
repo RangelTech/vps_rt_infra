@@ -22,7 +22,8 @@ services:
       - traefik.enable=true
       - traefik.docker.network=public
       - traefik.http.services.agent-platform.loadbalancer.server.port=8090
-      - traefik.http.routers.agent-platform.rule=Host(`ia.rangeltech.net`)
+      - traefik.http.routers.agent-platform.rule=Host(`ia.rangeltech.net`) && (PathPrefix(`/politica-de-privacidade`) || PathPrefix(`/termos-de-uso`) || PathPrefix(`/exclusao-de-dados`) || PathPrefix(`/assets`))
+      - traefik.http.routers.agent-platform.priority=150
       - traefik.http.routers.agent-platform.entrypoints=websecure
       - traefik.http.routers.agent-platform.tls.certresolver=letsencrypt
       - traefik.http.routers.agent-platform.middlewares=security-headers@file
