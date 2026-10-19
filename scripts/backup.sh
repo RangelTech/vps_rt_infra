@@ -60,6 +60,9 @@ PATHS=(
   /opt/airflow-infra /opt/airflow /var/lib/docker/volumes/airflow_airflow-state/_data
   /opt/platform/stacks /opt/platform/releases /opt/platform/data/ninerouter /opt/platform/data/redis/users.acl /opt/portfolio-feedback/data
   /etc/cron.d/platform-backups /etc/systemd/system/rt-backup.service /etc/systemd/system/rt-backup.timer
+  # agentes por skills (spec 04/10): perfis Hermes (state.db), skills da empresa/usuario, estado do runtime-manager e workspaces das empresas
+  /var/lib/docker/volumes/kernel-harness_profiles /var/lib/docker/volumes/kernel-harness_users /var/lib/docker/volumes/kernel-harness_tenant_skills
+  /var/lib/docker/volumes/runtime-manager_rmdata /var/lib/docker/volumes/runtime-manager_edge-dynamic /opt/platform/data/traefik-dynamic /srv/rt/tenants /srv/rt/hermes
   /etc/systemd/system/rt-compose-healer.service /etc/systemd/system/rt-compose-healer.timer
 )
 [ -n "${COLD_PGDATA:-}" ] && PATHS+=("$COLD_PGDATA")
