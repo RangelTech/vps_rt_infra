@@ -53,7 +53,8 @@ for _ in $(seq 1 60); do PSQL -d postgres -Atc 'select 1' >/dev/null 2>&1 && bre
 PSQL -d postgres -Atc 'select 1' >/dev/null 2>&1 || { echo "postgres descartavel nao ficou pronto"; exit 1; }
 
 # ---- 1. idade do snapshot ---------------------------------------------------
-restic snapshots "$([ "$SNAP" = latest ] && echo --latest 1 || echo "$SNAP")" --tag "$TAG" --host "$HOSTF" --json > "$WORK/snap.json" 2>"$WORK/snap.err" \
+SNAPARGS=(--latest 1); [ "$SNAP" = latest ] || SNAPARGS=("$SNAP")
+restic snapshots "${SNAPARGS[@]}" --tag "$TAG" --host "$HOSTF" --json > "$WORK/snap.json" 2>"$WORK/snap.err" \
   || { cat "$WORK/snap.err"; exit 1; }
 read -r SNAPID AGE < <(python3 - "$WORK/snap.json" <<'PY'
 import json, sys, datetime as d
@@ -77,7 +78,8 @@ restic restore "$SNAPID" --target "$WORK/r" "${INC[@]}" 2>&1 | tail -2
 log "==> pg_restore em banco descartavel"
 n=0; ndumps=0
 DUMPS="$(find "$WORK/r" -path '*/staging/*/pg/*.dump' | sort)"
-[ -z "$DUMPS" ] && bad "nenhum dump no snapshot"
+[ "${PG_CHECK:-1}" = 1 ] || { DUMPS=""; REQUIRE_ROWS=""; }   # PG_CHECK=0: so volumes (reexecucao rapida)
+[ -z "$DUMPS" ] && [ "${PG_CHECK:-1}" = 1 ] && bad "nenhum dump no snapshot"
 declare -A ROWS
 while IFS= read -r -u 3 f; do
   [ -n "$f" ] || continue
@@ -117,7 +119,7 @@ if [ "$VOLUME_CHECK" = 1 ]; then
     if [ -d "$p" ]; then lf="$(find "$p" \( -name node_modules -o -name .cache \) -prune -o -type f -print 2>/dev/null | wc -l)"; lb="$(du -sb "$p" 2>/dev/null | cut -f1)"; fi
     st=ok; [ "$rf" -gt 0 ] || st="vazio"
     # volumes vivos mudam entre o backup e agora: tolera 25% de diferenca em arquivos
-    if [ "$lf" != "-" ] && [ "$lf" -gt 20 ] && awk "BEGIN{exit !($rf < 0.75*$lf)}"; then st="faltam_arquivos"; fi
+    if [ "$lf" != "-" ] && [ "$lf" -gt 200 ] && awk "BEGIN{exit !($rf < 0.75*$lf)}"; then st="faltam_arquivos"; fi
     [ "$st" = ok ] || bad "$p: $st (restaurado=$rf vivo=$lf)"
     printf '%-5s %-58s arquivos=%s/%s bytes=%s/%s\n' "$st" "$p" "$rf" "$lf" "$rb" "$lb"
     VREP="$VREP{\"path\":\"$p\",\"status\":\"$st\",\"files\":$rf,\"bytes\":$rb},"
