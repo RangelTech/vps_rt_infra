@@ -29,7 +29,7 @@ services:
       - traefik.http.routers.agent-platform.service=agent-platform
       # Stream do Chat com IA (spec 10): o Chatwoot (chat./ia.) envia o POST de mesma origem ao motor.
       # So este prefixo chega ao motor; /internal/* nunca e exposto por aqui.
-      - traefik.http.routers.ai-stream.rule=(Host(`chat.rangeltech.net`) || Host(`ia.rangeltech.net`)) && PathPrefix(`/ai/stream/`)
+      - traefik.http.routers.ai-stream.rule=(Host(`chat.rangeltech.net`) || Host(`ia.rangeltech.net`)) && (Path(`/ai/stream/chat/send`) || PathRegexp(`^/ai/stream/chat/runs/[0-9a-f-]+/cancel$$`))
       - traefik.http.routers.ai-stream.priority=200
       - traefik.http.routers.ai-stream.entrypoints=websecure
       - traefik.http.routers.ai-stream.tls.certresolver=letsencrypt
