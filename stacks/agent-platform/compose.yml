@@ -27,6 +27,16 @@ services:
       - traefik.http.routers.agent-platform.tls.certresolver=letsencrypt
       - traefik.http.routers.agent-platform.middlewares=security-headers@file
       - traefik.http.routers.agent-platform.service=agent-platform
+      # Stream do Chat com IA (spec 10): o Chatwoot (chat./ia.) envia o POST de mesma origem ao motor.
+      # So este prefixo chega ao motor; /internal/* nunca e exposto por aqui.
+      - traefik.http.routers.ai-stream.rule=(Host(`chat.rangeltech.net`) || Host(`ia.rangeltech.net`)) && PathPrefix(`/ai/stream/`)
+      - traefik.http.routers.ai-stream.priority=200
+      - traefik.http.routers.ai-stream.entrypoints=websecure
+      - traefik.http.routers.ai-stream.tls.certresolver=letsencrypt
+      - traefik.http.routers.ai-stream.middlewares=ai-stream-rewrite
+      - traefik.http.routers.ai-stream.service=agent-platform
+      - traefik.http.middlewares.ai-stream-rewrite.replacepathregex.regex=^/ai/stream/(chat/send|chat/runs/[0-9a-f-]+/cancel)$$
+      - traefik.http.middlewares.ai-stream-rewrite.replacepathregex.replacement=/api/$$1
 networks:
   public:
     external: true
