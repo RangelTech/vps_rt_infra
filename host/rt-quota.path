@@ -1,0 +1,9 @@
+[Unit]
+Description=Observa mudancas nos limites de cota do runtime-manager
+
+[Path]
+PathChanged=/var/lib/docker/volumes/runtime-manager_rmdata/_data/quota/limits.json
+Unit=rt-quota.service
+
+[Install]
+WantedBy=multi-user.target
