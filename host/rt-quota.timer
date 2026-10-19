@@ -1,0 +1,10 @@
+[Unit]
+Description=Mede o uso de disco dos workspaces a cada minuto
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=rt-quota.service
+
+[Install]
+WantedBy=timers.target

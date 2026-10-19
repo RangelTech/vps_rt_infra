@@ -1,0 +1,7 @@
+[Unit]
+Description=Carrega o ruleset do runtime-manager (nft table inet rt_fw)
+ConditionPathExists=/var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.nft
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.nft

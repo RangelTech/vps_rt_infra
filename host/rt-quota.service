@@ -1,0 +1,7 @@
+[Unit]
+Description=Aplica cotas de disco dos workspaces (xfs_quota) e publica o uso
+ConditionPathExists=/var/lib/docker/volumes/runtime-manager_rmdata/_data/quota/limits.json
+
+[Service]
+Type=oneshot
+ExecStart=/opt/platform/scripts/rt-quota-apply.sh

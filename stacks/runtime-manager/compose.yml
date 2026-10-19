@@ -44,8 +44,8 @@ services:
       RM_TRAEFIK_DIR: /etc/traefik/dynamic.d   # file provider do Traefik da plataforma (rotas Host(...) com TLS por app)
       RM_EDGE_FRONT_URL: http://rt-edge:8080
       RM_EDGE_CONTAINER: rt-edge
-      RM_QUOTA_BACKEND: fake
-      RM_FIREWALL_BACKEND: "null"
+      RM_QUOTA_BACKEND: file   # host aplica xfs_quota (host/rt-quota-apply.sh)
+      RM_FIREWALL_BACKEND: file   # host carrega o ruleset (host/rt-nft.path)
       RM_POOL_SIZE: "0"
       RM_WAKE_URL: http://runtime-manager:8080
       RM_BACKUP_DIR: /var/lib/rt/backups
