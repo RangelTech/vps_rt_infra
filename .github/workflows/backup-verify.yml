@@ -1,6 +1,6 @@
 name: backup-verify
-# Prova semanal de que o backup restaura: pega o ultimo snapshot restic (Google Drive via rclone), restaura os dumps
-# de chatwoot_prod e infisical num postgres:16 descartavel e confere contagens. Somente leitura no repositorio de backup.
+# Prova semanal de que o backup restaura: pega o ultimo snapshot restic (Google Drive via rclone), restaura TODOS os dumps
+# num postgres:16 descartavel, confere tabelas/indices/amcheck/contagens e valida os volumes (kernel, RM, workspaces). Somente leitura no repositorio de backup.
 on:
   schedule:
     - cron: "0 6 * * 0"
@@ -32,13 +32,14 @@ jobs:
       PGPASSWORD: verify
       MAX_AGE_HOURS: "26"
     steps:
+      - uses: actions/checkout@v4
       - name: Instalar rclone, restic e cliente postgres 16
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
           sudo apt-get update -qq
-          sudo apt-get install -y -qq restic rclone postgresql-client-16
+          sudo apt-get install -y -qq restic rclone postgresql-client-16 python3
       - name: Configurar rclone e restic (segredos nunca impressos)
         env:
           RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
@@ -51,47 +52,11 @@ jobs:
           grep -q '^\[gdrive\]' "$RUNNER_TEMP/bk/rclone.conf" || { echo "rclone.conf sem remote gdrive"; exit 1; }
           echo "RCLONE_CONFIG=$RUNNER_TEMP/bk/rclone.conf" >> "$GITHUB_ENV"
           echo "RESTIC_ENV_FILE=$RUNNER_TEMP/bk/restic.env" >> "$GITHUB_ENV"
-      - name: Idade do ultimo snapshot
+      - name: Prova de restauracao (dumps + volumes) com scripts/restore-verify.sh
         run: |
           set -euo pipefail
-          set -a; . "$RESTIC_ENV_FILE"; set +a
-          restic snapshots --tag daily --host rt-vps --latest 1 --json > "$RUNNER_TEMP/bk/snap.json"
-          python3 - "$RUNNER_TEMP/bk/snap.json" "$MAX_AGE_HOURS" <<'PY'
-          import json, sys, datetime as d
-          snaps = json.load(open(sys.argv[1]))
-          if not snaps:
-              sys.exit("nenhum snapshot daily encontrado")
-          s = snaps[-1]
-          t = d.datetime.fromisoformat(s["time"][:19]).replace(tzinfo=d.timezone.utc)
-          age = (d.datetime.now(d.timezone.utc) - t).total_seconds() / 3600
-          print(f"snapshot {s['short_id']} de {t.isoformat()} ({age:.1f}h)")
-          if age >= float(sys.argv[2]):
-              sys.exit(f"snapshot velho demais: {age:.1f}h >= {sys.argv[2]}h")
-          PY
-      - name: Restaurar dumps do ultimo snapshot
-        run: |
-          set -euo pipefail
-          set -a; . "$RESTIC_ENV_FILE"; set +a
-          mkdir -p "$RUNNER_TEMP/restore"
-          restic restore latest --tag daily --host rt-vps --target "$RUNNER_TEMP/restore" \
-            --include '**/staging/*/pg/*.chatwoot_prod.dump' --include '**/staging/*/pg/*.infisical.dump'
-          find "$RUNNER_TEMP/restore" -name '*.dump' -printf '%f %s bytes\n'
-      - name: pg_restore e contagens
-        run: |
-          set -euo pipefail
-          check() { # arquivo-glob banco tabela
-            f="$(find "$RUNNER_TEMP/restore" -name "$1" | sort | tail -n1)"
-            [ -n "$f" ] || { echo "dump $1 ausente no snapshot"; return 1; }
-            createdb "$2"
-            pg_restore --no-owner --no-privileges -d "$2" "$f" 2> "$RUNNER_TEMP/$2.err" || { echo "pg_restore $2 falhou:"; head -n 20 "$RUNNER_TEMP/$2.err"; return 1; }
-            n="$(psql -d "$2" -Atc "select count(*) from $3")"
-            echo "$2.$3 = $n linhas"
-            [ "$n" -gt 0 ] || { echo "$2.$3 vazio"; return 1; }
-          }
-          rc=0
-          check '*.chatwoot_prod.dump' chatwoot_prod accounts || rc=1
-          check '*.infisical.dump' infisical users || rc=1
-          exit $rc
+          WORKDIR_BASE="$RUNNER_TEMP" REPORT_JSON="$RUNNER_TEMP/restore_verify.json" bash scripts/restore-verify.sh | tee "$RUNNER_TEMP/rv.log"
+          cat "$RUNNER_TEMP/restore_verify.json"
       - name: Limpar segredos
         if: always()
         run: rm -rf "$RUNNER_TEMP/bk" "$RUNNER_TEMP/restore"

@@ -1,0 +1,6 @@
+[Unit]
+Description=rt-backup-alert: sinaliza backup velho (>26h) ou com falha
+[Service]
+Type=oneshot
+ExecStart=/opt/platform/scripts/backup-alert.sh
+SyslogIdentifier=rt-backup-alert

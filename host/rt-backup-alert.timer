@@ -1,0 +1,8 @@
+[Unit]
+Description=rt-backup-alert a cada 30 minutos
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=30min
+AccuracySec=1min
+[Install]
+WantedBy=timers.target

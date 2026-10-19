@@ -1,0 +1,8 @@
+[Unit]
+Description=rt-restore-verify semanal (domingo 05:00)
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00
+Persistent=true
+RandomizedDelaySec=10min
+[Install]
+WantedBy=timers.target
