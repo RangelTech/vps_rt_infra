@@ -5,3 +5,6 @@ ConditionPathExists=/var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/nft -f /var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.nft
+
+[Install]
+WantedBy=multi-user.target
