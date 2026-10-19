@@ -3,7 +3,6 @@ Description=Observa o ruleset do runtime-manager
 
 [Path]
 PathChanged=/var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.nft
-PathExists=/var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.nft
 Unit=rt-nft.service
 
 [Install]
