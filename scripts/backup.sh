@@ -28,8 +28,14 @@ export RCLONE_CONFIG="$SEC/rclone.conf"
 TS="$(date +%Y%m%d-%H%M%S)"
 STAGE="$OUT/staging/$TS"
 mkdir -p "$STAGE/pg"
-trap 'rm -rf "$STAGE"' EXIT
 fail=0
+# registra a falha (sem segredo) para o alerta; last_ok.json so e escrito no fim com sucesso
+on_exit() {
+  rc=$?
+  [ "$rc" -ne 0 ] && printf '{"ok":false,"tag":"%s","finished_at":"%s","reason":"exit %s"}\n' "$TAG" "$(date -Is)" "$rc" > "$OUT/last_fail.json"
+  rm -rf "$STAGE"
+}
+trap on_exit EXIT
 
 echo "==> [$TS] dumps dos Postgres ($TAG)"
 for c in $(docker ps --format '{{.Names}}' | grep -E "$PG_INCLUDE" || true); do
@@ -81,4 +87,5 @@ restic check --read-data-subset=2% | tail -2
 
 snap="$(restic snapshots --tag "$TAG" --host rt-vps --latest 1 --json | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d[-1]["short_id"] if d else "")')"
 printf '{"ok":true,"tag":"%s","snapshot":"%s","finished_at":"%s","dumps":%s}\n' "$TAG" "$snap" "$(date -Is)" "$(ls "$STAGE/pg" | wc -l)" > "$OUT/last_ok.json"
+rm -f "$OUT/last_fail.json"
 echo "==> OK snapshot $snap"

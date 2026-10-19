@@ -1,0 +1,12 @@
+[Unit]
+Description=rt-restore-verify: restaura o ultimo snapshot em Postgres/diretorio descartaveis e confere
+After=docker.service
+Requires=docker.service
+[Service]
+Type=oneshot
+Environment=REPORT_JSON=/opt/platform/data/backups/restore_verify.json
+ExecStart=/opt/platform/scripts/restore-verify.sh
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=3h
+SyslogIdentifier=rt-restore-verify
