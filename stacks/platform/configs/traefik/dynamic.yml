@@ -4,13 +4,6 @@
 
 http:
   middlewares:
-    # paginas legais ficam no front do agent-platform (ia.); o chat. apenas redireciona
-    legal-pages-redirect:
-      redirectRegex:
-        regex: "^https://chat.rangeltech.net/(politica-de-privacidade|termos-de-uso|exclusao-de-dados)$"
-        replacement: "https://ia.rangeltech.net/${1}"
-        permanent: false
-
     security-headers:
       headers:
         stsSeconds: 31536000
