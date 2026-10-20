@@ -17,6 +17,9 @@ if ! findmnt -n -t xfs "$MNT" >/dev/null; then
 fi
 install -m 0755 "$HERE/rt-quota-apply.sh" /opt/platform/scripts/rt-quota-apply.sh
 install -m 0644 "$HERE"/rt-quota.service "$HERE"/rt-quota.path "$HERE"/rt-quota.timer "$HERE"/rt-nft.service "$HERE"/rt-nft.path /etc/systemd/system/
+# O ruleset do RM inclui `table bridge rt_br` (isolamento entre workspaces na rt-ssh, sem br_netfilter).
+# Se o kernel nao suporta nft na familia bridge, o `nft -f` inteiro falharia: aborta antes.
+nft add table bridge rt_probe_install && nft delete table bridge rt_probe_install   || { echo "kernel sem nftables na familia bridge: o isolamento da rt-ssh nao pode ser aplicado" >&2; exit 1; }
 systemctl daemon-reload
 systemctl enable --now rt-quota.path rt-quota.timer rt-nft.path
 findmnt -n -t xfs "$MNT" && echo "XFS montado em $MNT"
