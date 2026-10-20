@@ -39,6 +39,14 @@
       "layer": "B"
     },
     {
+      "service": "llm-gateway",
+      "repo": "LucasRangelSSouza/9router-multitenant",
+      "stack": "llm-gateway",
+      "compose_service": "llm-gateway",
+      "layer": "B",
+      "manifest_asset": "release-manifest.llm-gateway.json"
+    },
+    {
       "service": "chatwoot-rails",
       "repo": "RangelTech/chatwoot-rt",
       "stack": "chatwoot",
