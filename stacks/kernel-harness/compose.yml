@@ -81,6 +81,8 @@ services:
       PROFILES_ROOT: /opt/data/profiles
       USERS_ROOT: /srv/hermes/users
       TENANT_SKILLS_ROOT: /skills/tenant
+      # fila: 2 execucoes/tenant e expiracao de 60 s faziam o usuario ver 'Muitas solicitacoes' em picos curtos
+      HARNESS_QUEUE_EXPIRY_S: "300"
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
