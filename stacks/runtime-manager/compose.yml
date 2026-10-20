@@ -50,6 +50,7 @@ services:
       RM_WAKE_URL: http://runtime-manager:8080
       RM_BACKUP_DIR: /var/lib/rt/backups
       RM_FORENSICS_DIR: /var/lib/rt/forensics
+      RM_PUBLIC_PROXY_IPS: 172.21.0.0/16   # rede public (Traefik): workspace alcanca os dominios da plataforma so em 443
     volumes:
       - /srv/rt:/srv/rt
       - edge-dynamic:/etc/rt-edge/dynamic
