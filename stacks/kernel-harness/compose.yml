@@ -10,15 +10,16 @@ name: kernel-harness
 x-hermes: &hermes
   image: ${RT_HERMES_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rt-hermes.lock}
   restart: unless-stopped
-  # worker efemero: front leve + zigoto + um filho por run (ver kernel-harness rt_worker/); sem gateway por perfil
-  command: ["/opt/hermes/.venv/bin/python", "-m", "rt_worker"]
+  # worker efemero (kernel-harness rt_worker/): ENTRYPOINT da imagem = front + zigoto; um filho por run.
+  # Sem s6 e sem gateway por perfil; PID 1 e o worker (se cair, o container sai e o Docker recria).
+  init: true
   env_file: /opt/platform/secrets/rt-hermes.env
   environment:
     RT_BROKER_URL: http://kernel-harness:8080/broker/v1/call
     RT_WORKER_SLOTS: "8"
     RT_WORKER_RUN_MAX_S: "3600"
+  user: "10000:10000"
   cap_drop: [ALL]
-  cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]   # o entrypoint ajusta dono e troca para o usuario hermes
   security_opt: ["no-new-privileges:true"]
   mem_limit: 8g
   cpus: 4
