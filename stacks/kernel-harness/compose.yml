@@ -18,6 +18,9 @@ x-hermes: &hermes
     RT_BROKER_URL: http://kernel-harness:8080/broker/v1/call
     RT_WORKER_SLOTS: "8"
     RT_WORKER_RUN_MAX_S: "3600"
+    # K-10: o processo recebe tempo para concluir runs em voo quando o deploy envia SIGTERM.
+    RT_WORKER_DRAIN_MAX_S: "930"
+  stop_grace_period: 930s
   user: "10000:10000"
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
