@@ -36,13 +36,7 @@ services:
       - traefik.http.routers.chatwoot-web.tls.certresolver=letsencrypt
       - traefik.http.routers.chatwoot-web.middlewares=security-headers@file
       - traefik.http.routers.chatwoot-web.service=chatwoot-web
-      # paginas legais ficam no front do agent-platform (ia.): redireciona
-      - traefik.http.routers.chatwoot-legal.rule=Host(`chat.rangeltech.net`) && (PathPrefix(`/politica-de-privacidade`) || PathPrefix(`/termos-de-uso`) || PathPrefix(`/exclusao-de-dados`))
-      - traefik.http.routers.chatwoot-legal.priority=150
-      - traefik.http.routers.chatwoot-legal.entrypoints=websecure
-      - traefik.http.routers.chatwoot-legal.tls.certresolver=letsencrypt
-      - traefik.http.routers.chatwoot-legal.middlewares=security-headers@file,legal-pages-redirect@file
-      - traefik.http.routers.chatwoot-legal.service=chatwoot-web
+      # paginas legais (privacidade, termos, exclusao) sao servidas pelo proprio Chatwoot em chat. e ia.
 
   chatwoot-worker:
     <<: *rails
