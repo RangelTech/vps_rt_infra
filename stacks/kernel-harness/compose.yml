@@ -10,16 +10,20 @@ name: kernel-harness
 x-hermes: &hermes
   image: ${RT_HERMES_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rt-hermes.lock}
   restart: unless-stopped
-  command: ["gateway", "run"]
+  # worker efemero (kernel-harness rt_worker/): ENTRYPOINT da imagem = front + zigoto; um filho por run.
+  # Sem s6 e sem gateway por perfil; PID 1 e o worker (se cair, o container sai e o Docker recria).
+  init: true
   env_file: /opt/platform/secrets/rt-hermes.env
   environment:
     RT_BROKER_URL: http://kernel-harness:8080/broker/v1/call
+    RT_WORKER_SLOTS: "8"
+    RT_WORKER_RUN_MAX_S: "3600"
+  user: "10000:10000"
   cap_drop: [ALL]
-  cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]   # o entrypoint ajusta dono e troca para o usuario hermes
   security_opt: ["no-new-privileges:true"]
   mem_limit: 8g
-  cpus: 2
-  pids_limit: 4096   # s6 sobe um gateway por perfil existente; 512 estourava com ~180 perfis
+  cpus: 4
+  pids_limit: 1024   # sem s6 por perfil: PIDs = front + zigoto + filhos das runs em andamento
   tmpfs: [/tmp]
   logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
   networks: [harness, llm]
@@ -77,7 +81,7 @@ services:
     environment:
       BACKEND_URL: http://agent-platform-backend:8090
       LITELLM_URL: http://litellm:4000
-      HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":4},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":4}]'
+      HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":8},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":8}]'
       PROFILES_ROOT: /opt/data/profiles
       USERS_ROOT: /srv/hermes/users
       TENANT_SKILLS_ROOT: /skills/tenant
