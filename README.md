@@ -1,5 +1,61 @@
 # vps_rt_infra
 
+A infraestrutura da VPS da empresa: Terraform, Compose, releases por digest, deploy, backup e scripts do host. Atende o Luar e outros projetos, por isso o nome não leva o prefixo `luar_`. É o único repositório com credencial da VPS e o único que implanta.
+
+## Onde ele se encaixa
+
+```
+                    Cliente (navegador e canais)
+                                |
+                        Traefik (VPS)
+                                |
+ luar_chatwoot --contexto assinado--> luar_engine --runs--> luar_harness
+ (telas, inbox, Kanban,               (motor de IA:         (fila, broker,
+  bridge, gateway de canais)           templates, skills,    workers Hermes)
+                                       credenciais, uso)            |
+                                            |                luar_workspaces
+                                       luar_ai_gateway       (ambiente de cada
+                                       (LLM multi-tenant)     empresa)
+
+ vps_rt_infra: compose, releases por digest, deploy e backup (só ela implanta)
+ airflow:      orquestração da empresa, inclui o backup noturno da VPS
+ luar_docs:    specs, evidências e ADRs
+```
+
+## Árvore de pastas
+
+```
+terraform/   DNS e recursos declarados
+stacks/      um compose por serviço (platform, chatwoot, agent-platform, kernel-harness, ...)
+releases/    sources.json e <servico>.lock: repositório, versão, digest e sha256 do artefato
+scripts/     deploy.sh, release_intake.py, backup.sh, restore-verify.sh, healthcheck.sh, qa/
+configs/     Traefik, Prometheus, Loki e Grafana
+cloud-init/  bootstrap do host
+sites/       sites estáticos de clientes
+legacy/      scripts antigos (a limpar na Fase R)
+.github/     workflows de deploy e de intake de release
+```
+
+## Como um serviço chega à produção
+
+1. O repositório do serviço publica a release (imagem e manifesto).
+2. `release_intake.py` fixa o digest em `releases/<servico>.lock`.
+3. `deploy.sh` troca o container, espera o healthcheck e reverte se falhar.
+
+Nunca troque um container na mão: só por release e lock.
+
+## Segurança
+
+O repositório é público: sem segredos, `.env` ou chaves, e IPs só quando indispensáveis. Os segredos de runtime ficam em `/opt/platform/secrets`, na VPS.
+
+## Manual operacional completo
+
+O texto detalhado anterior continua abaixo e será dividido em `docs/` na Fase R.
+
+---
+
+# vps_rt_infra
+
 Infraestrutura como código da VPS pessoal em Contabo usando [`Terraform`](terraform/main.tf:1), [`Docker Compose`](compose/docker-compose.yml:1), [`cloud-init`](cloud-init/bootstrap.sh:1) e workflows em [`.github/workflows/`](.github/workflows).
 
 Este repositório gerencia somente a camada VPS da stack em `rangeltech.net`: bootstrap do host, DNS, reverse proxy, banco, storage, observabilidade, utilitários operacionais, o serviço principal [`9router`](compose/docker-compose.yml:299) e sites estáticos de clientes com domínio próprio (ver [`sites/README.md`](sites/README.md:1)).
