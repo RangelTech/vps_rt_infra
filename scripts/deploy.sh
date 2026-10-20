@@ -69,23 +69,43 @@ set_image() { # $1 = tag ; mantem as outras variaveis do .release.env (stacks mu
   mv "$ENVF.tmp" "$ENVF"
 }
 dc() { docker compose -p "$STACK" -f "$COMPOSE" --env-file "$ENVF" "$@"; }
-up() { set_image "$1"; dc up -d --no-build --no-deps --pull never "${TARGET_LIST[@]}"; }
+is_rolling_worker_deploy() {
+  [ "$SERVICE" = "rt-hermes" ] && [ "${#TARGET_LIST[@]}" -gt 1 ]
+}
+
+wait_target_healthy() { # espera o HEALTHCHECK de um alvo
+  local t="$1" cname st run n=$(( HC_TIMEOUT / 2 )) ok=0
+  cname="$(dc ps -q "$t" 2>/dev/null | head -n1)"
+  [ -n "$cname" ] || return 1
+  for _ in $(seq 1 "$n"); do
+    st="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cname")"
+    run="$(docker inspect --format '{{.State.Running}}' "$cname")"
+    [ "$run" = "true" ] || return 1
+    [ "$st" = "none" ] && { echo "container $t sem HEALTHCHECK: reprovado por politica" >&2; return 1; }
+    [ "$st" = "healthy" ] && { ok=1; break; }
+    sleep 2
+  done
+  [ "$ok" = "1" ]
+}
+
+up() {
+  set_image "$1"
+  if is_rolling_worker_deploy; then
+    # K-10: SIGTERM inicia a drenagem; troca um worker, confirma sua saude e so entao toca no proximo.
+    for t in "${TARGET_LIST[@]}"; do
+      rt_log "troca drenada de $t"
+      dc up -d --no-build --no-deps --pull never "$t"
+      wait_target_healthy "$t" || return 1
+    done
+  else
+    dc up -d --no-build --no-deps --pull never "${TARGET_LIST[@]}"
+  fi
+}
 
 wait_healthy() { # espera o HEALTHCHECK de cada container alvo
-  local t cname st run n=$(( HC_TIMEOUT / 2 ))
+  local t
   for t in "${TARGET_LIST[@]}"; do
-    cname="$(dc ps -q "$t" 2>/dev/null | head -n1)"
-    [ -n "$cname" ] || return 1
-    local ok=0
-    for _ in $(seq 1 "$n"); do
-      st="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cname")"
-      run="$(docker inspect --format '{{.State.Running}}' "$cname")"
-      [ "$run" = "true" ] || return 1
-      [ "$st" = "none" ] && { echo "container $t sem HEALTHCHECK: reprovado por politica" >&2; return 1; }
-      [ "$st" = "healthy" ] && { ok=1; break; }
-      sleep 2
-    done
-    [ "$ok" = "1" ] || return 1
+    wait_target_healthy "$t" || return 1
   done
   return 0
 }
