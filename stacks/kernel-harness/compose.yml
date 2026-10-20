@@ -17,9 +17,9 @@ x-hermes: &hermes
   cap_drop: [ALL]
   cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]   # o entrypoint ajusta dono e troca para o usuario hermes
   security_opt: ["no-new-privileges:true"]
-  mem_limit: 2g
+  mem_limit: 8g
   cpus: 2
-  pids_limit: 512
+  pids_limit: 4096   # s6 sobe um gateway por perfil existente; 512 estourava com ~180 perfis
   tmpfs: [/tmp]
   logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
   networks: [harness, llm]
