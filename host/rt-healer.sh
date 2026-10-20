@@ -107,4 +107,19 @@ for d in "$BASE"/stacks/*/; do
   [ -f "$e" ] || e=""
   heal_stack "$name" "$f" "$e"
 done
+
+# firewall do runtime-manager: a tabela `bridge rt_br` isola os workspaces entre si na rede rt-ssh
+# (um bridge so; as regras `inet rt_fw` nao veem esse trafego porque br_netfilter nao esta carregado).
+# Se o RM ja gerou o ruleset e a tabela nao esta no kernel, reaplica o arquivo e alerta.
+RT_NFT="${RT_NFT_FILE:-/var/lib/docker/volumes/runtime-manager_rmdata/_data/nft/rt.nft}"
+if [ -f "$RT_NFT" ] && grep -q 'table bridge rt_br' "$RT_NFT"; then
+  if ! nft list table bridge rt_br >/dev/null 2>&1; then
+    log "ALERTA: tabela bridge rt_br ausente (workspaces sem isolamento entre si), reaplicando $RT_NFT" >&2
+    if nft -f "$RT_NFT" && nft list table bridge rt_br >/dev/null 2>&1; then
+      log "bridge rt_br reaplicada"
+    else
+      log "ALERTA: nft -f falhou, bridge rt_br continua ausente" >&2
+    fi
+  fi
+fi
 exit 0
