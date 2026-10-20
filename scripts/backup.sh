@@ -64,7 +64,7 @@ PATHS=(
   "$BASE/data/mautrix-meta-facebook" "$BASE/data/mautrix-meta-instagram"
   "$BASE/data/infisical-redis" "$BASE/data/redis" "$BASE/data/redis-chatwoot" "$BASE/data/uptime-kuma"
   /opt/airflow-infra /opt/airflow /var/lib/docker/volumes/airflow_airflow-state/_data
-  /opt/platform/stacks /opt/platform/releases /opt/platform/data/ninerouter /opt/platform/data/redis/users.acl /opt/portfolio-feedback/data
+  /opt/platform/stacks /opt/platform/releases /opt/platform/data/ninerouter /opt/platform/data/llm-gateway /opt/platform/data/redis/users.acl /opt/portfolio-feedback/data
   /etc/cron.d/platform-backups /etc/systemd/system/rt-backup.service /etc/systemd/system/rt-backup.timer
   # agentes por skills (spec 04/10): perfis Hermes (state.db), skills da empresa/usuario, estado do runtime-manager e workspaces das empresas
   /var/lib/docker/volumes/kernel-harness_profiles /var/lib/docker/volumes/kernel-harness_users /var/lib/docker/volumes/kernel-harness_tenant_skills

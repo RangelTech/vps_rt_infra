@@ -1,0 +1,39 @@
+# Gateway LLM multitenant (Fase G). Sem porta ou rota pública: somente BFF/motor
+# na rede interna acessam a API. A imagem chega pelo release/lock, nunca é criada
+# na VPS. O banco e os logs vivem no volume privado incluído no backup.
+name: llm-gateway
+services:
+  llm-gateway:
+    image: ${LLM_GATEWAY_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/llm-gateway.lock}
+    container_name: llm-gateway
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/llm-gateway.env
+    environment:
+      DATA_DIR: /app/data
+      PORT: "20128"
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      MT_STRICT: "1"
+    volumes:
+      - /opt/platform/data/llm-gateway:/app/data
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 256
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:20128/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks: [internal]
+    labels:
+      - rt.service=llm-gateway
+      - rt.layer=B
+      - traefik.enable=false
+networks:
+  internal:
+    external: true
