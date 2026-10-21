@@ -23,7 +23,7 @@ services:
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     environment:
       POSTGRES_USER: matrix_admin
-      POSTGRES_PASSWORD: ${MATRIX_POSTGRES_PASSWORD:?}
+      POSTGRES_PASSWORD: ${MATRIX_POSTGRES_PASSWORD:-}   # vazio => o postgres recusa subir (sem senha); CI valida sem segredos
       POSTGRES_DB: postgres
       TZ: ${TIMEZONE:-UTC}
     volumes:
