@@ -4,7 +4,7 @@
 #   RT_HERMES_IMAGE       <- releases/rt-hermes.lock        (servico rt-hermes)
 # Segredos: /opt/platform/secrets/kernel-harness.env (kernel) e rt-hermes.env (workers), 0600.
 # Primeira subida: docker compose --profile init run --rm init-home  (uma vez; recria so se a config base mudar).
-# Isolamento: workers ficam em redes `internal: true` (sem internet): so falam com o kernel (broker) e com o LiteLLM.
+# Isolamento: workers ficam em redes `internal: true` (sem internet): so falam com o kernel (broker) e com o gateway de LLM (llm-gateway).
 name: kernel-harness
 
 x-hermes: &hermes
@@ -45,7 +45,7 @@ services:
     env_file: /opt/platform/secrets/rt-hermes.env
     environment:
       HOMEDIRS: "/homes/1,/homes/2"
-      LLM_URL: http://litellm:4000/v1
+      LLM_URL: http://llm-gateway:20128/v1
       MAXCONC: "4"
     volumes:
       - /opt/platform/stacks/kernel-harness/init_home.py:/initsrc/init_home.py:ro
@@ -83,7 +83,7 @@ services:
     env_file: /opt/platform/secrets/kernel-harness.env
     environment:
       BACKEND_URL: http://agent-platform-backend:8090
-      LITELLM_URL: http://litellm:4000
+      LITELLM_URL: http://llm-gateway:20128
       HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":8},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":8}]'
       PROFILES_ROOT: /opt/data/profiles
       USERS_ROOT: /srv/hermes/users
