@@ -32,7 +32,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    networks: [internal]
+    networks: [internal, public, harness_llm]   # public so para egress aos provedores (sem porta publicada); harness_llm: rede sem internet dos workers Hermes
     labels:
       - rt.service=llm-gateway
       - rt.layer=B
@@ -40,3 +40,8 @@ services:
 networks:
   internal:
     external: true
+  public:
+    external: true
+  harness_llm:
+    external: true
+    name: kernel-harness-llm
