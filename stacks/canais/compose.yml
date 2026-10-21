@@ -45,11 +45,12 @@ services:
     container_name: canais-synapse
     depends_on:
       matrix-postgres: { condition: service_healthy }
+    # Smoke local 21/10: com cap_drop ALL o entrypoint nao consegue trocar para 991 ("failed switching to 991:991").
+    # Rodar ja como 991:991 (prepare-host.sh entrega /data a esse dono) dispensa SETUID/SETGID.
+    user: "991:991"
     environment:
       # Problema conhecido 1: config FORA de /data (bind mount aninhado virava arquivo/diretorio vazio).
       SYNAPSE_CONFIG_PATH: /etc/synapse/homeserver.yaml
-      UID: "991"
-      GID: "991"
     volumes:
       - ${CANAIS_DATA:-/opt/platform/data/canais}/synapse:/data
       - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/synapse/homeserver.yaml:/etc/synapse/homeserver.yaml:ro
@@ -71,6 +72,10 @@ services:
     <<: *hardening
     image: ${MAUTRIX_META_IMAGE:?versions.env}
     container_name: canais-mautrix-meta
+    # O /docker-run.sh da imagem faz chown + su-exec (exige root/caps). Com cap_drop ALL roda-se o binario direto, como 1337.
+    user: "1337:1337"
+    working_dir: /data
+    command: ["/usr/bin/mautrix-meta"]
     depends_on:
       matrix-postgres: { condition: service_healthy }
       synapse: { condition: service_healthy }
@@ -96,6 +101,10 @@ services:
     <<: *hardening
     image: ${MAUTRIX_INSTAGRAM_IMAGE:?versions.env}
     container_name: canais-mautrix-instagram
+    # O /docker-run.sh da imagem faz chown + su-exec (exige root/caps). Com cap_drop ALL roda-se o binario direto, como 1337.
+    user: "1337:1337"
+    working_dir: /data
+    command: ["/usr/bin/mautrix-meta"]
     depends_on:
       matrix-postgres: { condition: service_healthy }
       synapse: { condition: service_healthy }
@@ -120,6 +129,10 @@ services:
     <<: *hardening
     image: ${MAUTRIX_WHATSAPP_IMAGE:?versions.env}
     container_name: canais-mautrix-whatsapp
+    # O /docker-run.sh da imagem faz chown + su-exec (exige root/caps). Com cap_drop ALL roda-se o binario direto, como 1337.
+    user: "1337:1337"
+    working_dir: /data
+    command: ["/usr/bin/mautrix-whatsapp"]
     depends_on:
       matrix-postgres: { condition: service_healthy }
       synapse: { condition: service_healthy }
