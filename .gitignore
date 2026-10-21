@@ -44,3 +44,7 @@ Thumbs.db
 # Sessao do Playwright do Airflow pessoal (cookies vivos): nunca versionar
 airflow/
 **/estado_senior.json
+
+# Pilha canais: configs renderizadas contem segredos
+stacks/canais/rendered/
+stacks/canais/versions.env.*.falhou

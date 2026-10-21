@@ -1,0 +1,173 @@
+# Pilha `canais` (Fase CH): Synapse privado + matrix-postgres + 3 bridges mautrix + molde dos workers TikTok.
+# SEPARADA da pilha platform. Camada B. Sem portas publicadas, sem labels do Traefik, sem rede `public`.
+# Imagens vem de versions.env (tag + digest). Segredos em /opt/platform/secrets/canais.env (0600).
+# Uso na VPS (so por release/lock, nunca na mao): scripts/validate.sh -> scripts/backup-before-upgrade.sh -> apply-stack.sh canais
+# Validar sem subir: docker compose --env-file versions.env --env-file .env.example -f compose.yml config -q
+name: canais
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: "3" }
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  matrix-postgres:
+    <<: *hardening
+    image: ${MATRIX_POSTGRES_IMAGE:?versions.env}
+    container_name: canais-matrix-postgres
+    # Problema conhecido 3: o diretorio de dados precisa ser 999:999 (scripts/prepare-host.sh).
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_USER: matrix_admin
+      POSTGRES_PASSWORD: ${MATRIX_POSTGRES_PASSWORD:?}
+      POSTGRES_DB: postgres
+      TZ: ${TIMEZONE:-UTC}
+    volumes:
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/matrix-postgres:/var/lib/postgresql/data
+      - ./templates/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks: [canais_net]
+    mem_limit: ${MATRIX_POSTGRES_MEM_LIMIT:-768m}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix_admin -d synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    labels: [rt.service=canais-matrix-postgres, rt.layer=B, traefik.enable=false]
+
+  synapse:
+    <<: *hardening
+    image: ${SYNAPSE_IMAGE:?versions.env}
+    container_name: canais-synapse
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+    environment:
+      # Problema conhecido 1: config FORA de /data (bind mount aninhado virava arquivo/diretorio vazio).
+      SYNAPSE_CONFIG_PATH: /etc/synapse/homeserver.yaml
+      UID: "991"
+      GID: "991"
+    volumes:
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/synapse:/data
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/synapse/homeserver.yaml:/etc/synapse/homeserver.yaml:ro
+      - ./templates/synapse/log.config:/etc/synapse/log.config:ro
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/registrations:/etc/synapse/registrations:ro
+    networks:
+      canais_net:
+        aliases: [synapse]
+    mem_limit: ${SYNAPSE_MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8008/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    labels: [rt.service=canais-synapse, rt.layer=B, traefik.enable=false]
+
+  mautrix-meta:
+    <<: *hardening
+    image: ${MAUTRIX_META_IMAGE:?versions.env}
+    container_name: canais-mautrix-meta
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/mautrix-meta:/data
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/bridges/meta.yaml:/data/config.yaml:ro
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/registrations/meta.yaml:/data/registration.yaml:ro
+    networks:
+      canais_net:
+        aliases: [mautrix-meta]
+      # Problema conhecido 2: saida real para a internet; a rede `internal: true` nao roteia saida.
+      canais_egress: {}
+    mem_limit: ${META_MEM_LIMIT:-512m}
+    healthcheck:   # nivel 1 (processo vivo). Sessao autenticada e capacidade de enviar = checagem do gateway (CH-8)
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:29319/_matrix/mau/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    labels: [rt.service=canais-mautrix-meta, rt.layer=B, traefik.enable=false]
+
+  mautrix-instagram:
+    <<: *hardening
+    image: ${MAUTRIX_INSTAGRAM_IMAGE:?versions.env}
+    container_name: canais-mautrix-instagram
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/mautrix-instagram:/data
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/bridges/instagram.yaml:/data/config.yaml:ro
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/registrations/instagram.yaml:/data/registration.yaml:ro
+    networks:
+      canais_net:
+        aliases: [mautrix-instagram]
+      canais_egress: {}
+    mem_limit: ${INSTAGRAM_MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:29319/_matrix/mau/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    labels: [rt.service=canais-mautrix-instagram, rt.layer=B, traefik.enable=false]
+
+  mautrix-whatsapp:
+    <<: *hardening
+    image: ${MAUTRIX_WHATSAPP_IMAGE:?versions.env}
+    container_name: canais-mautrix-whatsapp
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/mautrix-whatsapp:/data
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/bridges/whatsapp.yaml:/data/config.yaml:ro
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/rendered/registrations/whatsapp.yaml:/data/registration.yaml:ro
+    networks:
+      canais_net:
+        aliases: [mautrix-whatsapp]
+      canais_egress: {}
+    mem_limit: ${WHATSAPP_MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:29318/_matrix/mau/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    labels: [rt.service=canais-mautrix-whatsapp, rt.layer=B, traefik.enable=false]
+
+  # Molde dos workers TikTok (ReLttk, UM por conta). NAO sobe com a pilha (profile `molde`):
+  # o gerenciador do gateway (CH-5) cria um container por conta a partir deste molde, montando
+  # SOMENTE ${CANAIS_DATA}/tiktok-sessions/<account_id>/<conta> (sessao isolada, sem varredura compartilhada).
+  tiktok-worker-molde:
+    <<: *hardening
+    image: ${TIKTOK_WORKER_IMAGE:?versions.env}
+    profiles: ["molde"]
+    container_name: canais-tiktok-worker-molde
+    read_only: true
+    tmpfs: ["/tmp:size=64m"]
+    environment:
+      WORKER_SESSION_DIR: /sessao
+      WORKER_ACCOUNT_REF: molde
+    volumes:
+      - ${CANAIS_DATA:-/opt/platform/data/canais}/tiktok-sessions/_molde:/sessao
+    networks: [canais_net, canais_egress]
+    mem_limit: 384m
+    cpus: 0.5
+    pids_limit: 128
+    labels: [rt.service=canais-tiktok-worker, rt.layer=B, traefik.enable=false]
+
+networks:
+  # Interna: Synapse, Postgres, bridges e gateway (chatwoot-bridge entra nesta rede, ver README). Sem saida.
+  canais_net:
+    name: canais_net
+    driver: bridge
+    internal: true
+  # Somente saida para a internet (bridges e workers). Sem portas publicadas nem Traefik.
+  canais_egress:
+    name: canais_egress
+    driver: bridge
