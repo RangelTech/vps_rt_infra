@@ -18,6 +18,9 @@ services:
     volumes:
       - /opt/platform/data/llm-gateway:/app/data
     cap_drop: [ALL]
+    # O entrypoint ajusta o dono do volume e faz o drop final para `node`.
+    # Sem estas tres capabilities ele falha antes de iniciar (su-exec:setgroups).
+    cap_add: [CHOWN, SETUID, SETGID]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 1g
     cpus: 1.5
