@@ -1,0 +1,15 @@
+# Registro do mautrix-meta (Messenger). Renderizado; igual ao que o bridge espera em /data/registration.yaml.
+id: meta
+url: http://mautrix-meta:29319
+as_token: ${META_AS_TOKEN}
+hs_token: ${META_HS_TOKEN}
+sender_localpart: mautrix_meta_bot
+rate_limited: false
+namespaces:
+  users:
+    - regex: '^@messengerbot:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+    - regex: '^@messenger_.*:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+de.sorunome.msc2409.push_ephemeral: true
+receive_ephemeral: true

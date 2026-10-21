@@ -15,7 +15,7 @@ SEC="$BASE/secrets"
 OUT="$BASE/data/backups"
 TAG="${BACKUP_TAG:-daily}"
 MIN_DUMP_BYTES="${MIN_DUMP_BYTES:-2000}"
-PG_INCLUDE='^(postgres|matrix-postgres|evolution-pg-.*)$'
+PG_INCLUDE='^(postgres|matrix-postgres|canais-matrix-postgres|evolution-pg-.*)$'
 # bancos grandes e reconstruiveis a partir da fonte: nao entram no dump logico diario (pncp = 15 GB, embeddings/OBTs do PNCP e SIOPE)
 SKIP_DBS="${BACKUP_SKIP_DBS:-pncp}"
 
@@ -62,6 +62,7 @@ PATHS=(
   "$BASE/compose" "$BASE/configs" "$BASE/scripts" "$BASE/apps" "$BASE/sites" "$BASE/services.json" "$SEC"
   "$BASE/chatwoot" "$BASE/data/traefik" "$BASE/data/minio" "$BASE/data/synapse"
   "$BASE/data/mautrix-meta-facebook" "$BASE/data/mautrix-meta-instagram"
+  "$BASE/data/canais/synapse" "$BASE/data/canais/mautrix-meta" "$BASE/data/canais/mautrix-instagram" "$BASE/data/canais/mautrix-whatsapp" "$BASE/data/canais/tiktok-sessions" "$BASE/stacks/canais"
   "$BASE/data/infisical-redis" "$BASE/data/redis" "$BASE/data/redis-chatwoot" "$BASE/data/uptime-kuma"
   /opt/airflow-infra /opt/airflow /var/lib/docker/volumes/airflow_airflow-state/_data
   /opt/platform/stacks /opt/platform/releases /opt/platform/data/ninerouter /opt/platform/data/llm-gateway /opt/platform/data/redis/users.acl /opt/portfolio-feedback/data

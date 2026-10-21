@@ -1,0 +1,48 @@
+# Synapse PRIVADO (motor dos bridges). Renderizado por scripts/render-configs.sh; montado em /etc/synapse (fora de /data).
+server_name: "${MATRIX_SERVER_NAME}"
+pid_file: /data/homeserver.pid
+listeners:
+  - port: 8008
+    type: http
+    tls: false
+    x_forwarded: false
+    bind_addresses: ['0.0.0.0']   # dentro de canais_net (internal); nenhuma porta publicada
+    resources:
+      - names: [client]
+        compress: false
+database:
+  name: psycopg2
+  args:
+    user: matrix_admin
+    password: "${MATRIX_POSTGRES_PASSWORD}"
+    database: synapse
+    host: matrix-postgres
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+log_config: "/etc/synapse/log.config"
+media_store_path: /data/media_store
+signing_key_path: /data/signing.key
+registration_shared_secret: "${SYNAPSE_REGISTRATION_SHARED_SECRET}"
+macaroon_secret_key: "${SYNAPSE_MACAROON_SECRET_KEY}"
+form_secret: "${SYNAPSE_FORM_SECRET}"
+report_stats: false
+enable_registration: false
+enable_metrics: false
+# Sem federacao: o servidor so serve de motor de bridge.
+federation_domain_whitelist: []
+allow_public_rooms_over_federation: false
+allow_public_rooms_without_auth: false
+presence:
+  enabled: false
+trusted_key_servers: []
+suppress_key_server_warning: true
+# Retencao: o Matrix guarda copia transitoria; o historico oficial fica no Chatwoot (docs/canais/RETENCAO_E_CONSENTIMENTO.md)
+media_retention:
+  remote_media_lifetime: 14d
+  local_media_lifetime: 90d
+app_service_config_files:
+  - /etc/synapse/registrations/gateway.yaml
+  - /etc/synapse/registrations/meta.yaml
+  - /etc/synapse/registrations/instagram.yaml
+  - /etc/synapse/registrations/whatsapp.yaml

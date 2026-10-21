@@ -1,0 +1,21 @@
+# Somente para o smoke LOCAL (Docker Desktop). Nunca usar na VPS.
+# Publica as portas dos bridges so em 127.0.0.1 e troca o bind do Postgres por volume nomeado.
+services:
+  matrix-postgres:
+    volumes: !override
+      - smoke_pg:/var/lib/postgresql/data
+      - ./templates/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+  synapse:
+    ports: ["127.0.0.1:18008:8008"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+  mautrix-meta:
+    ports: ["127.0.0.1:29391:29319"]
+  mautrix-instagram:
+    ports: ["127.0.0.1:29392:29319"]
+  mautrix-whatsapp:
+    ports: ["127.0.0.1:29393:29318"]
+networks:
+  canais_net:
+    internal: false
+volumes:
+  smoke_pg: {}

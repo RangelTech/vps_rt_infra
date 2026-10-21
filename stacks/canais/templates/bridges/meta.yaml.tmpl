@@ -1,0 +1,79 @@
+# mautrix-meta v26.10 (Messenger). Config MINIMA: o que nao esta aqui herda o default da versao (conferir com
+# `docker run --rm <imagem> -c /tmp/c.yaml -e` na CH-0). SEM cookies: login so pela API de provisionamento
+# (flows `messenger-lite`...), disparado pelo gateway. AGPL-3.0: imagem usada sem modificacao.
+network:
+  mode: messenger
+  displayname_template: '{{or .DisplayName .Username "Unknown user"}}'
+  # proxy e e2ee desligados ate o CH-0(e) provar o suporte a mensagens criptografadas
+  proxy_media: false
+  proxy_e2ee: false
+  min_full_reconnect_interval_seconds: 3600
+bridge:
+  command_prefix: '!fb'
+  personal_filtering_spaces: false
+  private_chat_portal_meta: true
+  bridge_notices: false
+  kick_matrix_users: true
+  # Somente o padrao do gateway chega ao bridge: o namespace do appservice do gateway (registrations/gateway.yaml)
+  # so cria usuarios @luar_t<conta>_c<id>:<servidor>, e o Synapse tem registro fechado. Sem "*": nenhum acesso por padrao.
+  permissions:
+    "${MATRIX_SERVER_NAME}": user
+    "${BRIDGE_ADMIN_MXID}": admin
+  relay:
+    enabled: false
+database:
+  type: postgres
+  uri: postgres://matrix_admin:${MATRIX_POSTGRES_PASSWORD}@matrix-postgres:5432/mautrix_meta?sslmode=disable
+  max_open_conns: 5
+  max_idle_conns: 1
+homeserver:
+  address: http://synapse:8008
+  domain: ${MATRIX_SERVER_NAME}
+  software: standard
+  async_media: false
+appservice:
+  address: http://mautrix-meta:29319
+  hostname: 0.0.0.0
+  port: 29319
+  id: meta
+  bot:
+    username: messengerbot
+    displayname: Messenger bridge bot
+  ephemeral_events: true
+  as_token: ${META_AS_TOKEN}
+  hs_token: ${META_HS_TOKEN}
+  username_template: messenger_{{.}}
+matrix:
+  message_status_events: true
+  delivery_receipts: true
+  message_error_notices: true
+  federate_rooms: false
+analytics:
+  token: ""
+provisioning:
+  # Gateway -> bridge: /_matrix/provision/v3/login/flows|start|step|cancel, /logins, /logout (porta 29319, rede interna)
+  shared_secret: ${BRIDGE_PROVISIONING_SECRET}
+  allow_matrix_auth: false
+  debug_endpoints: false
+  enable_session_transfers: false
+direct_media:
+  enabled: false
+public_media:
+  enabled: false
+backfill:
+  enabled: true
+  max_initial_messages: 50
+  max_catchup_messages: 500
+  # janela padrao permanente para migracoes: ultimos ${BACKFILL_DAYS} dias (aplicada tambem pelo gateway: sync since_days)
+double_puppet:
+  servers: {}
+  allow_discovery: false
+encryption:
+  allow: false
+  default: false
+  require: false
+logging:
+  min_level: info
+  writers:
+    - type: stdout
+      format: json

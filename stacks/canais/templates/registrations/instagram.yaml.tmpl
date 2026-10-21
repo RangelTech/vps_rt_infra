@@ -1,0 +1,15 @@
+# Registro do mautrix-instagram (binario `ig-` do repo mautrix/meta).
+id: instagram
+url: http://mautrix-instagram:29319
+as_token: ${INSTAGRAM_AS_TOKEN}
+hs_token: ${INSTAGRAM_HS_TOKEN}
+sender_localpart: mautrix_instagram_bot
+rate_limited: false
+namespaces:
+  users:
+    - regex: '^@instagrambot:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+    - regex: '^@instagram_.*:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+de.sorunome.msc2409.push_ephemeral: true
+receive_ephemeral: true
