@@ -1,0 +1,17 @@
+service=llm-gateway
+stack=llm-gateway
+compose_service=llm-gateway
+image_only=
+layer=B
+repo=LucasRangelSSouza/9router-multitenant
+version=v0.5.58
+commit=a8151bc83ceb341012d6808f0d7f049a062073d4
+artifact_url=https://github.com/LucasRangelSSouza/9router-multitenant/releases/download/v0.5.58/llm-gateway.image.tar.gz
+artifact_sha256=fa91da4ac210922ed788e8186d3fd5a6c458660f92ccb6c19a433f5353f6b162
+image_id=sha256:8d40efccb9890d7aeeb845feff27baded72e58c8de83e944cddcd4232ce468c5
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=MT_ADMIN_TOKEN
+previous_version=
+previous_image_id=
