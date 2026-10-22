@@ -3,26 +3,35 @@
   "sources": [
     {
       "service": "kernel-harness",
-      "repo": "RangelTech/kernel-harness",
+      "repo": "RangelTech/luar_harness",
       "stack": "kernel-harness",
       "compose_service": "harness",
       "layer": "B",
-      "manifest_asset": "release-manifest.kernel-harness.json"
+      "manifest_asset": "release-manifest.kernel-harness.json",
+      "aliases": [
+        "RangelTech/kernel-harness"
+      ]
     },
     {
       "service": "rt-hermes",
-      "repo": "RangelTech/kernel-harness",
+      "repo": "RangelTech/luar_harness",
       "stack": "kernel-harness",
       "compose_service": "hermes-w1,hermes-w2,hermes-w3",
       "layer": "B",
-      "manifest_asset": "release-manifest.rt-hermes.json"
+      "manifest_asset": "release-manifest.rt-hermes.json",
+      "aliases": [
+        "RangelTech/kernel-harness"
+      ]
     },
     {
       "service": "agent-platform-backend",
-      "repo": "RangelTech/agent-platform",
+      "repo": "RangelTech/luar_engine",
       "stack": "agent-platform",
       "compose_service": "backend",
-      "layer": "B"
+      "layer": "B",
+      "aliases": [
+        "RangelTech/agent-platform"
+      ]
     },
     {
       "service": "kernel-llm",
@@ -48,19 +57,25 @@
     },
     {
       "service": "chatwoot-rails",
-      "repo": "RangelTech/chatwoot-rt",
+      "repo": "RangelTech/luar_chatwoot",
       "stack": "chatwoot",
       "compose_service": "chatwoot-web,chatwoot-worker",
       "layer": "B",
-      "manifest_asset": "release-manifest.chatwoot-rails.json"
+      "manifest_asset": "release-manifest.chatwoot-rails.json",
+      "aliases": [
+        "RangelTech/chatwoot-rt"
+      ]
     },
     {
       "service": "chatwoot-bridge",
-      "repo": "RangelTech/chatwoot-rt",
+      "repo": "RangelTech/luar_chatwoot",
       "stack": "chatwoot",
       "compose_service": "bridge",
       "layer": "B",
-      "manifest_asset": "release-manifest.chatwoot-bridge.json"
+      "manifest_asset": "release-manifest.chatwoot-bridge.json",
+      "aliases": [
+        "RangelTech/chatwoot-rt"
+      ]
     },
     {
       "service": "portfolio-web",
@@ -80,35 +95,47 @@
     },
     {
       "service": "runtime-manager",
-      "repo": "RangelTech/runtime-manager",
+      "repo": "RangelTech/luar_workspaces",
       "stack": "runtime-manager",
       "layer": "B",
       "manifest_asset": "release-manifest.runtime-manager.json",
-      "compose_service": "runtime-manager"
+      "compose_service": "runtime-manager",
+      "aliases": [
+        "RangelTech/runtime-manager"
+      ]
     },
     {
       "service": "edge",
-      "repo": "RangelTech/runtime-manager",
+      "repo": "RangelTech/luar_workspaces",
       "stack": "runtime-manager",
       "layer": "B",
       "manifest_asset": "release-manifest.edge.json",
-      "compose_service": "rt-edge"
+      "compose_service": "rt-edge",
+      "aliases": [
+        "RangelTech/runtime-manager"
+      ]
     },
     {
       "service": "workspace",
-      "repo": "RangelTech/runtime-manager",
+      "repo": "RangelTech/luar_workspaces",
       "stack": "runtime-manager",
       "layer": "B",
       "manifest_asset": "release-manifest.workspace.json",
-      "image_only": true
+      "image_only": true,
+      "aliases": [
+        "RangelTech/runtime-manager"
+      ]
     },
     {
       "service": "executor",
-      "repo": "RangelTech/runtime-manager",
+      "repo": "RangelTech/luar_workspaces",
       "stack": "runtime-manager",
       "layer": "B",
       "manifest_asset": "release-manifest.executor.json",
-      "image_only": true
+      "image_only": true,
+      "aliases": [
+        "RangelTech/runtime-manager"
+      ]
     }
   ]
 }
