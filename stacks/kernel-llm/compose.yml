@@ -5,7 +5,8 @@ services:
   kernel:
     image: ${KERNEL_LLM_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/kernel-llm.lock}
     container_name: kernel-llm
-    restart: unless-stopped
+    restart: "no"          # DESCONTINUADO (Fase L, 21/10/2026): so sobe com --profile legado
+    profiles: ["legado"]
     env_file: /opt/platform/secrets/kernel-llm.env
     read_only: true
     tmpfs: [/tmp]
