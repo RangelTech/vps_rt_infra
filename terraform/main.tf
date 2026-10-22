@@ -146,7 +146,7 @@ resource "null_resource" "deploy_stack" {
     install_compose_healer_sha = filesha256("${path.module}/../scripts/install-compose-healer.sh")
     # Client static sites: many small files added/changed per client, so a
     # single aggregate hash of the whole tree is used instead of one trigger
-    # per file (see README.md/memoria.md "lacuna conhecida" for why per-file
+    # per file (see README.md "lacuna conhecida" for why per-file
     # hashes don't scale for a directory like this).
     sites_sha = md5(join("", [for f in sort(fileset("${path.module}/..", "sites/**")) : filemd5("${path.module}/../${f}")]))
     services_json_sha       = filesha256("${path.module}/../services.json")

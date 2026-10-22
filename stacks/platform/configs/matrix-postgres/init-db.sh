@@ -1,6 +1,6 @@
 #!/bin/bash
 # correcao-01-execucao-completa.md secao 4 -- Synapse EXIGE collation 'C'
-# no Postgres (achado real, ver memoria.md 28/08/2026: falha com
+# no Postgres (achado real, ver luar_docs, acervo vps_rt_infra/memoria.md 28/08/2026: falha com
 # IncorrectDatabaseSetup contra o locale padrão en_US.utf8 do container
 # oficial). POSTGRES_DB do compose fica só "postgres" (admin connection);
 # os 3 bancos de verdade são criados aqui, explicitamente em locale C.
