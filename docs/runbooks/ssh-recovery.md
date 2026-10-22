@@ -1,10 +1,10 @@
 # SSH recovery for Contabo VPS
 
-Use this guide from the VNC/KVM console to restore SSH access for [`66.94.101.153`](terraform/terraform.tfvars) and align it with the key already configured in [`terraform.tfvars`](terraform/terraform.tfvars).
+Use this guide from the VNC/KVM console to restore SSH access for `66.94.101.153` and align it with the key already configured in `terraform.tfvars`.
 
 ## Target key
 
-This is the public key that Terraform already expects for [`deploy`](terraform/variables.tf):
+This is the public key that Terraform already expects for `deploy`:
 
 ```text
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOoaw6hhxR/+qcz1OLPnGHqJdFEvw/iTlGHKJnSOI4JX vps_rt_infra-deploy
@@ -61,7 +61,7 @@ visudo -cf /etc/sudoers.d/90-deploy
 
 ## 5) Repair SSH daemon configuration
 
-Open [`/etc/ssh/sshd_config`](../../../../etc/ssh/sshd_config) with:
+Open `/etc/ssh/sshd_config` with:
 
 ```bash
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.$(date +%F-%H%M%S)
@@ -113,7 +113,7 @@ sshd -T | egrep 'pubkeyauthentication|passwordauthentication|permitrootlogin|aut
 
 ## 8) Verify from Windows
 
-Run these commands on Windows from [`c:/Users/lucas.rangel/Desktop/claude`](../ssh_debug_out.txt), using the current key `vps_rt_infra_ed25519_v2` (installed on the server via the Contabo "Reset credentials -> SSH Key" panel action):
+Run these commands on Windows from `c:/Users/lucas.rangel/Desktop/claude`, using the current key `vps_rt_infra_ed25519_v2` (installed on the server via the Contabo "Reset credentials -> SSH Key" panel action):
 
 ### Verify deploy key auth
 
@@ -136,18 +136,18 @@ ssh -i C:\Users\lucas.rangel\.ssh\vps_rt_infra_ed25519_v2 -o StrictHostKeyChecki
 
 ### Root password auth is disabled
 
-Contabo's credential reset flow installs the SSH key into `/root/.ssh/authorized_keys` and disables root password authentication as a side effect. The old root password stored in [`secrets/contabo-vps.json`](../../secrets/contabo-vps.json) no longer works and should be treated as stale/informational only.
+Contabo's credential reset flow installs the SSH key into `/root/.ssh/authorized_keys` and disables root password authentication as a side effect. The old root password stored in `secrets/contabo-vps.json` no longer works and should be treated as stale/informational only.
 
 ## 9) Status: SSH access recovered and deploy user provisioned
 
 This recovery has been completed:
 
 - The v2 SSH key (`vps_rt_infra_ed25519_v2`) is authorized for `root` on the server.
-- [`cloud-init/bootstrap.sh`](cloud-init/bootstrap.sh) was executed manually over SSH (piped via stdin to `root@<host>`) to create the `deploy` user, since Terraform was not runnable locally. `deploy` now exists with `sudo` + `docker` group membership.
-- [`terraform/main.tf`](terraform/main.tf) was updated so `null_resource.bootstrap` connects as `root` using `private_key = file(var.ssh_private_key_path)` (not password), since root password auth no longer works. `null_resource.deploy_stack` remains on `deploy_user` + the same private key.
-- [`terraform/terraform.tfvars`](terraform/terraform.tfvars) and [`terraform/variables.tf`](terraform/variables.tf) now default `ssh_private_key_path` / `public_ssh_key` to the v2 key pair.
+- `cloud-init/bootstrap.sh` was executed manually over SSH (piped via stdin to `root@<host>`) to create the `deploy` user, since Terraform was not runnable locally. `deploy` now exists with `sudo` + `docker` group membership.
+- `terraform/main.tf` was updated so `null_resource.bootstrap` connects as `root` using `private_key = file(var.ssh_private_key_path)` (not password), since root password auth no longer works. `null_resource.deploy_stack` remains on `deploy_user` + the same private key.
+- `terraform/terraform.tfvars` and `terraform/variables.tf` now default `ssh_private_key_path` / `public_ssh_key` to the v2 key pair.
 
-Remaining follow-up: re-run [`scripts/bootstrap_github_secrets.py`](scripts/bootstrap_github_secrets.py) (now pointed at the v2 key files) to push corrected `VPS_SSH_PRIVATE_KEY` / `VPS_PUBLIC_SSH_KEY` GitHub Actions secrets, then re-trigger the GitHub Actions apply pipeline to validate end-to-end.
+Remaining follow-up: re-run `scripts/bootstrap_github_secrets.py` (now pointed at the v2 key files) to push corrected `VPS_SSH_PRIVATE_KEY` / `VPS_PUBLIC_SSH_KEY` GitHub Actions secrets, then re-trigger the GitHub Actions apply pipeline to validate end-to-end.
 
 ## 10) Minimal one-shot recovery block
 
