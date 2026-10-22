@@ -139,6 +139,14 @@
       "aliases": [
         "RangelTech/runtime-manager"
       ]
+    },
+    {
+      "service": "luar-site",
+      "repo": "RangelTech/luar_site",
+      "stack": "luar-site",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
