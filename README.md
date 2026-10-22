@@ -32,7 +32,7 @@ scripts/     deploy.sh, release_intake.py, backup.sh, restore-verify.sh, healthc
 configs/     Traefik, Prometheus, Loki e Grafana
 cloud-init/  bootstrap do host
 sites/       sites estáticos de clientes
-docs/        runbooks (SSH, incidentes) e o manual operacional de cada serviço da VPS
+docs/        manual operacional de cada serviço da VPS
 .github/     workflows de deploy e de intake de release
 ```
 
@@ -66,8 +66,7 @@ Só os nomes ficam em `.env.example`. Os valores vivem em `/opt/platform/secrets
 
 ## Runbooks e decisões
 
-- [`docs/runbooks/ssh-recovery.md`](docs/runbooks/ssh-recovery.md): recuperar o acesso SSH ao host.
-- [`docs/runbooks/incidente-2026-09-29-postgres-tls-key.md`](docs/runbooks/incidente-2026-09-29-postgres-tls-key.md): incidente da chave TLS do Postgres e o que mudou depois.
+- Recuperação de SSH e relatório do incidente da chave TLS do Postgres: ficam no `luar_docs` (privado), porque detalham o acesso ao host e este repositório é público.
 - [`docs/manual-operacional.md`](docs/manual-operacional.md): serviço por serviço (Traefik, Postgres, Redis, MinIO, Grafana, backups, workflows). Escrito antes do modelo de releases por digest: confirme o estado atual no compose antes de seguir.
 - Decisões de arquitetura: `luar_docs` (spec 10, §0.8 e Fase R).
 
