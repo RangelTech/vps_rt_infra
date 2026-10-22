@@ -147,6 +147,14 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "luar-conector-hub",
+      "repo": "RangelTech/luar_conector",
+      "stack": "luar-conector",
+      "compose_service": "hub",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
