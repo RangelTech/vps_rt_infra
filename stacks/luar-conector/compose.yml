@@ -1,0 +1,43 @@
+# Hub do conector de computadores (spec 11 §26). Imagem por release do repo luar_conector.
+# Painel/WSS em https://conector.rangeltech.net (Traefik); relay TCP 2222 para o ambiente da empresa (token HMAC curto).
+# Segredos: /opt/platform/secrets/luar-conector.env (HUB_INTERNAL_TOKEN, HUB_RELAY_SECRET, HUB_PUBLIC_URL). Camada B.
+name: luar-conector
+services:
+  hub:
+    image: ${LUAR_CONECTOR_HUB_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/luar-conector-hub.lock}
+    container_name: luar-conector-hub
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/luar-conector.env
+    volumes:
+      - /opt/platform/data/luar-conector:/data
+    ports:
+      - "2222:2222"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 256m
+    cpus: 0.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [public, internal]
+    labels:
+      - rt.service=luar-conector-hub
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.luar-conector.loadbalancer.server.port=8080
+      - traefik.http.routers.luar-conector.rule=Host(`conector.rangeltech.net`) && !PathPrefix(`/internal`)
+      - traefik.http.routers.luar-conector.entrypoints=websecure
+      - traefik.http.routers.luar-conector.tls.certresolver=letsencrypt
+      - traefik.http.routers.luar-conector.service=luar-conector
+networks:
+  public:
+    external: true
+  internal:
+    external: true
