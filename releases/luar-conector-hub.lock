@@ -1,0 +1,17 @@
+service=luar-conector-hub
+stack=luar-conector
+compose_service=hub
+image_only=
+layer=B
+repo=RangelTech/luar_conector
+version=v0.1.0
+commit=7931321
+artifact_url=https://github.com/RangelTech/luar_conector/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=f23b34225f39c51097719833fc0394b284824b0abc550189e0a0334aaf6c75b6
+image_id=sha256:f8bf920bef182653737cda816916cd9f294e5aeb3bf254502600cc890d878560
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=HUB_INTERNAL_TOKEN,HUB_RELAY_SECRET,HUB_PUBLIC_URL
+previous_version=
+previous_image_id=
