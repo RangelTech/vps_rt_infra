@@ -24,4 +24,13 @@ for r in gateway meta instagram whatsapp; do render "$HERE/templates/registratio
 for b in meta instagram whatsapp; do render "$HERE/templates/bridges/$b.yaml.tmpl" "$OUT/bridges/$b.yaml"; done
 # placeholders nao resolvidos viram erro (variavel faltando no .env)
 if grep -rn '\${' "$OUT" >/dev/null 2>&1; then echo "ERRO: variavel nao resolvida em $OUT" >&2; grep -rn '\${' "$OUT" | sed -E 's/:.*//' | sort -u >&2; exit 3; fi
+# Donos/modos para os containers sem root (Synapse 991, bridges 1337): achado no apply real de 21/10.
+# Segredos so ficam legiveis ao dono do container; registrations (tokens dos dois lados) precisam ser lidos pelo Synapse
+# e pelo bridge correspondente, entao 0644 dentro de um diretorio que so o host alcanca (rendered 0711, host unico).
+if [ "$DRY" = 0 ]; then
+  chmod 0711 "$OUT" "$OUT/synapse" "$OUT/registrations" "$OUT/bridges"
+  chown 991:991 "$OUT/synapse/homeserver.yaml"; chmod 0400 "$OUT/synapse/homeserver.yaml"
+  chown 1337:1337 "$OUT"/bridges/*.yaml; chmod 0400 "$OUT"/bridges/*.yaml
+  chmod 0644 "$OUT"/registrations/*.yaml
+fi
 echo "render concluido em $OUT"
