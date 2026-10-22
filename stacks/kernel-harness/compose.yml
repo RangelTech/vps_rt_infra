@@ -44,13 +44,14 @@ services:
     entrypoint: ["/opt/hermes/.venv/bin/python", "/initsrc/init_home.py"]
     env_file: /opt/platform/secrets/rt-hermes.env
     environment:
-      HOMEDIRS: "/homes/1,/homes/2"
+      HOMEDIRS: "/homes/1,/homes/2,/homes/3"
       LLM_URL: http://llm-gateway:20128/v1
       MAXCONC: "4"
     volumes:
       - /opt/platform/stacks/kernel-harness/init_home.py:/initsrc/init_home.py:ro
       - home1:/homes/1
       - home2:/homes/2
+      - home3:/homes/3
       - profiles:/opt/data/profiles
       - tenant_skills:/skills/tenant
       - users:/srv/hermes/users
@@ -75,6 +76,15 @@ services:
       - tenant_skills:/skills/tenant:ro
       - users:/srv/hermes/users:ro
 
+  hermes-w3:
+    <<: *hermes
+    container_name: rt-hermes-w3
+    volumes:
+      - home3:/opt/data
+      - profiles:/opt/data/profiles
+      - tenant_skills:/skills/tenant:ro
+      - users:/srv/hermes/users:ro
+
   harness:
     image: ${KERNEL_HARNESS_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/kernel-harness.lock}
     container_name: kernel-harness
@@ -84,7 +94,7 @@ services:
     environment:
       BACKEND_URL: http://agent-platform-backend:8090
       LITELLM_URL: http://llm-gateway:20128
-      HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":8},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":8}]'
+      HARNESS_WORKERS: '[{"id":"w1","url":"http://rt-hermes-w1:8642","slots":8},{"id":"w2","url":"http://rt-hermes-w2:8642","slots":8},{"id":"w3","url":"http://rt-hermes-w3:8642","slots":8}]'
       PROFILES_ROOT: /opt/data/profiles
       USERS_ROOT: /srv/hermes/users
       TENANT_SKILLS_ROOT: /skills/tenant
@@ -127,3 +137,4 @@ volumes:
   users: {}
   home1: {}
   home2: {}
+  home3: {}
