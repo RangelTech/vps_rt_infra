@@ -49,11 +49,14 @@
     },
     {
       "service": "llm-gateway",
-      "repo": "LucasRangelSSouza/9router-multitenant",
+      "repo": "RangelTech/luar_ai_gateway",
       "stack": "llm-gateway",
       "compose_service": "llm-gateway",
       "layer": "B",
-      "manifest_asset": "release-manifest.llm-gateway.json"
+      "manifest_asset": "release-manifest.llm-gateway.json",
+      "aliases": [
+        "LucasRangelSSouza/9router-multitenant"
+      ]
     },
     {
       "service": "chatwoot-rails",
