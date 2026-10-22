@@ -36,7 +36,17 @@ services:
     labels:
       - rt.service=llm-gateway
       - rt.layer=B
-      - traefik.enable=false
+      # Painel (spec 11 §8.5): so o painel vai para a internet; a API de modelos (/v1, /api/v1) segue interna.
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.gw-panel.loadbalancer.server.port=20128
+      - traefik.http.routers.gw-panel.rule=Host(`gw.rangeltech.net`) && !PathPrefix(`/v1`) && !PathPrefix(`/api/v1`)
+      - traefik.http.routers.gw-panel.entrypoints=websecure
+      - traefik.http.routers.gw-panel.tls.certresolver=letsencrypt
+      - traefik.http.routers.gw-panel.middlewares=security-headers@file,gw-rl
+      - traefik.http.routers.gw-panel.service=gw-panel
+      - traefik.http.middlewares.gw-rl.ratelimit.average=30
+      - traefik.http.middlewares.gw-rl.ratelimit.burst=60
 networks:
   internal:
     external: true

@@ -1,0 +1,30 @@
+# Site institucional da LUAR (spec 11 §13): nginx estatico, imagem por release do repo luar_site.
+# Camada B. Deploy: workflow deploy.yml (service=luar-site).
+name: luar-site
+services:
+  web:
+    image: ${LUAR_SITE_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/luar-site.lock}
+    container_name: luar-site
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 64m
+    cpus: 0.25
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    networks: [public]
+    labels:
+      - rt.service=luar-site
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.luar-site.loadbalancer.server.port=8080
+      - traefik.http.routers.luar-site.rule=Host(`luar.rangeltech.net`)
+      - traefik.http.routers.luar-site.entrypoints=websecure
+      - traefik.http.routers.luar-site.tls.certresolver=letsencrypt
+      - traefik.http.routers.luar-site.middlewares=security-headers@file
+      - traefik.http.routers.luar-site.service=luar-site
+networks:
+  public:
+    external: true
