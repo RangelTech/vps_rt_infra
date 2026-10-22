@@ -1,0 +1,17 @@
+service=kernel-llm
+stack=kernel-llm
+compose_service=kernel
+image_only=
+layer=B
+repo=RangelTech/kernel-llm
+version=v0.1.0
+commit=0adb07e
+artifact_url=https://github.com/RangelTech/kernel-llm/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=75a1ec07756ff61a407afdb903b7b18829ce0563da9809cc6fe6e22fe7638d9a
+image_id=sha256:42486e27ee19e0ed54ddc0036f6d9baa5ba9cae547f73adfcfac7fddaad918af
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=DATABASE_URL,INTERNAL_TOKEN,PLATFORM_BACKEND_URL,STORAGE_BACKEND,S3_ENDPOINT_URL,S3_BUCKET,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY
+previous_version=
+previous_image_id=
