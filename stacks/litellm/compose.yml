@@ -5,7 +5,8 @@ services:
   litellm:
     image: ${LITELLM_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/litellm.lock}
     container_name: litellm
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["legado"]
     env_file: /opt/platform/secrets/litellm.env
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

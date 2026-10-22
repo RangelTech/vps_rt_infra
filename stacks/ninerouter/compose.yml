@@ -6,7 +6,8 @@ services:
   ninerouter:
     image: decolua/9router@sha256:5fc7020f3cf1ca6831bffe80314ecab9dde915d27ee3c479a4bb66f45dabbc27
     container_name: ninerouter
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["legado"]
     environment:
       PORT: "20128"
       HOSTNAME: 0.0.0.0
