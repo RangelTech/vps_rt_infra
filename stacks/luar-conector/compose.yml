@@ -1,13 +1,13 @@
 # Hub do conector de computadores (spec 11 §26). Imagem por release do repo luar_conector.
 # Painel/WSS em https://conector.rangeltech.net (Traefik); relay TCP 2222 para o ambiente da empresa (token HMAC curto).
-# Segredos: /opt/platform/secrets/luar-conector.env (HUB_INTERNAL_TOKEN, HUB_RELAY_SECRET, HUB_PUBLIC_URL). Camada B.
+# Segredos: /opt/platform/secrets/luar-conector-hub.env (HUB_INTERNAL_TOKEN, HUB_RELAY_SECRET, HUB_PUBLIC_URL). Camada B.
 name: luar-conector
 services:
   hub:
     image: ${LUAR_CONECTOR_HUB_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/luar-conector-hub.lock}
     container_name: luar-conector-hub
     restart: unless-stopped
-    env_file: /opt/platform/secrets/luar-conector.env
+    env_file: /opt/platform/secrets/luar-conector-hub.env
     volumes:
       - /opt/platform/data/luar-conector:/data
     ports:
