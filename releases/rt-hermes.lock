@@ -1,6 +1,6 @@
 service=rt-hermes
 stack=kernel-harness
-compose_service=hermes-w1,hermes-w2
+compose_service=hermes-w1,hermes-w2,hermes-w3
 image_only=
 layer=B
 repo=RangelTech/kernel-harness

@@ -13,7 +13,7 @@
       "service": "rt-hermes",
       "repo": "RangelTech/kernel-harness",
       "stack": "kernel-harness",
-      "compose_service": "hermes-w1,hermes-w2",
+      "compose_service": "hermes-w1,hermes-w2,hermes-w3",
       "layer": "B",
       "manifest_asset": "release-manifest.rt-hermes.json"
     },
