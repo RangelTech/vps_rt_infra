@@ -50,7 +50,10 @@ def main():
         m = json.load(gh(assets[man_name]["browser_download_url"], "application/octet-stream"))
         # --- validacao
         assert m.get("schema") == 1, "schema invalido"
-        assert m.get("repo") == repo, f"repo do manifesto ({m.get('repo')}) != fonte permitida ({repo})"
+        # "aliases": nomes anteriores do repositorio (renomeacao da Fase R): manifestos de releases
+        # cortadas antes do rename ainda trazem o nome antigo.
+        permitidos = [repo] + list(s.get("aliases", []))
+        assert m.get("repo") in permitidos, f"repo do manifesto ({m.get('repo')}) != fonte permitida ({repo})"
         assert m.get("service") == svc, "servico do manifesto diferente da fonte"
         art = m.get("artifact") or {}
         assert art.get("type") == "docker-archive", "artefato nao suportado"
