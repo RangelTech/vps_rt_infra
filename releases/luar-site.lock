@@ -1,0 +1,17 @@
+service=luar-site
+stack=luar-site
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/luar_site
+version=v0.1.0
+commit=f46e1bc
+artifact_url=https://github.com/RangelTech/luar_site/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=04dc78fbeba3374bde08c49f6bf3ca200ce57b33e36ba0db948b4dc5f56e5cec
+image_id=sha256:7de1aee0542ce3b89ae12fab1a722f6ddaf49dffd42af8f8c499421a6a6110a8
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=
