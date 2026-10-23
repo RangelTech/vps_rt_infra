@@ -17,6 +17,9 @@ services:
     container_name: chatwoot-web
     mem_limit: 2g
     cpus: 2
+    # HOTFIX temporario (menu IA/Kanban): bundle com a rota ragent_routines trocada; remover quando sair a release com a rota
+    volumes:
+      - /opt/platform/hotfix/dashboard-CMq_MYut.js:/app/public/vite/assets/dashboard-CMq_MYut.js:ro
     # FORCE_SSL=true redireciona http->https; o healthcheck interno precisa dizer que veio por HTTPS (como o Traefik faz)
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null --header='X-Forwarded-Proto: https' http://127.0.0.1:3000/health"]
