@@ -13,7 +13,10 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 1g
-    cpus: 1.5
+    cpus: 2
+    # pool de conexoes do motor (1 processo: agendador e streams vivem em memoria, nao usar varios workers)
+    environment:
+      DB_POOL_MAX: "12"
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
     networks: [public, internal, dbnet]
     labels:
