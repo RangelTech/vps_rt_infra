@@ -15,8 +15,12 @@ services:
   chatwoot-web:
     <<: *rails
     container_name: chatwoot-web
-    mem_limit: 2g
-    cpus: 2
+    mem_limit: 4g
+    cpus: 6
+    # Puma em modo cluster: antes 1 processo so (WEB_CONCURRENCY=0) e 2 CPUs; 20 conexoes simultaneas viravam fila (Spec 12 §4)
+    environment:
+      WEB_CONCURRENCY: "4"
+      RAILS_MAX_THREADS: "5"
     # HOTFIX temporario (menu IA/Kanban): bundle com a rota ragent_routines trocada; remover quando sair a release com a rota
     volumes:
       - /opt/platform/hotfix/dashboard-CMq_MYut.js:/app/public/vite/assets/dashboard-CMq_MYut.js:ro
