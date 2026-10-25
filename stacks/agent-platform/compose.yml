@@ -17,6 +17,7 @@ services:
     # pool de conexoes do motor (1 processo: agendador e streams vivem em memoria, nao usar varios workers)
     environment:
       DB_POOL_MAX: "12"
+      WHISPER_CPP_URL: "http://whisper-cpp:8080"
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
     networks: [public, internal, dbnet]
     labels:

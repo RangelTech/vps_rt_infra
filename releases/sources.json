@@ -34,6 +34,17 @@
       ]
     },
     {
+      "service": "whisper-cpp",
+      "repo": "RangelTech/luar_engine",
+      "stack": "whisper",
+      "compose_service": "whisper",
+      "layer": "B",
+      "manifest_asset": "release-manifest.whisper-cpp.json",
+      "aliases": [
+        "RangelTech/agent-platform"
+      ]
+    },
+    {
       "service": "kernel-llm",
       "repo": "RangelTech/kernel-llm",
       "stack": "kernel-llm",

@@ -1,0 +1,31 @@
+# Reserva CPU do ditado da Spec 12. Sem porta publicada nem rota Traefik:
+# somente o backend do LUAR na rede interna pode chamar /inference.
+name: whisper
+services:
+  whisper:
+    image: ${WHISPER_CPP_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/whisper-cpp.lock}
+    container_name: whisper-cpp
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 3g
+    cpus: 3
+    volumes:
+      - /opt/platform/data/whisper/models:/models
+      - /opt/platform/data/whisper/public:/srv/public
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/v1/models >/dev/null"]
+      interval: 30s
+      timeout: 8s
+      retries: 6
+      start_period: 180s
+    labels:
+      - rt.service=whisper-cpp
+      - rt.layer=B
+      - traefik.enable=false
+networks:
+  internal:
+    external: true
