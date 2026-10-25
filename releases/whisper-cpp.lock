@@ -1,0 +1,17 @@
+service=whisper-cpp
+stack=whisper
+compose_service=whisper
+image_only=
+layer=B
+repo=RangelTech/luar_engine
+version=v0.2.43
+commit=b7d2549
+artifact_url=https://github.com/RangelTech/luar_engine/releases/download/v0.2.43/whisper-cpp.tar.gz
+artifact_sha256=a6dd4a1b99e2c1ad7f5a7c87a6fda3d4ccbf69cc2352c71f1bf952ea0dfbd422
+image_id=sha256:82fc48e455f66f86816a5fa2369760ff82005a134e7a0d02ed5e26a4a1619b83
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=180
+env_required=
+previous_version=
+previous_image_id=
