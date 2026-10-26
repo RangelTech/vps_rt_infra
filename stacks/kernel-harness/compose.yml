@@ -100,6 +100,8 @@ services:
       TENANT_SKILLS_ROOT: /skills/tenant
       # fila: 2 execucoes/tenant e expiracao de 60 s faziam o usuario ver 'Muitas solicitacoes' em picos curtos
       HARNESS_QUEUE_EXPIRY_S: "300"
+      # tarefas pesadas no ambiente (instalar biblioteca, gerar planilha, consultar Metabase) passam de 120 s sem evento; antes viravam "demorou mais que o esperado"
+      HARNESS_SILENCE_TIMEOUT_S: "900"
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
