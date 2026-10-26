@@ -6,10 +6,9 @@ x-rails: &rails
   image: ${CHATWOOT_RAILS_IMAGE:-invalid.local/nao-implantado:none}
   env_file: /opt/platform/secrets/chatwoot-rails.env
   restart: unless-stopped
-  # REMENDO TEMPORARIO (25/10/2026): o 4.17.1 bloqueia webhook para IP privado e o aviso ao bridge (http://chatwoot-bridge) nao saia;
-  # sera trocado por lista de hosts permitidos (so chatwoot-bridge) na proxima release do Chatwoot
+  # o 4.17 bloqueia webhook para IP privado; so o bridge interno e liberado (allowlist por nome de host)
   environment:
-    SAFE_FETCH_ALLOW_PRIVATE_NETWORK: "true"
+    SAFE_FETCH_PRIVATE_HOST_ALLOWLIST: "chatwoot-bridge"
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
   logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
@@ -24,7 +23,7 @@ services:
     # Puma em modo cluster: antes 1 processo so (WEB_CONCURRENCY=0) e 2 CPUs; 20 conexoes simultaneas viravam fila (Spec 12 §4)
     environment:
       WEB_CONCURRENCY: "4"
-      SAFE_FETCH_ALLOW_PRIVATE_NETWORK: "true"
+      SAFE_FETCH_PRIVATE_HOST_ALLOWLIST: "chatwoot-bridge"
       RAILS_MAX_THREADS: "5"
     # FORCE_SSL=true redireciona http->https; o healthcheck interno precisa dizer que veio por HTTPS (como o Traefik faz)
     healthcheck:
