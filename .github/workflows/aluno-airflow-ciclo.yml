@@ -52,6 +52,9 @@ jobs:
           if [ "$TESTE" = "sim" ]; then
             docker exec "$C" airflow dags unpause ciclo_aluno >/dev/null 2>&1 || true
             docker exec "$C" airflow dags trigger ciclo_aluno --conf '{"dry": true}' | tail -n 3
+            sleep 60
+            docker exec "$C" airflow dags list-runs -d ciclo_aluno -o table | head -n 6
+            docker exec "$C" sh -c "f=\$(find /opt/airflow/logs/dag_id=ciclo_aluno -name '*.log' | sort | tail -n 1); echo \"log: \$f\"; grep -E \"'dry'|ATENCAO|Error|RuntimeError|Variable\" \"\$f\" | tail -n 6"
           fi
           SH
           { printf '%s\n' "$ALUNO_API_TOKEN"; cat remote.sh; } | $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r TK; export TK TESTE=$TESTE; sh -s'"
