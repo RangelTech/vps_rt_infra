@@ -1,0 +1,42 @@
+name: Aluno API token
+# Gera NA VPS o token da API de produtos (PRODUCTS_API_TOKEN em /opt/platform/secrets/ai-aluno-turn.env), uma unica vez,
+# e imprime o valor UMA vez no log para ser guardado no cofre e dado a IA do WhatsApp. Depois o log da execucao e apagado.
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: aluno-api-token
+  cancel-in-progress: false
+jobs:
+  secret:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Criar o token se nao existir
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+        run: |
+          cat > remote.sh <<'SH'
+          set -e
+          f=/opt/platform/secrets/ai-aluno-turn.env
+          if ! grep -q '^PRODUCTS_API_TOKEN=' "$f" 2>/dev/null; then
+            umask 077
+            printf 'PRODUCTS_API_TOKEN=%s\n' "$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')" >> "$f"
+            echo "criado"
+          else
+            echo "ja-existia"
+          fi
+          chmod 600 "$f"
+          printf 'VALOR=%s\n' "$(grep '^PRODUCTS_API_TOKEN=' "$f" | cut -d= -f2)"
+          SH
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -s" < remote.sh
