@@ -1,0 +1,17 @@
+service=ai-aluno-turn
+stack=aluno
+compose_service=turn
+image_only=
+layer=B
+repo=RangelTech/ai_aluno
+version=v0.2.0
+commit=1b416a8
+artifact_url=https://github.com/RangelTech/ai_aluno/releases/download/v0.2.0/turn.image.tar.gz
+artifact_sha256=500a363a7fd31022801effcd919be5ef907819620b5fdf5ac4aad00394433797
+image_id=sha256:09f88e0e2e39376d8140f487f40df828f6be062e8f6a503e9e6517ac9c05551a
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=TURN_SECRET
+previous_version=
+previous_image_id=
