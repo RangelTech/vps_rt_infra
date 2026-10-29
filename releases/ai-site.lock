@@ -1,0 +1,17 @@
+service=ai-site
+stack=ai-site
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/ai_site
+version=v0.1.0
+commit=3c5f5d6
+artifact_url=https://github.com/RangelTech/ai_site/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=3e37d5c913071f5eb50707cd1615ca2913badfc47c480e8c639e58afcadfeecc
+image_id=sha256:527a728d76cf5823c428e1058cdb09fa45321315314d27e0ef358fc0a6a7a15c
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=
