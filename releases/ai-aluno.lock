@@ -1,0 +1,17 @@
+service=ai-aluno
+stack=aluno
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/ai_aluno
+version=v0.1.0
+commit=7395b66
+artifact_url=https://github.com/RangelTech/ai_aluno/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=f822dd7f198d6335b2354e11c179777b19e97e0855412652a2231494b466f229
+image_id=sha256:b365e73fe567826882665700a6760fb0bc7cd9c723c37bd71317a4fde5f26b0a
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=
+previous_version=
+previous_image_id=
