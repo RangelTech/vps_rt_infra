@@ -1,0 +1,57 @@
+name: Aluno Airflow ciclo
+# Publica a DAG ciclo_aluno no Airflow da VPS (copia para /opt/airflow-infra/dags) e grava a Variable ALUNO_API_TOKEN
+# (vem do secret ALUNO_API_TOKEN do ambiente `production`; nunca no Git nem no log). Opcional: disparar uma execucao de teste.
+on:
+  workflow_dispatch:
+    inputs:
+      teste:
+        description: "Disparar uma execucao em modo simulacao (dry-run)?"
+        required: false
+        default: "sim"
+permissions:
+  contents: read
+concurrency:
+  group: aluno-airflow-ciclo
+  cancel-in-progress: false
+jobs:
+  dag:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Copiar a DAG e gravar a Variable
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          ALUNO_API_TOKEN: ${{ secrets.ALUNO_API_TOKEN }}
+          TESTE: ${{ inputs.teste }}
+        run: |
+          test -n "$ALUNO_API_TOKEN"
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes airflow-dags/ciclo_aluno.py "$VPS_DEPLOY_USER@$VPS_HOST:/tmp/ciclo_aluno.py"
+          cat > remote.sh <<'SH'
+          set -e
+          D=/opt/airflow-infra/dags
+          test -d "$D"
+          cp /tmp/ciclo_aluno.py "$D/ciclo_aluno.py"
+          chmod 644 "$D/ciclo_aluno.py"
+          rm -f /tmp/ciclo_aluno.py
+          C=$(docker ps -q --filter label=com.docker.compose.project=airflow --filter label=com.docker.compose.service=airflow-scheduler | head -n1)
+          test -n "$C"
+          docker exec "$C" airflow variables set ALUNO_API_TOKEN "$TK" >/dev/null
+          echo "DAG copiada e variavel gravada"
+          sleep 45
+          docker exec "$C" airflow dags list 2>/dev/null | grep -w ciclo_aluno || echo "DAG ainda nao apareceu na lista (o scheduler leva ate 1 min)"
+          if [ "$TESTE" = "sim" ]; then
+            docker exec "$C" airflow dags unpause ciclo_aluno >/dev/null 2>&1 || true
+            docker exec "$C" airflow dags trigger ciclo_aluno --conf '{"dry": true}' | tail -n 3
+          fi
+          SH
+          { printf '%s\n' "$ALUNO_API_TOKEN"; cat remote.sh; } | $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r TK; export TK TESTE=$TESTE; sh -s'"
