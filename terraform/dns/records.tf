@@ -5,6 +5,7 @@ locals {
     "*.evolution|A"  = { name = "*.evolution", type = "A", ttl = 300, value = var.vps_ip }
     "*.apps|A"       = { name = "*.apps", type = "A", ttl = 300, value = var.vps_ip }
     "@|A"            = { name = "@", type = "A", ttl = 300, value = var.vps_ip }
+    "ai|A"           = { name = "ai", type = "A", ttl = 300, value = var.vps_ip }
     "airflow|A"      = { name = "airflow", type = "A", ttl = 300, value = var.vps_ip }
     "bi|A"           = { name = "bi", type = "A", ttl = 300, value = var.vps_ip }
     "bridge|A"       = { name = "bridge", type = "A", ttl = 300, value = var.vps_ip }
