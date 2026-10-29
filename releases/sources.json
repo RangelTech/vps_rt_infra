@@ -198,6 +198,14 @@
       "compose_service": "hub",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "ai-aluno-turn",
+      "repo": "RangelTech/ai_aluno",
+      "stack": "aluno",
+      "compose_service": "turn",
+      "layer": "B",
+      "manifest_asset": "release-manifest.turn.json"
     }
   ]
 }

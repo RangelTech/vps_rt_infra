@@ -1,5 +1,5 @@
 # Area do aluno de Lucas Rangel (user.rangeltech.net): cursos, downloads e mentorias ao vivo (WebRTC em malha).
-# Camada B. Imagem por release do repo ai_aluno. Dados (SQLite, videos HLS, arquivos, gravacoes) no volume aluno-data.
+# Camada B. Imagens por release do repo ai_aluno (app e coturn proprio). Dados (SQLite, videos HLS, arquivos, gravacoes) no volume aluno-data.
 # Deploy: workflow deploy.yml (service=ai-aluno). Sem segredos no Git: a senha do mestre fica so no cofre do dono (aqui so o hash bcrypt).
 name: aluno
 services:
@@ -19,6 +19,9 @@ services:
       MASTER_EMAIL: lucas@rangeltech.net
       MASTER_NAME: Lucas Rangel
       MASTER_PASSWORD_HASH: "$$2b$$12$$6kjxHdyX1fMJMLE8ZM0Ukel.nEc9hy7/BbOBJfaue9.CliCLkgLyK"
+      PUBLIC_URL: https://user.rangeltech.net
+      TURN_URLS: "stun:turn.rangeltech.net:3478,turn:turn.rangeltech.net:3478?transport=udp,turn:turn.rangeltech.net:3478?transport=tcp"
+    env_file: /opt/platform/secrets/ai-aluno-turn.env   # TURN_SECRET (gerado na VPS pelo workflow aluno-turn-secret; nada no Git)
     volumes:
       - aluno-data:/data
     healthcheck:
@@ -39,6 +42,35 @@ services:
       - traefik.http.routers.ai-aluno.tls.certresolver=letsencrypt
       - traefik.http.routers.ai-aluno.middlewares=security-headers@file
       - traefik.http.routers.ai-aluno.service=ai-aluno
+  # STUN/TURN proprio (coturn): a sala de mentoria nao usa servico de terceiros. Credenciais temporarias geradas pelo app (REST API).
+  # Portas publicadas pelo Docker (nao passam pelo ufw, como o relay 2222 do luar-conector): 3478 udp/tcp + relay 49160-49200/udp.
+  turn:
+    image: ${AI_ALUNO_TURN_IMAGE:-invalid.local/nao-implantado:none}
+    container_name: ai-aluno-turn
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/ai-aluno-turn.env
+    environment:
+      TURN_EXTERNAL_IP: 66.94.101.153
+      TURN_REALM: rangeltech.net
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49160-49200:49160-49200/udp"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/3478'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [public]
+    labels:
+      - rt.service=ai-aluno-turn
+      - rt.layer=B
 networks:
   public:
     external: true
