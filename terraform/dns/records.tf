@@ -14,6 +14,7 @@ locals {
     "ia|A"           = { name = "ia", type = "A", ttl = 300, value = var.vps_ip }
     "infisical|A"    = { name = "infisical", type = "A", ttl = 300, value = var.vps_ip }
     "metricas|A"     = { name = "metricas", type = "A", ttl = 300, value = var.vps_ip }
+    "user|A"         = { name = "user", type = "A", ttl = 300, value = var.vps_ip }
     "luar|A"         = { name = "luar", type = "A", ttl = 300, value = var.vps_ip }
     "gw|A"           = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }
     "conector|A"     = { name = "conector", type = "A", ttl = 300, value = var.vps_ip }

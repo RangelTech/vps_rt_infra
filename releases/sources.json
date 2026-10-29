@@ -168,6 +168,14 @@
       "manifest_asset": "release-manifest.json"
     },
     {
+      "service": "ai-aluno",
+      "repo": "RangelTech/ai_aluno",
+      "stack": "aluno",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
+    },
+    {
       "service": "umami-db",
       "repo": "RangelTech/ai_metricas",
       "stack": "umami",

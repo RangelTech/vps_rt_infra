@@ -1,0 +1,46 @@
+# Area do aluno de Lucas Rangel (user.rangeltech.net): cursos, downloads e mentorias ao vivo (WebRTC em malha).
+# Camada B. Imagem por release do repo ai_aluno. Dados (SQLite, videos HLS, arquivos, gravacoes) no volume aluno-data.
+# Deploy: workflow deploy.yml (service=ai-aluno). Sem segredos no Git: a senha do mestre fica so no cofre do dono (aqui so o hash bcrypt).
+name: aluno
+services:
+  web:
+    image: ${AI_ALUNO_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/ai-aluno.lock}
+    container_name: ai-aluno
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    cpus: 1.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    environment:
+      DATA_DIR: /data
+      TMPDIR: /data/tmp
+      APP_TZ: America/Sao_Paulo
+      MASTER_EMAIL: lucas@rangeltech.net
+      MASTER_NAME: Lucas Rangel
+      MASTER_PASSWORD_HASH: "$$2b$$12$$6kjxHdyX1fMJMLE8ZM0Ukel.nEc9hy7/BbOBJfaue9.CliCLkgLyK"
+    volumes:
+      - aluno-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8080/health',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [public]
+    labels:
+      - rt.service=ai-aluno
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.ai-aluno.loadbalancer.server.port=8080
+      - traefik.http.routers.ai-aluno.rule=Host(`user.rangeltech.net`)
+      - traefik.http.routers.ai-aluno.entrypoints=websecure
+      - traefik.http.routers.ai-aluno.tls.certresolver=letsencrypt
+      - traefik.http.routers.ai-aluno.middlewares=security-headers@file
+      - traefik.http.routers.ai-aluno.service=ai-aluno
+networks:
+  public:
+    external: true
+volumes:
+  aluno-data:
