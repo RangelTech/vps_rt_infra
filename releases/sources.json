@@ -168,6 +168,22 @@
       "manifest_asset": "release-manifest.json"
     },
     {
+      "service": "umami-db",
+      "repo": "RangelTech/ai_metricas",
+      "stack": "umami",
+      "compose_service": "db",
+      "layer": "B",
+      "manifest_asset": "release-manifest.umami-db.json"
+    },
+    {
+      "service": "umami",
+      "repo": "RangelTech/ai_metricas",
+      "stack": "umami",
+      "compose_service": "app,provisiona",
+      "layer": "B",
+      "manifest_asset": "release-manifest.umami.json"
+    },
+    {
       "service": "luar-conector-hub",
       "repo": "RangelTech/luar_conector",
       "stack": "luar-conector",

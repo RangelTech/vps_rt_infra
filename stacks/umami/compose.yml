@@ -1,0 +1,98 @@
+# Metricas dos sites (Umami, sem cookie): app + Postgres proprio + provisionador de 1a subida.
+# Camada B. Imagens por release do repo ai_metricas (servicos `umami` e `umami-db`); nada e baixado na VPS (--pull never).
+# Deploy: workflow deploy.yml, primeiro service=umami-db, depois service=umami (alvos: app e provisiona).
+# Segredos (senha do banco, APP_SECRET) sao gerados NA VPS no volume umami-secrets, na 1a subida. Nada no Git.
+name: umami
+services:
+  db:
+    image: ${UMAMI_DB_IMAGE:-invalid.local/nao-implantado:none}
+    container_name: umami-db
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/stack/db-entrypoint.sh"]
+    mem_limit: 256m
+    cpus: 0.5
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+      - umami-secrets:/secrets
+      - ./scripts:/stack:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [umami]
+    labels:
+      - rt.service=umami-db
+      - rt.layer=B
+
+  app:
+    image: ${UMAMI_IMAGE:-invalid.local/nao-implantado:none}
+    container_name: umami
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/stack/app-entrypoint.sh"]
+    command: ["pnpm", "start-docker"]   # o entrypoint foi trocado, entao o comando original da imagem precisa ser repetido aqui
+    environment:
+      DISABLE_TELEMETRY: "1"
+      HOSTNAME: 0.0.0.0
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    volumes:
+      - umami-secrets:/secrets:ro
+      - ./scripts:/stack:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    networks: [umami, public]
+    labels:
+      - rt.service=umami
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.umami.loadbalancer.server.port=3000
+      - traefik.http.routers.umami.rule=Host(`metricas.rangeltech.net`)
+      - traefik.http.routers.umami.entrypoints=websecure
+      - traefik.http.routers.umami.tls.certresolver=letsencrypt
+      - traefik.http.routers.umami.middlewares=security-headers@file
+      - traefik.http.routers.umami.service=umami
+
+  # Roda uma vez por instalacao: depois que o Umami cria as tabelas, troca a senha do admin pelo hash versionado
+  # (a senha real fica so no cofre do dono) e cadastra os sites com ids fixos. Depois fica "saudavel" e dormindo.
+  provisiona:
+    image: ${UMAMI_DB_IMAGE:-invalid.local/nao-implantado:none}
+    container_name: umami-provisiona
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/stack/provision.sh"]
+    mem_limit: 64m
+    cpus: 0.1
+    logging: { driver: json-file, options: { max-size: 5m, max-file: "2" } }
+    volumes:
+      - umami-secrets:/secrets
+      - ./scripts:/stack:ro
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/provisionado"]
+      interval: 10s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
+    networks: [umami]
+    labels:
+      - rt.service=umami
+      - rt.layer=B
+
+networks:
+  umami:
+    driver: bridge
+  public:
+    external: true
+
+volumes:
+  umami-db-data:
+  umami-secrets:
