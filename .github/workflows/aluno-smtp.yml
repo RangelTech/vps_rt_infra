@@ -1,0 +1,48 @@
+name: Aluno SMTP
+# Grava NA VPS a configuracao de e-mail da area do aluno em /opt/platform/secrets/ai-aluno-turn.env.
+# A senha vem do secret SMTP_PASSWORD do ambiente `production` (criptografado no GitHub; nunca no Git nem no log).
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: aluno-smtp
+  cancel-in-progress: false
+jobs:
+  smtp:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar SMTP no arquivo de segredos
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          test -n "$SMTP_PASSWORD"
+          cat > remote.sh <<'SH'
+          set -e
+          f=/opt/platform/secrets/ai-aluno-turn.env
+          umask 077
+          touch "$f"
+          grep -v '^SMTP_' "$f" > "$f.tmp" || true
+          {
+            echo 'SMTP_HOST=smtp.hostinger.com'
+            echo 'SMTP_PORT=587'
+            echo 'SMTP_USER=contato@rangeltech.net'
+            echo 'SMTP_FROM=Lucas Rangel <contato@rangeltech.net>'
+            printf 'SMTP_PASSWORD=%s\n' "$PW"
+          } >> "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          printf 'linhas SMTP_: '; grep -c '^SMTP_' "$f"
+          SH
+          { printf '%s\n' "$SMTP_PASSWORD"; cat remote.sh; } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; export PW; sh -s'"
