@@ -1,0 +1,17 @@
+service=umami-db
+stack=umami
+compose_service=db
+image_only=
+layer=B
+repo=RangelTech/ai_metricas
+version=v0.1.0
+commit=cc5beb5
+artifact_url=https://github.com/RangelTech/ai_metricas/releases/download/v0.1.0/umami-db.image.tar.gz
+artifact_sha256=e61f7830439d55c8a28f68397527012756f9a3be9b8290c945a796c93212d3c7
+image_id=sha256:6a2e324ebe59af6031c4c1cd96c1d5072c2ebc36563d2196365e43b8297c062d
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=120
+env_required=
+previous_version=
+previous_image_id=

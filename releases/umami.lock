@@ -1,0 +1,17 @@
+service=umami
+stack=umami
+compose_service=app,provisiona
+image_only=
+layer=B
+repo=RangelTech/ai_metricas
+version=v0.1.0
+commit=cc5beb5
+artifact_url=https://github.com/RangelTech/ai_metricas/releases/download/v0.1.0/umami.image.tar.gz
+artifact_sha256=8b5bbc34a38009bb0bc3769c3898cd9567299796737101e0ce95f7afbf1075c6
+image_id=sha256:83e43bf35658f5b721d7ab325f5622f95c2a6106d98453915abf80145fd4ad9f
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=180
+env_required=
+previous_version=
+previous_image_id=
