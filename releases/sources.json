@@ -209,11 +209,22 @@
     },
     {
       "service": "llm-queue",
-      "repo": "RangelTech/luar_llm_queue",
+      "repo": "LucasRangelSSouza/qwen-abliterated-api",
       "stack": "llm-queue",
       "compose_service": "llm-queue",
       "layer": "B",
-      "manifest_asset": "release-manifest.json"
+      "manifest_asset": "release-manifest.llm-queue.json",
+      "aliases": [
+        "RangelTech/luar_llm_queue"
+      ]
+    },
+    {
+      "service": "llm-access",
+      "repo": "LucasRangelSSouza/qwen-abliterated-api",
+      "stack": "llm-access",
+      "compose_service": "llm-access",
+      "layer": "B",
+      "manifest_asset": "release-manifest.llm-access.json"
     }
   ]
 }
