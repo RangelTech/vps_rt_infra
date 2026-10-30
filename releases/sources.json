@@ -206,6 +206,14 @@
       "compose_service": "turn",
       "layer": "B",
       "manifest_asset": "release-manifest.turn.json"
+    },
+    {
+      "service": "llm-queue",
+      "repo": "RangelTech/luar_llm_queue",
+      "stack": "llm-queue",
+      "compose_service": "llm-queue",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
