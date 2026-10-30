@@ -101,7 +101,10 @@ services:
       # fila: 2 execucoes/tenant e expiracao de 60 s faziam o usuario ver 'Muitas solicitacoes' em picos curtos
       HARNESS_QUEUE_EXPIRY_S: "300"
       # tarefas pesadas no ambiente (instalar biblioteca, gerar planilha, consultar Metabase) passam de 120 s sem evento; antes viravam "demorou mais que o esperado"
-      HARNESS_SILENCE_TIMEOUT_S: "900"
+      HARNESS_SILENCE_TIMEOUT_S: "1500"
+      HARNESS_TURN_TIMEOUT_S: "2700"
+      # fila de IA com GPU sob demanda (Spec 14): enquanto a GPU liga, os relogios da run pausam e o usuario ve o aviso; chave em kernel-harness.env
+      HARNESS_QUEUE_STATUS_URL: http://llm-queue.rt:8000/v1/gpu/status
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
