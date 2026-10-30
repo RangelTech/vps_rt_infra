@@ -1,0 +1,17 @@
+service=llm-queue
+stack=llm-queue
+compose_service=llm-queue
+image_only=
+layer=B
+repo=RangelTech/luar_llm_queue
+version=v0.1.0
+commit=2e13741
+artifact_url=https://github.com/RangelTech/luar_llm_queue/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=a7c1d200fbccce8e62470f6e90d3cb7486f413b686898e8d7b9d9693187d14da
+image_id=sha256:447df7457f86999aeeefd03cda159c4178c6d898cfee1c6527c0e73aa98d8e72
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=REDIS_URL,VAST_API_KEY,SSH_PRIVATE_KEY_B64,CONSUMERS_JSON
+previous_version=
+previous_image_id=
