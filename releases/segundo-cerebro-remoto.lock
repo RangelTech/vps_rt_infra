@@ -1,0 +1,17 @@
+service=segundo-cerebro-remoto
+stack=segundo-cerebro-remoto
+compose_service=ponte
+image_only=
+layer=B
+repo=RangelTech/segundo-cerebro-remoto
+version=v0.1.0
+commit=732cb99
+artifact_url=https://github.com/RangelTech/segundo-cerebro-remoto/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=ea1066f7b77f2cf83843d954e14a57a5e48c5c2b94005ec9b5917185318135f9
+image_id=sha256:dbad0e6eaae768ece6a21cff8df3bdebe01a7159b77285b97bcaa1ba0c597b81
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=
