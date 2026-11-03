@@ -17,6 +17,7 @@ locals {
     "user|A"         = { name = "user", type = "A", ttl = 300, value = var.vps_ip }
     "turn|A"         = { name = "turn", type = "A", ttl = 300, value = var.vps_ip }
     "luar|A"         = { name = "luar", type = "A", ttl = 300, value = var.vps_ip }
+    "remoto|A"       = { name = "remoto", type = "A", ttl = 300, value = var.vps_ip }
     "gw|A"           = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }
     "qwen|A"         = { name = "qwen", type = "A", ttl = 300, value = var.vps_ip }
     "conector|A"     = { name = "conector", type = "A", ttl = 300, value = var.vps_ip }

@@ -1,0 +1,39 @@
+# Ponte do controle remoto do Segundo Cerebro (spec 20): Node + WebSocket, imagem por release do repo segundo-cerebro-remoto.
+# Guarda so hashes dos vinculos no volume /data. Camada B. Deploy: workflow deploy.yml (service=segundo-cerebro-remoto).
+name: segundo-cerebro-remoto
+services:
+  ponte:
+    image: ${SEGUNDO_CEREBRO_REMOTO_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/segundo-cerebro-remoto.lock}
+    container_name: segundo-cerebro-remoto
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - remoto-dados:/data
+    mem_limit: 128m
+    cpus: 0.25
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [public]
+    labels:
+      - rt.service=segundo-cerebro-remoto
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.segundo-cerebro-remoto.loadbalancer.server.port=8080
+      - traefik.http.routers.segundo-cerebro-remoto.rule=Host(`remoto.rangeltech.net`)
+      - traefik.http.routers.segundo-cerebro-remoto.entrypoints=websecure
+      - traefik.http.routers.segundo-cerebro-remoto.tls.certresolver=letsencrypt
+      - traefik.http.routers.segundo-cerebro-remoto.service=segundo-cerebro-remoto
+volumes:
+  remoto-dados:
+networks:
+  public:
+    external: true

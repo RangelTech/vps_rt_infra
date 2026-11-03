@@ -225,6 +225,14 @@
       "compose_service": "llm-access",
       "layer": "B",
       "manifest_asset": "release-manifest.llm-access.json"
+    },
+    {
+      "service": "segundo-cerebro-remoto",
+      "repo": "RangelTech/segundo-cerebro-remoto",
+      "stack": "segundo-cerebro-remoto",
+      "compose_service": "ponte",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
