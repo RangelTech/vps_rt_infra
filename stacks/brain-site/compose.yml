@@ -1,0 +1,36 @@
+# Site de vendas do Segundo Cérebro (spec 21 §3): nginx estatico, imagem por release do repo segundo_cerebro_site.
+# Camada B. Deploy: workflow deploy.yml (service=brain-site).
+name: brain-site
+services:
+  web:
+    image: ${BRAIN_SITE_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/brain-site.lock}
+    container_name: brain-site
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 64m
+    cpus: 0.25
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [public]
+    labels:
+      - rt.service=brain-site
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.brain-site.loadbalancer.server.port=8080
+      - traefik.http.routers.brain-site.rule=Host(`brain.rangeltech.net`)
+      - traefik.http.routers.brain-site.entrypoints=websecure
+      - traefik.http.routers.brain-site.tls.certresolver=letsencrypt
+      - traefik.http.routers.brain-site.middlewares=security-headers@file
+      - traefik.http.routers.brain-site.service=brain-site
+networks:
+  public:
+    external: true

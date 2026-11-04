@@ -233,6 +233,14 @@
       "compose_service": "ponte",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "brain-site",
+      "repo": "RangelTech/segundo_cerebro_site",
+      "stack": "brain-site",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
