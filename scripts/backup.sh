@@ -24,6 +24,8 @@ SKIP_DBS="${BACKUP_SKIP_DBS:-pncp}"
 
 set -a; . "$SEC/restic.env"; set +a
 export RCLONE_CONFIG="$SEC/rclone.conf"
+# lock orfao (processo que morreu no meio) bloqueia forget/check e derrubava o backup todo dia; `unlock` so remove lock vencido
+restic unlock >/dev/null 2>&1 || true
 
 TS="$(date +%Y%m%d-%H%M%S)"
 STAGE="$OUT/staging/$TS"
@@ -56,6 +58,33 @@ for c in $(docker ps --format '{{.Names}}' | grep -E "$PG_INCLUDE" || true); do
     fi
   done
 done
+
+echo "==> copias consistentes dos SQLite (API de backup do SQLite; nunca copia de arquivo com banco aberto)"
+mkdir -p "$STAGE/sqlite"
+if ! python3 - "$STAGE/sqlite" <<'PY'
+import glob, os, sqlite3, sys
+saida = sys.argv[1]
+alvos = ["/var/lib/docker/volumes/aluno_aluno-data/_data/aluno.db", "/opt/rag-chat/data/index.db", "/opt/portfolio-feedback/data/feedback.db"]
+alvos += glob.glob("/var/lib/docker/volumes/kernel-harness_home2/_data/**/*.db", recursive=True)
+alvos += glob.glob("/var/lib/docker/volumes/kernel-harness_profiles/_data/*/state.db")
+falhas = n = 0
+for src in alvos:
+    if not os.path.isfile(src) or os.path.getsize(src) < 4096:
+        continue
+    dst = os.path.join(saida, src.strip("/").replace("/", "__"))
+    try:
+        a = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=30)
+        b = sqlite3.connect(dst)
+        a.backup(b)
+        b.close(); a.close()
+        n += 1
+    except Exception as e:  # noqa: BLE001
+        falhas += 1
+        print(f"FALHA sqlite {src}: {e}")
+print(f"ok  {n} bancos SQLite copiados, {falhas} falha(s)")
+sys.exit(1 if falhas else 0)
+PY
+then fail=1; fi
 
 PATHS=(
   "$STAGE"
