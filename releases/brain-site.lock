@@ -1,0 +1,17 @@
+service=brain-site
+stack=brain-site
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/segundo_cerebro_site
+version=v0.1.0
+commit=654fc29
+artifact_url=https://github.com/RangelTech/segundo_cerebro_site/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=efce937a56a5f764d344cc42c5cf2934e9a99f54b040ebeeb8c8f553a532f471
+image_id=sha256:5c16b00d471758a1fa361aec8f0301a5c288efad469adf3f0d97c1ec58ca86d7
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=
+previous_version=
+previous_image_id=
