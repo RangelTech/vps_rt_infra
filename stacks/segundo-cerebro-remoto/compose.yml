@@ -1,5 +1,6 @@
-# Ponte do controle remoto do Segundo Cerebro (spec 20): Node + WebSocket, imagem por release do repo segundo-cerebro-remoto.
-# Guarda so hashes dos vinculos no volume /data. Camada B. Deploy: workflow deploy.yml (service=segundo-cerebro-remoto).
+# Ponte do acesso web remoto do Segundo Cerebro (spec 21 §12): Node + WebSocket, imagem por release do repo segundo-cerebro-remoto.
+# Sem estado em disco: login pela conta (llm-access), sessao em cookie assinado (SESSION_SECRET em /opt/platform/secrets/segundo-cerebro-remoto.env).
+# Camada B. Deploy: workflow deploy.yml (service=segundo-cerebro-remoto).
 name: segundo-cerebro-remoto
 services:
   ponte:
@@ -10,9 +11,10 @@ services:
     security_opt: ["no-new-privileges:true"]
     read_only: true
     tmpfs: [/tmp]
-    volumes:
-      - remoto-dados:/data
-    mem_limit: 128m
+    env_file: /opt/platform/secrets/segundo-cerebro-remoto.env
+    environment:
+      ACCESS_URL: https://qwen.rangeltech.net
+    mem_limit: 256m
     cpus: 0.25
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
     healthcheck:
@@ -32,8 +34,6 @@ services:
       - traefik.http.routers.segundo-cerebro-remoto.entrypoints=websecure
       - traefik.http.routers.segundo-cerebro-remoto.tls.certresolver=letsencrypt
       - traefik.http.routers.segundo-cerebro-remoto.service=segundo-cerebro-remoto
-volumes:
-  remoto-dados:
 networks:
   public:
     external: true
