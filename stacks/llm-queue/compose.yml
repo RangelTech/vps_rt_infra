@@ -8,6 +8,9 @@ services:
     container_name: llm-queue
     restart: unless-stopped
     env_file: /opt/platform/secrets/llm-queue.env
+    environment:
+      STT_ENABLED: "true"   # ditado: Whisper na maquina do LLM (porta 18002 por tunel SSH)
+      STT_THREADS: "16"
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
