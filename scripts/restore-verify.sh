@@ -47,7 +47,8 @@ if [ "$USE_DOCKER" = 1 ]; then
 else
   PSQL() { psql -v ON_ERROR_STOP=1 "$@"; }
   PGRESTORE() { pg_restore "$@"; }
-  AMCHECK() { pg_amcheck "$@"; }
+  # no runner do GitHub o pacote postgresql-client-16 instala o pg_amcheck em /usr/lib/postgresql/16/bin, fora do PATH
+  AMCHECK() { local b; b="$(command -v pg_amcheck || ls /usr/lib/postgresql/*/bin/pg_amcheck 2>/dev/null | sort -V | tail -1)"; [ -n "$b" ] || { echo "pg_amcheck ausente"; return 127; }; "$b" "$@"; }
 fi
 for _ in $(seq 1 60); do PSQL -d postgres -Atc 'select 1' >/dev/null 2>&1 && break; sleep 1; done
 PSQL -d postgres -Atc 'select 1' >/dev/null 2>&1 || { echo "postgres descartavel nao ficou pronto"; exit 1; }
