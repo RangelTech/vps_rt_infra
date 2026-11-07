@@ -64,8 +64,7 @@ mkdir -p "$STAGE/sqlite"
 if ! python3 - "$STAGE/sqlite" <<'PY'
 import glob, os, sqlite3, sys
 saida = sys.argv[1]
-alvos = ["/var/lib/docker/volumes/aluno_aluno-data/_data/aluno.db", "/opt/rag-chat/data/index.db", "/opt/portfolio-feedback/data/feedback.db",
-         "/opt/platform/data/llm-access/access.db"]  # painel da LLM: chaves, limites, sessoes e uso
+alvos = ["/var/lib/docker/volumes/aluno_aluno-data/_data/aluno.db", "/opt/rag-chat/data/index.db", "/opt/portfolio-feedback/data/feedback.db"]
 alvos += glob.glob("/var/lib/docker/volumes/kernel-harness_home2/_data/**/*.db", recursive=True)
 alvos += glob.glob("/var/lib/docker/volumes/kernel-harness_profiles/_data/*/state.db")
 falhas = n = 0
