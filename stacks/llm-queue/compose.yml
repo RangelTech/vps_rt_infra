@@ -11,6 +11,10 @@ services:
     environment:
       STT_ENABLED: "true"   # ditado: Whisper na maquina do LLM (porta 18002 por tunel SSH)
       STT_THREADS: "16"
+      # capacidade medida em 06/11/2026 (2x3090, MTP): todos os usuarios entram pelo consumidor llm-access, entao o limite por consumidor vale para a plataforma inteira
+      CHAT_MAX_INFLIGHT: "12"
+      CHAT_PER_CONSUMER: "12"
+      CHAT_QUEUE_MAX: "60"
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
