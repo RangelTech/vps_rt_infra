@@ -14,8 +14,8 @@ jobs:
         run: |
           sudo apt-get install -y -qq shellcheck >/dev/null
           shellcheck -S warning -x scripts/*.sh host/*.sh
-      - name: python (release_intake)
-        run: python3 -m py_compile scripts/release_intake.py
+      - name: python (resolve_release)
+        run: python3 -m py_compile scripts/resolve_release.py
       - name: compose config por stack
         run: |
           sudo mkdir -p /opt/platform/secrets

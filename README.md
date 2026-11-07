@@ -28,7 +28,7 @@ A infraestrutura da VPS da empresa: Terraform, Compose, releases por digest, dep
 terraform/   DNS e recursos declarados
 stacks/      um compose por serviço (platform, chatwoot, agent-platform, kernel-harness, ...)
 releases/    sources.json e <servico>.lock: repositório, versão, digest e sha256 do artefato
-scripts/     deploy.sh, release_intake.py, backup.sh, restore-verify.sh, healthcheck.sh, qa/
+scripts/     deploy.sh, resolve_release.py, backup.sh, restore-verify.sh, healthcheck.sh, qa/
 configs/     Traefik, Prometheus, Loki e Grafana
 cloud-init/  bootstrap do host
 sites/       sites estáticos de clientes
@@ -39,7 +39,7 @@ docs/        manual operacional de cada serviço da VPS
 ## Como um serviço chega à produção
 
 1. O repositório do serviço publica a release (imagem e manifesto).
-2. `release_intake.py` fixa o digest em `releases/<servico>.lock`.
+2. `resolve_release.py` fixa o digest em `releases/<servico>.lock`.
 3. `deploy.sh` troca o container, espera o healthcheck e reverte se falhar.
 
 Nunca troque um container na mão: só por release e lock.

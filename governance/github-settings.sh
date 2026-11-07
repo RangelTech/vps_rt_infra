@@ -6,7 +6,7 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 ORG=RangelTech
-# repo:check (vazio = sem status check obrigatorio). vps_rt_infra fica sem check: o release-intake (bot) faz push direto dos locks. Nomes sao os JOBS do ci.yml de cada repo.
+# repo:check (vazio = sem status check obrigatorio). vps_rt_infra fica sem check: o deploy.yml (bot rt-deploy) faz push direto dos locks apos cada deploy. Nomes sao os JOBS do ci.yml de cada repo.
 REPOS=("vps_rt_infra:" "kernel-harness:test")
 # acoes de terceiros usadas nos workflows (alem das do proprio GitHub)
 ALLOWED_PATTERNS=("docker/login-action@*" "hashicorp/setup-terraform@*")

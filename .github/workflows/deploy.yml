@@ -1,13 +1,36 @@
 name: Deploy
-# Unico caminho de deploy. Baixa/valida o artefato NA VPS (scripts/deploy.sh), healthcheck real, rollback automatico.
+# Unico caminho de deploy. A release e buscada NA HORA (scripts/resolve_release.py), validada, e so entao o artefato e baixado/validado NA VPS
+# (scripts/deploy.sh), com healthcheck real e rollback automatico. Nao ha robo periodico: quem aciona este botao escolhe o servico e, se quiser, a versao.
+# Depois de um deploy bem-sucedido o releases/<servico>.lock e commitado: ele e o registro do que esta em producao (e base do rollback).
 on:
   workflow_dispatch:
     inputs:
       service:
-        description: "Servico (precisa ter releases/<servico>.lock)"
+        description: "Servico (precisa estar em releases/sources.json)"
         required: true
+      version:
+        description: "Versao (ex.: v0.5.3). Vazio = a release mais recente"
+        required: false
+        default: ""
+      dry_run:
+        description: "So buscar e validar a release, sem implantar"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      service:
+        type: string
+        required: true
+      version:
+        type: string
+        required: false
+        default: ""
+      dry_run:
+        type: boolean
+        required: false
+        default: false
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: deploy-${{ inputs.service }}
   cancel-in-progress: false
@@ -17,11 +40,23 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - name: Validar entrada
+      - name: Buscar a release agora e validar
+        id: rel
+        env:
+          SERVICE: ${{ inputs.service }}
+          VERSION: ${{ inputs.version }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          test -f "releases/${{ inputs.service }}.lock"
-          echo "${{ inputs.service }}" | grep -Eq '^[a-z0-9-]+$'
+          echo "$SERVICE" | grep -Eq '^[a-z0-9-]+$'
+          if [ -n "$VERSION" ]; then python3 scripts/resolve_release.py "$SERVICE" --version "$VERSION"; else python3 scripts/resolve_release.py "$SERVICE"; fi
+          test -f "releases/$SERVICE.lock"
+          echo "### $SERVICE: $(grep '^version=' "releases/$SERVICE.lock" | cut -d= -f2) (commit $(grep '^commit=' "releases/$SERVICE.lock" | cut -d= -f2))" >> "$GITHUB_STEP_SUMMARY"
+      - name: Parar aqui (dry_run)
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "dry_run: release buscada e validada, nada foi implantado." >> "$GITHUB_STEP_SUMMARY"
       - name: SSH (chave so deste repo, host fixado)
+        if: ${{ !inputs.dry_run }}
         env:
           VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
         run: |
@@ -29,21 +64,37 @@ jobs:
           printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           cp host/known_hosts ~/.ssh/known_hosts
       - name: Enviar somente os arquivos necessarios (sem --delete)
+        if: ${{ !inputs.dry_run }}
         env:
+          SERVICE: ${{ inputs.service }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
         run: |
           SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=60"
-          STACK="$(grep '^stack=' releases/${{ inputs.service }}.lock | cut -d= -f2)"
+          STACK="$(grep '^stack=' "releases/$SERVICE.lock" | cut -d= -f2)"
           test -d "stacks/$STACK"
           $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "mkdir -p /opt/platform/releases /opt/platform/scripts /opt/platform/stacks/$STACK"
-          rsync -az -e "$SSH" "releases/${{ inputs.service }}.lock" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/releases/"
+          rsync -az -e "$SSH" "releases/$SERVICE.lock" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/releases/"
           rsync -az -e "$SSH" scripts/deploy.sh scripts/lib.sh "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/scripts/"
           rsync -az --exclude .release.env -e "$SSH" "stacks/$STACK/" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/stacks/$STACK/"
       - name: Deploy (falha o job se o healthcheck falhar)
+        if: ${{ !inputs.dry_run }}
         env:
+          SERVICE: ${{ inputs.service }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=60 "$VPS_DEPLOY_USER@$VPS_HOST" \
-            "sudo -n chmod +x /opt/platform/scripts/deploy.sh && sudo -n /opt/platform/scripts/deploy.sh '${{ inputs.service }}'"
+            "sudo -n chmod +x /opt/platform/scripts/deploy.sh && sudo -n /opt/platform/scripts/deploy.sh '$SERVICE'"
+      - name: Registrar a versao implantada (lock)
+        if: ${{ !inputs.dry_run && steps.rel.outcome == 'success' }}
+        env:
+          SERVICE: ${{ inputs.service }}
+        run: |
+          git config user.name "rt-deploy"
+          git config user.email "deploy@rangeltech.net"
+          git add "releases/$SERVICE.lock"
+          git diff --cached --quiet && { echo "lock ja registrado"; exit 0; }
+          git commit -m "deploy: $SERVICE $(grep '^version=' "releases/$SERVICE.lock" | cut -d= -f2)"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 3; done
+          exit 1

@@ -1,0 +1,39 @@
+name: Deploy LLM
+# Botao unico da LLM (repo qwen-abliterated-api): painel de controle (llm-access), fila (llm-queue) e, quando existir, o runtime do vLLM na Vast.
+# "llm-tudo" sobe em ordem e PARA se um passo falhar no healthcheck. Cada passo busca a release mais recente na hora (ou a versao escolhida).
+on:
+  workflow_dispatch:
+    inputs:
+      alvo:
+        description: "O que implantar"
+        type: choice
+        options: [llm-tudo, llm-access, llm-queue]
+        default: llm-tudo
+      version:
+        description: "Versao (ex.: v0.5.3). Vazio = a mais recente"
+        required: false
+        default: ""
+      dry_run:
+        description: "So buscar e validar as releases, sem implantar"
+        type: boolean
+        default: false
+permissions:
+  contents: write
+jobs:
+  access:
+    if: ${{ inputs.alvo == 'llm-tudo' || inputs.alvo == 'llm-access' }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      service: llm-access
+      version: ${{ inputs.version }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
+  queue:
+    needs: [access]
+    if: ${{ always() && (inputs.alvo == 'llm-tudo' || inputs.alvo == 'llm-queue') && needs.access.result != 'failure' && needs.access.result != 'cancelled' }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      service: llm-queue
+      version: ${{ inputs.version }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
