@@ -1,0 +1,61 @@
+name: VPS autorizar chave SSH
+# Autoriza UMA chave publica adicional no usuario `deploy` da VPS (inspecao direta a partir de uma maquina do dono).
+# Nao mexe em sudoers, nem em root, nem no Terraform. Reversivel: basta remover a linha de ~deploy/.ssh/authorized_keys.
+on:
+  workflow_dispatch:
+    inputs:
+      pubkey:
+        description: "Chave publica (ssh-ed25519 AAAA... comentario)"
+        required: true
+      remover:
+        description: "sim = remove a chave em vez de adicionar"
+        required: false
+        default: "nao"
+permissions:
+  contents: read
+concurrency:
+  group: vps-authorize-key
+  cancel-in-progress: false
+jobs:
+  key:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar chave
+        env:
+          PUB: ${{ inputs.pubkey }}
+        run: |
+          echo "$PUB" | grep -Eq '^ssh-ed25519 AAAA[0-9A-Za-z+/=]+( [^ ]+)?$'
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Aplicar
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          PUB: ${{ inputs.pubkey }}
+          REMOVER: ${{ inputs.remover }}
+        run: |
+          cat > remote.sh <<'SH'
+          set -e
+          read -r PUB
+          read -r REMOVER
+          f="$HOME/.ssh/authorized_keys"
+          umask 077
+          mkdir -p "$HOME/.ssh"; touch "$f"
+          KEY="$(printf '%s' "$PUB" | awk '{print $1" "$2}')"
+          if [ "$REMOVER" = "sim" ]; then
+            grep -vF "$KEY" "$f" > "$f.tmp" || true; mv "$f.tmp" "$f"; echo "removida"
+          elif grep -qF "$KEY" "$f"; then
+            echo "ja estava"
+          else
+            printf '%s\n' "$PUB" >> "$f"; echo "adicionada"
+          fi
+          chmod 600 "$f"; printf 'chaves autorizadas: '; grep -c . "$f"
+          SH
+          { printf '%s\n%s\n' "$PUB" "$REMOVER"; cat remote.sh; } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sh -s"

@@ -1,0 +1,54 @@
+name: Aluno DB (Postgres central)
+# Cria (idempotente) o papel e o banco `aluno` no Postgres central da plataforma e grava DATABASE_URL
+# em /opt/platform/secrets/ai-aluno-turn.env (lido pelo compose da stack aluno via env_file).
+# A senha e gerada NA VPS e nunca aparece no log nem no Git. Rodar de novo troca a senha e o arquivo juntos.
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: aluno-db
+  cancel-in-progress: false
+jobs:
+  db:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Criar papel/banco e gravar DATABASE_URL
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+        run: |
+          cat > remote.sh <<'SH'
+          set -e
+          for envf in /opt/platform/stacks/platform/.env /opt/platform/compose/.env; do
+            [ -f "$envf" ] && { set -a; . "$envf"; set +a; echo "env: $envf"; break; }
+          done
+          : "${POSTGRES_ADMIN_USER:?sem POSTGRES_ADMIN_USER}"
+          PW="$(openssl rand -hex 24)"
+          docker exec -i postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_ADMIN_USER" -d postgres <<SQL
+          DO \$\$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='aluno') THEN CREATE ROLE aluno LOGIN; END IF;
+          END \$\$;
+          ALTER ROLE aluno WITH LOGIN PASSWORD '$PW';
+          SQL
+          if ! docker exec postgres psql -U "$POSTGRES_ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='aluno'" | grep -q 1; then
+            docker exec postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_ADMIN_USER" -d postgres -c "CREATE DATABASE aluno OWNER aluno"
+          fi
+          docker exec postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_ADMIN_USER" -d aluno -c "GRANT ALL ON SCHEMA public TO aluno"
+          f=/opt/platform/secrets/ai-aluno-turn.env
+          umask 077; touch "$f"
+          grep -v '^DATABASE_URL=' "$f" > "$f.tmp" || true
+          printf 'DATABASE_URL=postgresql://aluno:%s@pgbouncer:5432/aluno\n' "$PW" >> "$f.tmp"
+          mv "$f.tmp" "$f"; chmod 600 "$f"
+          echo "DATABASE_URL gravada ($(grep -c '^DATABASE_URL=' "$f") linha). Banco e papel prontos."
+          SH
+          cat remote.sh | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -s"
