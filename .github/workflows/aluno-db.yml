@@ -2,6 +2,8 @@ name: Aluno DB (Postgres central)
 # Cria (idempotente) o papel e o banco `aluno` no Postgres central da plataforma e grava DATABASE_URL
 # em /opt/platform/secrets/ai-aluno-turn.env (lido pelo compose da stack aluno via env_file).
 # A senha e gerada NA VPS e nunca aparece no log nem no Git. Rodar de novo troca a senha e o arquivo juntos.
+# Conexao DIRETA ao postgres (TLS), nao pelo pgbouncer: em 10/11/2026 o pgbouncer 1.21 caiu (FATAL put_in_order) ao receber
+# um banco novo via auth_query e reiniciou, derrubando por 2 s as conexoes de todos os servicos. O app usa pool pequeno proprio.
 on:
   workflow_dispatch: {}
 permissions:
@@ -50,7 +52,7 @@ jobs:
           f=/opt/platform/secrets/ai-aluno-turn.env
           umask 077; touch "$f"
           grep -v '^DATABASE_URL=' "$f" > "$f.tmp" || true
-          printf 'DATABASE_URL=postgresql://aluno:%s@pgbouncer:5432/aluno\n' "$PW" >> "$f.tmp"
+          printf 'DATABASE_URL=postgresql://aluno:%s@postgres:5432/aluno?sslmode=require\n' "$PW" >> "$f.tmp"
           mv "$f.tmp" "$f"; chmod 600 "$f"
           echo "DATABASE_URL gravada ($(grep -c '^DATABASE_URL=' "$f") linha). Banco e papel prontos."
           SH
