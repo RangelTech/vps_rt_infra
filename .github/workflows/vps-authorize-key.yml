@@ -43,8 +43,6 @@ jobs:
         run: |
           cat > remote.sh <<'SH'
           set -e
-          read -r PUB
-          read -r REMOVER
           f="$HOME/.ssh/authorized_keys"
           umask 077
           mkdir -p "$HOME/.ssh"; touch "$f"
@@ -58,4 +56,4 @@ jobs:
           fi
           chmod 600 "$f"; printf 'chaves autorizadas: '; grep -c . "$f"
           SH
-          { printf '%s\n%s\n' "$PUB" "$REMOVER"; cat remote.sh; } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sh -s"
+          { printf '%s\n%s\n' "$PUB" "$REMOVER"; cat remote.sh; } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sh -c 'read -r PUB; read -r REMOVER; export PUB REMOVER; sh -s'"
