@@ -30,7 +30,7 @@ jobs:
           cat > remote.sh <<'SH'
           set -e
           for envf in /opt/platform/stacks/platform/.env /opt/platform/compose/.env; do
-            [ -f "$envf" ] && { set -a; . "$envf"; set +a; echo "env: $envf"; break; }
+            [ -f "$envf" ] && { POSTGRES_ADMIN_USER="$(grep '^POSTGRES_ADMIN_USER=' "$envf" | head -1 | cut -d= -f2- | tr -d '"'"'"'"'"' )"; echo "env: $envf"; break; }
           done
           : "${POSTGRES_ADMIN_USER:?sem POSTGRES_ADMIN_USER}"
           PW="$(openssl rand -hex 24)"
