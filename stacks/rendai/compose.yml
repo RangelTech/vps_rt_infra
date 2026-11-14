@@ -1,0 +1,42 @@
+# Rendai (spec 39): renda extra com afiliados, gamificado. FastAPI + coletor da vitrine Hotmart, imagem por release do repo RangelTech/rendai.
+# Estado em /opt/platform/data/rendai (SQLite; entra no backup). Segredos em /opt/platform/secrets/rendai.env
+# (RENDAI_LLM_KEY, RENDAI_SEGREDO_SESSAO, SMTP_*, RENDAI_CAKTO_SEGREDO, RENDAI_CHECKOUT_MENSAL), gravados pelo workflow rendai-segredos.yml.
+# Camada B. Deploy: workflow deploy.yml (service=rendai).
+name: rendai
+services:
+  web:
+    image: ${RENDAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rendai.lock}
+    container_name: rendai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/rendai.env
+    environment:
+      RENDAI_DADOS: /data
+      RENDAI_BASE_URL: https://rendai.rangeltech.net
+    volumes:
+      - /opt/platform/data/rendai:/data
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public]
+    labels:
+      - rt.service=rendai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.rendai.loadbalancer.server.port=8000
+      - traefik.http.routers.rendai.rule=Host(`rendai.rangeltech.net`)
+      - traefik.http.routers.rendai.entrypoints=websecure
+      - traefik.http.routers.rendai.tls.certresolver=letsencrypt
+      - traefik.http.routers.rendai.service=rendai
+networks:
+  public:
+    external: true
