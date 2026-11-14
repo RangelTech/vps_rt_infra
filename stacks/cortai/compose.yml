@@ -15,6 +15,9 @@ services:
     environment:
       CORTAI_DADOS: /data
       CORTAI_BASE_URL: https://cortai.rangeltech.net
+      CORTAI_CHECKOUTS: '{"start": "https://pay.cakto.com.br/373589m", "pro": "https://pay.cakto.com.br/sexd7j3", "turbo": "https://pay.cakto.com.br/bprj3fw"}'
+      CORTAI_PLANOS_CAKTO: '{"88a27e5f-a8ef-4c3b-aa51-7c3480494ddd": "start", "bfcc2453-34db-4316-8af4-1d3b46a74ceb": "pro", "557e0a95-2e37-42d7-a7ac-3f61590f6370": "turbo"}'
+      CORTAI_LANCAMENTO_ATE: '2026-11-30'
       CORTAI_WORKERS: "1"
     volumes:
       - /opt/platform/data/cortai:/data
