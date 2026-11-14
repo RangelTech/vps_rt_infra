@@ -1,0 +1,17 @@
+service=cortai
+stack=cortai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/cortai
+version=v0.1.0
+commit=82b0cb4
+artifact_url=https://github.com/RangelTech/cortai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=d0f85d931017d8e22a1c7bcb5bda6bba6229ddf89e66cc4c62e487a27be7ed5d
+image_id=sha256:1db6e0a690a0b7af1567d0fc541bbf5398c4e69f2e6b40eab91c492c9bd58ea6
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=CORTAI_LLM_KEY,CORTAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
