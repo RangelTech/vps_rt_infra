@@ -1,0 +1,43 @@
+# Cortai (spec 38 B): site de cortes virais. FastAPI + fila + ffmpeg/yt-dlp num conteiner so, imagem por release do repo RangelTech/cortai.
+# Estado em /opt/platform/data/cortai (SQLite + cortes por 7 dias; entra no backup). Segredos em /opt/platform/secrets/cortai.env
+# (CORTAI_LLM_KEY, CORTAI_SEGREDO_SESSAO, SMTP_*, CORTAI_CAKTO_SEGREDO, CORTAI_CHECKOUT_MENSAL), gravados pelo workflow cortai-segredos.yml.
+# Camada B. Deploy: workflow deploy.yml (service=cortai).
+name: cortai
+services:
+  web:
+    image: ${CORTAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/cortai.lock}
+    container_name: cortai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/cortai.env
+    environment:
+      CORTAI_DADOS: /data
+      CORTAI_BASE_URL: https://cortai.rangeltech.net
+      CORTAI_WORKERS: "1"
+    volumes:
+      - /opt/platform/data/cortai:/data
+    mem_limit: 3g
+    cpus: 4
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public]
+    labels:
+      - rt.service=cortai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.cortai.loadbalancer.server.port=8000
+      - traefik.http.routers.cortai.rule=Host(`cortai.rangeltech.net`)
+      - traefik.http.routers.cortai.entrypoints=websecure
+      - traefik.http.routers.cortai.tls.certresolver=letsencrypt
+      - traefik.http.routers.cortai.service=cortai
+networks:
+  public:
+    external: true

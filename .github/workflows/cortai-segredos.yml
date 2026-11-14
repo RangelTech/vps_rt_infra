@@ -1,0 +1,58 @@
+name: Cortai segredos
+# Grava NA VPS /opt/platform/secrets/cortai.env (chave do llm-access, segredo de sessao, SMTP, Cakto) e cria a pasta de dados.
+# Valores vem de secrets do ambiente `production` (nunca no Git nem no log). Depois rodar o Deploy (service=cortai).
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: cortai-segredos
+  cancel-in-progress: false
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar cortai.env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          CORTAI_LLM_KEY: ${{ secrets.CORTAI_LLM_KEY }}
+          CORTAI_SEGREDO_SESSAO: ${{ secrets.CORTAI_SEGREDO_SESSAO }}
+          CORTAI_CAKTO_SEGREDO: ${{ secrets.CORTAI_CAKTO_SEGREDO }}
+          CORTAI_CHECKOUT_MENSAL: ${{ vars.CORTAI_CHECKOUT_MENSAL }}
+        run: |
+          test -n "$SMTP_PASSWORD" && test -n "$CORTAI_LLM_KEY" && test -n "$CORTAI_SEGREDO_SESSAO"
+          {
+            printf '%s\n' "$SMTP_PASSWORD" "$CORTAI_LLM_KEY" "$CORTAI_SEGREDO_SESSAO" "${CORTAI_CAKTO_SEGREDO:-}" "${CORTAI_CHECKOUT_MENSAL:-}"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/cortai.env
+          umask 077
+          {
+            echo 'SMTP_HOST=smtp.hostinger.com'
+            echo 'SMTP_PORT=587'
+            echo 'SMTP_USER=contato@rangeltech.net'
+            echo 'CORTAI_SMTP_FROM=Cortaí <contato@rangeltech.net>'
+            printf 'SMTP_PASSWORD=%s\n' "$PW"
+            printf 'CORTAI_LLM_KEY=%s\n' "$K"
+            printf 'CORTAI_SEGREDO_SESSAO=%s\n' "$SS"
+            printf 'CORTAI_CAKTO_SEGREDO=%s\n' "$CK"
+            printf 'CORTAI_CHECKOUT_MENSAL=%s\n' "$CH"
+          } > "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          mkdir -p /opt/platform/data/cortai
+          chown 10001:10001 /opt/platform/data/cortai
+          printf 'linhas: '; grep -c '=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CH; export PW K SS CK CH; sh -s'"
