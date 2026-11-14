@@ -33,6 +33,7 @@ jobs:
         run: |
           test -n "$SMTP_PASSWORD" && test -n "$RENDAI_LLM_KEY" && test -n "$RENDAI_SEGREDO_SESSAO"
           {
+            printf '%s\n' "$SMTP_PASSWORD" "$RENDAI_LLM_KEY" "$RENDAI_SEGREDO_SESSAO" "${RENDAI_CAKTO_SEGREDO:-}" "${RENDAI_CHECKOUT_MENSAL:-}"
             cat <<'SH'
           set -e
           f=/opt/platform/secrets/rendai.env
