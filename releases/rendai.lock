@@ -1,0 +1,17 @@
+service=rendai
+stack=rendai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/rendai
+version=v0.1.0
+commit=3e7961b
+artifact_url=https://github.com/RangelTech/rendai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=8594deb84cc16bbbdbd4ef9c4d7dd05288590f0b1f35663ff729eed92c3e2614
+image_id=sha256:d4c54a6a52a98ce9b412680907dd6580567e7037bef72044c600918f733c528c
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=RENDAI_LLM_KEY,RENDAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
