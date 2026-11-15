@@ -31,19 +31,15 @@ jobs:
         run: |
           test -n "$PN_TOKEN" && test -n "$PN_CHAVE" && test -n "$PN_PROXY"
           {
-            printf '%s
-' "$PN_TOKEN" "$PN_CHAVE" "$PN_PROXY"
+            printf '%s\n' "$PN_TOKEN" "$PN_CHAVE" "$PN_PROXY"
             cat <<'SH'
           set -e
           f=/opt/platform/secrets/perfil-navegador.env
           umask 077
           {
-            printf 'PN_TOKEN=%s
-' "$T"
-            printf 'PN_CHAVE=%s
-' "$C"
-            printf 'PN_PROXY=%s
-' "$P"
+            printf 'PN_TOKEN=%s\n' "$T"
+            printf 'PN_CHAVE=%s\n' "$C"
+            printf 'PN_PROXY=%s\n' "$P"
           } > "$f.tmp"
           mv "$f.tmp" "$f"
           chmod 600 "$f"
