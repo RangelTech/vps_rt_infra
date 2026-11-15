@@ -14,6 +14,7 @@ services:
     env_file: /opt/platform/secrets/rendai.env
     environment:
       RENDAI_DADOS: /data
+      RENDAI_DEMO_EMAIL: demo@rangeltech.net
       RENDAI_LLM_MODELO: rt-geral
       RENDAI_BASE_URL: https://rendai.rangeltech.net
       RENDAI_CHECKOUTS: '{"start": "https://pay.cakto.com.br/ixtgvto", "pro": "https://pay.cakto.com.br/39k4fqj", "elite": "https://pay.cakto.com.br/g8m52k9"}'

@@ -31,11 +31,12 @@ jobs:
           CORTAI_CAKTO_SEGREDO: ${{ secrets.CORTAI_CAKTO_SEGREDO }}
           CORTAI_CHECKOUT_MENSAL: ${{ vars.CORTAI_CHECKOUT_MENSAL }}
           CORTAI_ADMIN_KEY: ${{ secrets.CORTAI_ADMIN_KEY }}
+          CORTAI_DEMO_SENHA: ${{ secrets.CORTAI_DEMO_SENHA }}
           CORTAI_PROXY: ${{ secrets.CORTAI_PROXY }}
         run: |
           test -n "$SMTP_PASSWORD" && test -n "$CORTAI_LLM_KEY" && test -n "$CORTAI_SEGREDO_SESSAO"
           {
-            printf '%s\n' "$SMTP_PASSWORD" "$CORTAI_LLM_KEY" "$CORTAI_SEGREDO_SESSAO" "${CORTAI_CAKTO_SEGREDO:-}" "${CORTAI_CHECKOUT_MENSAL:-}" "${CORTAI_PROXY:-}" "${CORTAI_ADMIN_KEY:-}"
+            printf '%s\n' "$SMTP_PASSWORD" "$CORTAI_LLM_KEY" "$CORTAI_SEGREDO_SESSAO" "${CORTAI_CAKTO_SEGREDO:-}" "${CORTAI_CHECKOUT_MENSAL:-}" "${CORTAI_PROXY:-}" "${CORTAI_ADMIN_KEY:-}" "${CORTAI_DEMO_SENHA:-}"
             cat <<'SH'
           set -e
           f=/opt/platform/secrets/cortai.env
@@ -51,6 +52,7 @@ jobs:
             printf 'CORTAI_CAKTO_SEGREDO=%s\n' "$CK"
             printf 'CORTAI_CHECKOUT_MENSAL=%s\n' "$CH"
             printf 'CORTAI_ADMIN_KEY=%s\n' "$AK"
+            printf 'CORTAI_DEMO_SENHA=%s\n' "$DS"
             printf 'CORTAI_PROXY=%s\n' "$PX"
           } > "$f.tmp"
           mv "$f.tmp" "$f"
@@ -59,4 +61,4 @@ jobs:
           chown 10001:10001 /opt/platform/data/cortai
           printf 'linhas: '; grep -c '=' "$f"
           SH
-          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CH; read -r PX; read -r AK; export PW K SS CK CH PX AK; sh -s'"
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CH; read -r PX; read -r AK; read -r DS; export PW K SS CK CH PX AK DS; sh -s'"
