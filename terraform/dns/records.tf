@@ -20,6 +20,7 @@ locals {
     "brain|A"        = { name = "brain", type = "A", ttl = 300, value = var.vps_ip }
     "remoto|A"       = { name = "remoto", type = "A", ttl = 300, value = var.vps_ip }
     "cortai|A"       = { name = "cortai", type = "A", ttl = 300, value = var.vps_ip }
+    "anima-ai|A"     = { name = "anima-ai", type = "A", ttl = 300, value = var.vps_ip }
     "rendai|A"       = { name = "rendai", type = "A", ttl = 300, value = var.vps_ip }
     "perfilai|A"     = { name = "perfilai", type = "A", ttl = 300, value = var.vps_ip }
     "gw|A"           = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }

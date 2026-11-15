@@ -251,6 +251,14 @@
       "manifest_asset": "release-manifest.json"
     },
     {
+      "service": "animaai",
+      "repo": "RangelTech/animaai",
+      "stack": "animaai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
+    },
+    {
       "service": "rendai",
       "repo": "RangelTech/rendai",
       "stack": "rendai",

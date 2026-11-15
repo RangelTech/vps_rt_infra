@@ -1,0 +1,64 @@
+name: Anima AI segredos
+# Grava NA VPS /opt/platform/secrets/animaai.env (chave do llm-access, segredo de sessao, SMTP, Cakto) e cria a pasta de dados.
+# Valores vem de secrets do ambiente `production` (nunca no Git nem no log). Depois rodar o Deploy (service=animaai).
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: animaai-segredos
+  cancel-in-progress: false
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar animaai.env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ANIMAAI_LLM_KEY: ${{ secrets.ANIMAAI_LLM_KEY }}
+          ANIMAAI_SEGREDO_SESSAO: ${{ secrets.ANIMAAI_SEGREDO_SESSAO }}
+          ANIMAAI_CAKTO_SEGREDO: ${{ secrets.ANIMAAI_CAKTO_SEGREDO }}
+          ANIMAAI_CHECKOUT_MENSAL: ${{ vars.ANIMAAI_CHECKOUT_MENSAL }}
+          ANIMAAI_ADMIN_KEY: ${{ secrets.ANIMAAI_ADMIN_KEY }}
+          ANIMAAI_DEMO_SENHA: ${{ secrets.ANIMAAI_DEMO_SENHA }}
+          ANIMAAI_PROXY: ${{ secrets.ANIMAAI_PROXY }}
+        run: |
+          test -n "$SMTP_PASSWORD" && test -n "$ANIMAAI_LLM_KEY" && test -n "$ANIMAAI_SEGREDO_SESSAO"
+          {
+            printf '%s\n' "$SMTP_PASSWORD" "$ANIMAAI_LLM_KEY" "$ANIMAAI_SEGREDO_SESSAO" "${ANIMAAI_CAKTO_SEGREDO:-}" "${ANIMAAI_CHECKOUT_MENSAL:-}" "${ANIMAAI_PROXY:-}" "${ANIMAAI_ADMIN_KEY:-}" "${ANIMAAI_DEMO_SENHA:-}"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/animaai.env
+          umask 077
+          {
+            echo 'SMTP_HOST=smtp.hostinger.com'
+            echo 'SMTP_PORT=587'
+            echo 'SMTP_USER=contato@rangeltech.net'
+            echo 'ANIMAAI_SMTP_FROM=Anima AI <contato@rangeltech.net>'
+            printf 'SMTP_PASSWORD=%s\n' "$PW"
+            printf 'ANIMAAI_LLM_KEY=%s\n' "$K"
+            printf 'ANIMAAI_SEGREDO_SESSAO=%s\n' "$SS"
+            printf 'ANIMAAI_CAKTO_SEGREDO=%s\n' "$CK"
+            printf 'ANIMAAI_CHECKOUT_MENSAL=%s\n' "$CH"
+            printf 'ANIMAAI_ADMIN_KEY=%s\n' "$AK"
+            printf 'ANIMAAI_DEMO_SENHA=%s\n' "$DS"
+            printf 'ANIMAAI_PROXY=%s\n' "$PX"
+          } > "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          mkdir -p /opt/platform/data/animaai
+          chown 10001:10001 /opt/platform/data/animaai
+          printf 'linhas: '; grep -c '=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CH; read -r PX; read -r AK; read -r DS; export PW K SS CK CH PX AK DS; sh -s'"

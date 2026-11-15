@@ -1,0 +1,48 @@
+# Anima AI (spec 44 5.1): animacoes com diretor de IA. FastAPI + fila + ffmpeg/yt-dlp num conteiner so, imagem por release do repo RangelTech/animaai.
+# Estado em /opt/platform/data/animaai (SQLite + cortes por 7 dias; entra no backup). Segredos em /opt/platform/secrets/animaai.env
+# (ANIMAAI_LLM_KEY, ANIMAAI_SEGREDO_SESSAO, SMTP_*, ANIMAAI_CAKTO_SEGREDO, ANIMAAI_CHECKOUT_MENSAL), gravados pelo workflow animaai-segredos.yml.
+# Camada B. Deploy: workflow deploy.yml (service=animaai).
+name: animaai
+services:
+  web:
+    image: ${ANIMAAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/animaai.lock}
+    container_name: animaai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/animaai.env
+    environment:
+      ANIMAAI_DADOS: /data
+      ANIMAAI_DEMO_EMAIL: demo@rangeltech.net
+      ANIMAAI_LLM_MODELO: rt-geral
+      ANIMAAI_BASE_URL: https://anima-ai.rangeltech.net
+      ANIMAAI_CHECKOUTS: '{"start": "https://pay.cakto.com.br/vtp5qog", "pro": "https://pay.cakto.com.br/yx6jv9o", "turbo": "https://pay.cakto.com.br/38esie3"}'
+      ANIMAAI_PLANOS_CAKTO: '{"b691ed21-4505-4642-af78-160b8534c883": "start", "0544849f-6687-4b35-bb15-7e4147479714": "pro", "109aea22-6d08-48ff-b39a-f583ba2f006e": "turbo"}'
+      ANIMAAI_LANCAMENTO_ATE: '2026-11-30'
+      ANIMAAI_WORKERS: "1"
+    volumes:
+      - /opt/platform/data/animaai:/data
+    mem_limit: 2g
+    cpus: 3
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public]
+    labels:
+      - rt.service=animaai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.animaai.loadbalancer.server.port=8000
+      - traefik.http.routers.animaai.rule=Host(`anima-ai.rangeltech.net`)
+      - traefik.http.routers.animaai.entrypoints=websecure
+      - traefik.http.routers.animaai.tls.certresolver=letsencrypt
+      - traefik.http.routers.animaai.service=animaai
+networks:
+  public:
+    external: true
