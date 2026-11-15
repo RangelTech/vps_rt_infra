@@ -1,0 +1,17 @@
+service=postaai
+stack=postaai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/postaai
+version=v0.1.0
+commit=b3919b5
+artifact_url=https://github.com/RangelTech/postaai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=e3659b7bf760783c4f9d03c8109abfab46f242543c667b04e528c2c6d13fda57
+image_id=sha256:0ec12b7eeec55a2c9becee558e33bbbbddd296a327d0e401e046b5bbca78ad17
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=POSTAAI_LLM_KEY,POSTAAI_SEGREDO_SESSAO,POSTAAI_PN_TOKEN
+previous_version=
+previous_image_id=
