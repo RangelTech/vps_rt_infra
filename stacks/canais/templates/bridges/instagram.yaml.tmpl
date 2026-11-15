@@ -4,7 +4,11 @@
 network:
   mode: instagram
   displayname_template: '{{or .DisplayName .Username "Unknown user"}}'
-  proxy_media: false
+  # TODO o tráfego com o Instagram sai pelo proxy SP (regra do Lucas, 15/11)
+  proxy: '${SP_PROXY_URL}'
+  proxy_media: true
+  proxy_e2ee: true
+  proxy_other: true
   min_full_reconnect_interval_seconds: 3600
 bridge:
   command_prefix: '!ig'

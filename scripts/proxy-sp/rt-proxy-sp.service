@@ -1,0 +1,13 @@
+[Unit]
+Description=Rangel Tech: saída das redes sociais só pelo proxy SP
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 20
+ExecStart=/opt/platform/scripts/proxy-sp/aplicar-firewall.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

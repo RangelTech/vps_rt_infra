@@ -2,6 +2,9 @@
 # Login por QR e por codigo de pareamento (flows `qr` / `pairing-code`) pela API de provisionamento, porta 29318.
 # AGPL-3.0: imagem sem modificacao.
 network:
+  # TODO o tráfego do WhatsApp sai pelo proxy SP (regra do Lucas, 15/11): login e sessão autenticada
+  proxy: '${SP_PROXY_URL}'
+  proxy_only_login: false
   displayname_template: '{{or .BusinessName .PushName .JID}}'
   history_sync:
     request_full_sync: false

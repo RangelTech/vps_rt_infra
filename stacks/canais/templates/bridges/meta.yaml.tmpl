@@ -4,9 +4,12 @@
 network:
   mode: messenger
   displayname_template: '{{or .DisplayName .Username "Unknown user"}}'
-  # proxy e e2ee desligados ate o CH-0(e) provar o suporte a mensagens criptografadas
-  proxy_media: false
-  proxy_e2ee: false
+  # TODO o tráfego com a Meta sai pelo proxy SP (regra do Lucas, 15/11): login, sessão, mídia, E2EE e o resto
+  proxy: '${SP_PROXY_URL}'
+  proxy_media: true
+  proxy_e2ee: true
+  proxy_messenger_lite: true
+  proxy_other: true
   min_full_reconnect_interval_seconds: 3600
 bridge:
   command_prefix: '!fb'
