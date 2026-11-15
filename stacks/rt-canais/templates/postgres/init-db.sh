@@ -1,10 +1,10 @@
 #!/bin/bash
-# Bancos em locale C (exigencia do Synapse). Roda so na 1a criacao do volume.
+# Bancos em locale C (exigencia do Synapse). Roda so na 1a criacao do volume. rt_gateway = banco do gateway dos produtos.
 set -e
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-  CREATE DATABASE rt_gateway OWNER $POSTGRES_USER ENCODING 'UTF8' TEMPLATE template0;
-EOSQL
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
   CREATE DATABASE synapse OWNER $POSTGRES_USER ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0;
   CREATE DATABASE mautrix_meta OWNER $POSTGRES_USER ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0;
   CREATE DATABASE mautrix_instagram OWNER $POSTGRES_USER ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0;
   CREATE DATABASE mautrix_whatsapp OWNER $POSTGRES_USER ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0;
+  CREATE DATABASE rt_gateway OWNER $POSTGRES_USER ENCODING 'UTF8' TEMPLATE template0;
 EOSQL
