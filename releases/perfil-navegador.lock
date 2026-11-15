@@ -1,0 +1,17 @@
+service=perfil-navegador
+stack=perfil-navegador
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/perfil-navegador
+version=v0.1.0
+commit=75bba34
+artifact_url=https://github.com/RangelTech/perfil-navegador/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=b2eb1a19d2df6850bb7bc21a7579bbb2ab111b89cf333b23ee5a4ab7ff0d7b98
+image_id=sha256:46a6b475d946ae0b96bfab47136842f57f8fa24a012760057e8dab1751da9f9e
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=PN_TOKEN,PN_CHAVE
+previous_version=
+previous_image_id=
