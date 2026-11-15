@@ -1,0 +1,47 @@
+# Perfilai (spec 43): plano de Instagram com IA (diretor GPT + redator Qwen). FastAPI + Pillow, imagem por release do repo RangelTech/perfilai.
+# Estado em /opt/platform/data/perfilai (SQLite; entra no backup). Segredos em /opt/platform/secrets/perfilai.env
+# (PERFILAI_LLM_KEY, PERFILAI_SEGREDO_SESSAO, SMTP_*, PERFILAI_CAKTO_SEGREDO, PERFILAI_CHECKOUT_MENSAL), gravados pelo workflow perfilai-segredos.yml.
+# Camada B. Deploy: workflow deploy.yml (service=perfilai).
+name: perfilai
+services:
+  web:
+    image: ${PERFILAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/perfilai.lock}
+    container_name: perfilai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/perfilai.env
+    environment:
+      PERFILAI_DADOS: /data
+      PERFILAI_DEMO_EMAIL: demo@rangeltech.net
+      PERFILAI_LLM_MODELO: rt-geral
+      PERFILAI_BASE_URL: https://perfilai.rangeltech.net
+      PERFILAI_CHECKOUTS: '{"start": "https://pay.cakto.com.br/fkr2mv7", "pro": "https://pay.cakto.com.br/m3uexex", "turbo": "https://pay.cakto.com.br/98gigp3"}'
+      PERFILAI_PLANOS_CAKTO: '{"82f8ddfd-bd79-4cfc-8835-f51e104ea2e3": "start", "95a050fb-1129-48f3-be71-2ba755038e52": "pro", "c5641842-f8ca-4c6b-aced-02a10b15e6a2": "turbo"}'
+      PERFILAI_LANCAMENTO_ATE: '2026-11-30'
+    volumes:
+      - /opt/platform/data/perfilai:/data
+    mem_limit: 768m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public]
+    labels:
+      - rt.service=perfilai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.perfilai.loadbalancer.server.port=8000
+      - traefik.http.routers.perfilai.rule=Host(`perfilai.rangeltech.net`)
+      - traefik.http.routers.perfilai.entrypoints=websecure
+      - traefik.http.routers.perfilai.tls.certresolver=letsencrypt
+      - traefik.http.routers.perfilai.service=perfilai
+networks:
+  public:
+    external: true

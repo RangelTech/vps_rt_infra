@@ -257,6 +257,14 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "perfilai",
+      "repo": "RangelTech/perfilai",
+      "stack": "perfilai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
