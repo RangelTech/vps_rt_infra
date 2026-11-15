@@ -1,5 +1,5 @@
 # Atende AI (spec 44 5.4): atendimento com IA no WhatsApp, Instagram, TikTok e Facebook. Uma imagem, quatro marcas (pelo host).
-# A sessão de cada conta fica no gateway de canais (chatwoot-bridge, rede `internal`), que entrega as mensagens em
+# A sessão de cada conta fica no gateway de canais (rt-gateway da stack rt-canais, separada do LUAR; rede `internal`), que entrega as mensagens em
 # http://atendeai:8000/hooks/canal/<conexao> com assinatura HMAC (sem assinatura válida o /hooks responde 401). Estado em /opt/platform/data/atendeai (SQLite).
 # Segredos em /opt/platform/secrets/atendeai.env (gravados pelo workflow atendeai-segredos.yml). Camada B. Deploy: deploy.yml (service=atendeai).
 name: atendeai
@@ -17,7 +17,7 @@ services:
       ATENDEAI_DEMO_EMAIL: demo@rangeltech.net
       ATENDEAI_LLM_MODELO: rt-planejar
       ATENDEAI_BASE_URL: https://atende-ai.rangeltech.net
-      ATENDEAI_CANAIS_URL: http://chatwoot-bridge:8100
+      ATENDEAI_CANAIS_URL: http://rt-gateway:8100
       ATENDEAI_WEBHOOK_BASE: http://atendeai:8000
       ATENDEAI_CHECKOUTS: '{"whats:start": "https://pay.cakto.com.br/32r52gy", "whats:pro": "https://pay.cakto.com.br/r8u6nmi", "whats:turbo": "https://pay.cakto.com.br/yjyjdk7", "insta:start": "https://pay.cakto.com.br/wsvg98z", "insta:pro": "https://pay.cakto.com.br/ngzydg3", "insta:turbo": "https://pay.cakto.com.br/3akna5z", "tiktok:start": "https://pay.cakto.com.br/sd2ctot", "tiktok:pro": "https://pay.cakto.com.br/k8vgn4j", "tiktok:turbo": "https://pay.cakto.com.br/yjqc23t", "face:start": "https://pay.cakto.com.br/cef7g7a", "face:pro": "https://pay.cakto.com.br/ye9buqx", "face:turbo": "https://pay.cakto.com.br/tirbhvt"}'
       ATENDEAI_PLANOS_CAKTO: '{"9fd257e8-42a3-42a9-8dfd-21227d0bdf4b": "whats:start", "008b2b0d-bb35-49cd-9957-eedc769922d4": "whats:pro", "283e5e45-1543-40d1-af84-26c392c459c0": "whats:turbo", "4b7cab47-b780-4347-b4b5-a08788753ac8": "insta:start", "32444936-fc8d-4d00-ad3e-61c33a554f9f": "insta:pro", "9ab00020-aad7-448f-878c-33af64f819ab": "insta:turbo", "ad210918-0c96-4346-a7a8-dd1353a355c3": "tiktok:start", "19b82c59-1a1a-4feb-88e3-a08dd3ca24c7": "tiktok:pro", "5a431cb0-b76e-406d-b63c-9da152813f3f": "tiktok:turbo", "e798663d-7b23-49d1-8113-0e597b09aa3a": "face:start", "3e4d7910-133c-40b4-b5ed-b871b9ef48bc": "face:pro", "b01f5af9-48bc-40a8-8bea-f3658b7bfdcc": "face:turbo"}'
