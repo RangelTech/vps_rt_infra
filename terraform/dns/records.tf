@@ -21,6 +21,11 @@ locals {
     "remoto|A"       = { name = "remoto", type = "A", ttl = 300, value = var.vps_ip }
     "cortai|A"       = { name = "cortai", type = "A", ttl = 300, value = var.vps_ip }
     "anima-ai|A"     = { name = "anima-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-ai|A" = { name = "atende-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-whats|A" = { name = "atende-whats", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-insta|A" = { name = "atende-insta", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-tiktok|A" = { name = "atende-tiktok", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-face|A" = { name = "atende-face", type = "A", ttl = 300, value = var.vps_ip }
     "rendai|A"       = { name = "rendai", type = "A", ttl = 300, value = var.vps_ip }
     "perfilai|A"     = { name = "perfilai", type = "A", ttl = 300, value = var.vps_ip }
     "insta-ai|A"      = { name = "insta-ai", type = "A", ttl = 300, value = var.vps_ip }

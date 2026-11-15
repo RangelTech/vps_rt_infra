@@ -1,0 +1,57 @@
+# Atende AI (spec 44 5.4): atendimento com IA no WhatsApp, Instagram, TikTok e Facebook. Uma imagem, quatro marcas (pelo host).
+# A sessão de cada conta fica no gateway de canais (chatwoot-bridge, rede `internal`), que entrega as mensagens em
+# http://atendeai:8000/hooks/canal/<conexao> com assinatura HMAC. Estado em /opt/platform/data/atendeai (SQLite).
+# Segredos em /opt/platform/secrets/atendeai.env (gravados pelo workflow atendeai-segredos.yml). Camada B. Deploy: deploy.yml (service=atendeai).
+name: atendeai
+services:
+  web:
+    image: ${ATENDEAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/atendeai.lock}
+    container_name: atendeai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/atendeai.env
+    environment:
+      ATENDEAI_DADOS: /data
+      ATENDEAI_DEMO_EMAIL: demo@rangeltech.net
+      ATENDEAI_LLM_MODELO: rt-planejar
+      ATENDEAI_BASE_URL: https://atende-ai.rangeltech.net
+      ATENDEAI_CANAIS_URL: http://chatwoot-bridge:8100
+      ATENDEAI_WEBHOOK_BASE: http://atendeai:8000
+      ATENDEAI_CHECKOUTS: '{}'
+      ATENDEAI_PLANOS_CAKTO: '{}'
+      ATENDEAI_LANCAMENTO_ATE: '2026-12-15'
+    volumes:
+      - /opt/platform/data/atendeai:/data
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public, internal]
+    labels:
+      - rt.service=atendeai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.atendeai.loadbalancer.server.port=8000
+      - traefik.http.routers.atendeai.rule=Host(`atende-ai.rangeltech.net`) || Host(`atende-whats.rangeltech.net`) || Host(`atende-insta.rangeltech.net`) || Host(`atende-tiktok.rangeltech.net`) || Host(`atende-face.rangeltech.net`)
+      - traefik.http.routers.atendeai.entrypoints=websecure
+      - traefik.http.routers.atendeai.tls.certresolver=letsencrypt
+      - traefik.http.routers.atendeai.service=atendeai
+      # o webhook do gateway entra só pela rede interna: fora dela, /hooks responde 404
+      - traefik.http.routers.atendeai-hooks.rule=(Host(`atende-ai.rangeltech.net`) || Host(`atende-whats.rangeltech.net`) || Host(`atende-insta.rangeltech.net`) || Host(`atende-tiktok.rangeltech.net`) || Host(`atende-face.rangeltech.net`)) && PathPrefix(`/hooks`)
+      - traefik.http.routers.atendeai-hooks.entrypoints=websecure
+      - traefik.http.routers.atendeai-hooks.tls.certresolver=letsencrypt
+      - traefik.http.routers.atendeai-hooks.priority=100
+      - traefik.http.routers.atendeai-hooks.service=noop@internal
+networks:
+  public:
+    external: true
+  internal:
+    external: true
