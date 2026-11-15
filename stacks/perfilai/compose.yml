@@ -13,6 +13,7 @@ services:
     tmpfs: [/tmp]
     env_file: /opt/platform/secrets/perfilai.env
     environment:
+      PERFILAI_PN_URL: http://perfil-navegador:8000
       PERFILAI_DADOS: /data
       PERFILAI_DEMO_EMAIL: demo@rangeltech.net
       PERFILAI_LLM_MODELO: rt-geral
@@ -31,7 +32,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    networks: [public]
+    networks: [public, internal]
     labels:
       - rt.service=perfilai
       - rt.layer=B
@@ -44,4 +45,6 @@ services:
       - traefik.http.routers.perfilai.service=perfilai
 networks:
   public:
+    external: true
+  internal:
     external: true
