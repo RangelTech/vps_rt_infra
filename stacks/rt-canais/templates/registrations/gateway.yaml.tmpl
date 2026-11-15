@@ -1,0 +1,16 @@
+# Appservice do GATEWAY de canais (aplicacao Matrix propria). So usuarios @luar_t<conta>_c<id>:<servidor>.
+id: ${GATEWAY_AS_ID}
+url: ${GATEWAY_AS_URL}
+as_token: ${GATEWAY_AS_TOKEN}
+hs_token: ${GATEWAY_HS_TOKEN}
+sender_localpart: ${GATEWAY_SENDER_LOCALPART}
+rate_limited: false
+namespaces:
+  users:
+    # um usuario Matrix por conexao: isolamento entre tenants comeca aqui
+    - regex: '^@luar_t[0-9]+_c[0-9a-f]+:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+    - regex: '^@${GATEWAY_SENDER_LOCALPART}:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+  aliases: []
+  rooms: []

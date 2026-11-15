@@ -1,0 +1,208 @@
+# Stack rt-canais (spec 44 Parte 6): Matrix + pontes + gateway dos PRODUTOS (Atende AI, Grupo AI), separada do LUAR (stack `canais`).
+# Todo tráfego das pontes e do gateway sai pelo proxy SP (config + firewall RT-PROXY-SP na rede rt_canais_egress).
+# Synapse privado + matrix-postgres + 3 pontes mautrix + rt-gateway (workers TikTok ReLttk dentro dele).
+# SEPARADA da pilha platform. Camada B. Sem portas publicadas, sem labels do Traefik, sem rede `public`.
+# Imagens vem de versions.env (tag + digest). Segredos em /opt/platform/secrets/rt-canais.env (0600).
+# Uso na VPS (so por release/lock, nunca na mao): scripts/validate.sh -> scripts/backup-before-upgrade.sh -> apply-stack.sh rt-canais
+# Validar sem subir: docker compose --env-file versions.env --env-file .env.example -f compose.yml config -q
+name: rt-canais
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: "3" }
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  matrix-postgres:
+    <<: *hardening
+    image: ${MATRIX_POSTGRES_IMAGE:?versions.env}
+    container_name: rt-matrix-postgres
+    # Problema conhecido 3: o diretorio de dados precisa ser 999:999 (scripts/prepare-host.sh).
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_USER: matrix_admin
+      POSTGRES_PASSWORD: ${MATRIX_POSTGRES_PASSWORD:-}   # vazio => o postgres recusa subir (sem senha); CI valida sem segredos
+      POSTGRES_DB: postgres
+      TZ: ${TIMEZONE:-UTC}
+    volumes:
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/matrix-postgres:/var/lib/postgresql/data
+      - ./templates/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks: [rt_canais_net]
+    mem_limit: ${MATRIX_POSTGRES_MEM_LIMIT:-768m}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix_admin -d synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    labels: [rt.service=rt-matrix-postgres, rt.layer=B, traefik.enable=false]
+
+  synapse:
+    <<: *hardening
+    image: ${SYNAPSE_IMAGE:?versions.env}
+    container_name: rt-synapse
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+    # Smoke local 21/10: com cap_drop ALL o entrypoint nao consegue trocar para 991 ("failed switching to 991:991").
+    # Rodar ja como 991:991 (prepare-host.sh entrega /data a esse dono) dispensa SETUID/SETGID.
+    user: "991:991"
+    environment:
+      # Problema conhecido 1: config FORA de /data (bind mount aninhado virava arquivo/diretorio vazio).
+      SYNAPSE_CONFIG_PATH: /etc/synapse/homeserver.yaml
+    volumes:
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/synapse:/data
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/synapse/homeserver.yaml:/etc/synapse/homeserver.yaml:ro
+      - ./templates/synapse/log.config:/etc/synapse/log.config:ro
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/registrations:/etc/synapse/registrations:ro
+    networks:
+      rt_canais_net:
+        aliases: [synapse]
+    mem_limit: ${SYNAPSE_MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8008/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    labels: [rt.service=rt-synapse, rt.layer=B, traefik.enable=false]
+
+  mautrix-meta:
+    <<: *hardening
+    image: ${MAUTRIX_META_IMAGE:?versions.env}
+    container_name: rt-mautrix-meta
+    # O /docker-run.sh da imagem faz chown + su-exec (exige root/caps). Com cap_drop ALL roda-se o binario direto, como 1337.
+    user: "1337:1337"
+    working_dir: /data
+    command: ["/usr/bin/mautrix-meta"]
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/mautrix-meta:/data
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/bridges/meta.yaml:/data/config.yaml:ro
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/registrations/meta.yaml:/data/registration.yaml:ro
+    networks:
+      rt_canais_net:
+        aliases: [mautrix-meta]
+      # Problema conhecido 2: saida real para a internet; a rede `internal: true` nao roteia saida.
+      rt_canais_egress: {}
+    mem_limit: ${META_MEM_LIMIT:-512m}
+    healthcheck:   # nivel 1 (processo vivo). Sessao autenticada e capacidade de enviar = checagem do gateway (CH-8)
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:29319/_matrix/mau/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    labels: [rt.service=rt-mautrix-meta, rt.layer=B, traefik.enable=false]
+
+  mautrix-instagram:
+    <<: *hardening
+    image: ${MAUTRIX_INSTAGRAM_IMAGE:?versions.env}
+    container_name: rt-mautrix-instagram
+    # O /docker-run.sh da imagem faz chown + su-exec (exige root/caps). Com cap_drop ALL roda-se o binario direto, como 1337.
+    user: "1337:1337"
+    working_dir: /data
+    command: ["/usr/bin/mautrix-meta"]
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/mautrix-instagram:/data
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/bridges/instagram.yaml:/data/config.yaml:ro
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/registrations/instagram.yaml:/data/registration.yaml:ro
+    networks:
+      rt_canais_net:
+        aliases: [mautrix-instagram]
+      rt_canais_egress: {}
+    mem_limit: ${INSTAGRAM_MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:29319/_matrix/mau/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    labels: [rt.service=rt-mautrix-instagram, rt.layer=B, traefik.enable=false]
+
+  mautrix-whatsapp:
+    <<: *hardening
+    image: ${MAUTRIX_WHATSAPP_IMAGE:?versions.env}
+    container_name: rt-mautrix-whatsapp
+    # O /docker-run.sh da imagem faz chown + su-exec (exige root/caps). Com cap_drop ALL roda-se o binario direto, como 1337.
+    user: "1337:1337"
+    working_dir: /data
+    command: ["/usr/bin/mautrix-whatsapp"]
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/mautrix-whatsapp:/data
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/bridges/whatsapp.yaml:/data/config.yaml:ro
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/rendered/registrations/whatsapp.yaml:/data/registration.yaml:ro
+    networks:
+      rt_canais_net:
+        aliases: [mautrix-whatsapp]
+      rt_canais_egress: {}
+    mem_limit: ${WHATSAPP_MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:29318/_matrix/mau/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    labels: [rt.service=rt-mautrix-whatsapp, rt.layer=B, traefik.enable=false]
+
+  # Molde dos workers TikTok (ReLttk, UM por conta). NAO sobe com a pilha (profile `molde`):
+  # o gerenciador do gateway (CH-5) cria um container por conta a partir deste molde, montando
+  # SOMENTE ${RT_CANAIS_DATA}/tiktok-sessions/<account_id>/<conta> (sessao isolada, sem varredura compartilhada).
+  rt-gateway:
+    <<: *hardening
+    image: ${RT_GATEWAY_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/rt-gateway.lock}
+    container_name: rt-gateway
+    env_file: /opt/platform/secrets/rt-gateway.env
+    environment:
+      ENVIRONMENT: production
+      MATRIX_HOMESERVER_URL: http://synapse:8008
+      BRIDGE_INSTAGRAM_URL: http://mautrix-instagram:29319
+      BRIDGE_MESSENGER_URL: http://mautrix-meta:29319
+      BRIDGE_WHATSAPP_URL: http://mautrix-whatsapp:29318
+      TIKTOK_LAUNCHER: relttk
+      TIKTOK_SESSIONS_DIR: /data/tiktok
+      CHANNELS_SIMULATOR: "false"
+    depends_on:
+      matrix-postgres: { condition: service_healthy }
+      synapse: { condition: service_healthy }
+    volumes:
+      - ${RT_CANAIS_DATA:-/opt/platform/data/rt-canais}/gateway:/data
+    tmpfs: ["/tmp:size=128m"]
+    networks:
+      rt_canais_net:
+        aliases: [rt-gateway]
+      rt_canais_egress: {}
+      internal:
+        aliases: [rt-gateway]
+    mem_limit: ${RT_GATEWAY_MEM_LIMIT:-1g}
+    cpus: 1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    labels: [rt.service=rt-gateway, rt.layer=B, traefik.enable=false]
+
+networks:
+  # Interna: Synapse, Postgres, bridges e gateway (chatwoot-bridge entra nesta rede, ver README). Sem saida.
+  rt_canais_net:
+    name: rt_canais_net
+    driver: bridge
+    internal: true
+  # Somente saida para a internet (bridges e workers). Sem portas publicadas nem Traefik.
+  rt_canais_egress:
+    name: rt_canais_egress
+    driver: bridge
+  internal:
+    external: true

@@ -1,0 +1,15 @@
+# Registro do mautrix-whatsapp (porta de provisionamento 29318).
+id: whatsapp
+url: http://mautrix-whatsapp:29318
+as_token: ${WHATSAPP_AS_TOKEN}
+hs_token: ${WHATSAPP_HS_TOKEN}
+sender_localpart: mautrix_whatsapp_bot
+rate_limited: false
+namespaces:
+  users:
+    - regex: '^@whatsappbot:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+    - regex: '^@whatsapp_.*:${MATRIX_SERVER_NAME_RE}$'
+      exclusive: true
+de.sorunome.msc2409.push_ephemeral: true
+receive_ephemeral: true

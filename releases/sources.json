@@ -259,6 +259,14 @@
       "manifest_asset": "release-manifest.json"
     },
     {
+      "service": "rt-gateway",
+      "repo": "RangelTech/rt-canais",
+      "stack": "rt-canais",
+      "compose_service": "rt-gateway",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
+    },
+    {
       "service": "postaai",
       "repo": "RangelTech/postaai",
       "stack": "postaai",

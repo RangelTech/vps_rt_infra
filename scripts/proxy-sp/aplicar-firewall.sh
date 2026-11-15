@@ -4,7 +4,7 @@
 # qualquer outro destino público é descartado. Redes privadas (Synapse, gateway, outros contêineres) seguem livres.
 #   uso: aplicar-firewall.sh            (idempotente; roda no boot pela unidade rt-proxy-sp.service)
 set -euo pipefail
-REDES="${PROXY_SP_REDES:-canais_egress perfil-navegador_egress}"
+REDES="${PROXY_SP_REDES:-canais_egress perfil-navegador_egress rt_canais_egress}"
 ENV=/opt/platform/secrets/proxy-sp.env      # PROXY_SP_HOST=..., PROXY_SP_PORTA=...
 [ -f "$ENV" ] || { echo "sem $ENV" >&2; exit 1; }
 . "$ENV"
