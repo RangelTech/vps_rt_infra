@@ -1,0 +1,17 @@
+service=animaai
+stack=animaai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/animaai
+version=v0.1.0
+commit=1127e05
+artifact_url=https://github.com/RangelTech/animaai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=6323d0cb00105c52969aa1cc85dca56863eb70a8f356a377b7eabcb8c341e0c1
+image_id=sha256:0f50aafae26cd95246dfed210c42883b865d6d68247909303093a02ff8d3c27d
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=ANIMAAI_LLM_KEY,ANIMAAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
