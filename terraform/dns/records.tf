@@ -23,6 +23,10 @@ locals {
     "anima-ai|A"     = { name = "anima-ai", type = "A", ttl = 300, value = var.vps_ip }
     "rendai|A"       = { name = "rendai", type = "A", ttl = 300, value = var.vps_ip }
     "perfilai|A"     = { name = "perfilai", type = "A", ttl = 300, value = var.vps_ip }
+    "insta-ai|A"      = { name = "insta-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "face-ai|A"       = { name = "face-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "tittok-ai|A"     = { name = "tittok-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "linkdn-ai|A"     = { name = "linkdn-ai", type = "A", ttl = 300, value = var.vps_ip }
     "gw|A"           = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }
     "qwen|A"         = { name = "qwen", type = "A", ttl = 300, value = var.vps_ip }
     "conector|A"     = { name = "conector", type = "A", ttl = 300, value = var.vps_ip }
