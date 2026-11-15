@@ -1,0 +1,62 @@
+name: Posta AI segredos
+# Grava NA VPS /opt/platform/secrets/postaai.env (chave do llm-access, segredo de sessao, SMTP, Cakto) e cria a pasta de dados.
+# Valores vem de secrets do ambiente `production` (nunca no Git nem no log). Depois rodar o Deploy (service=postaai).
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: postaai-segredos
+  cancel-in-progress: false
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar postaai.env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          POSTAAI_LLM_KEY: ${{ secrets.POSTAAI_LLM_KEY }}
+          POSTAAI_SEGREDO_SESSAO: ${{ secrets.POSTAAI_SEGREDO_SESSAO }}
+          POSTAAI_CAKTO_SEGREDO: ${{ secrets.POSTAAI_CAKTO_SEGREDO }}
+          POSTAAI_PN_TOKEN: ${{ secrets.POSTAAI_PN_TOKEN }}
+          POSTAAI_ADMIN_KEY: ${{ secrets.POSTAAI_ADMIN_KEY }}
+          POSTAAI_DEMO_SENHA: ${{ secrets.POSTAAI_DEMO_SENHA }}
+        run: |
+          test -n "$SMTP_PASSWORD" && test -n "$POSTAAI_LLM_KEY" && test -n "$POSTAAI_SEGREDO_SESSAO" && test -n "$POSTAAI_PN_TOKEN"
+          {
+            printf '%s\n' "$SMTP_PASSWORD" "$POSTAAI_LLM_KEY" "$POSTAAI_SEGREDO_SESSAO" "${POSTAAI_CAKTO_SEGREDO:-}" "$POSTAAI_PN_TOKEN" "${POSTAAI_ADMIN_KEY:-}" "${POSTAAI_DEMO_SENHA:-}"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/postaai.env
+          umask 077
+          {
+            echo 'SMTP_HOST=smtp.hostinger.com'
+            echo 'SMTP_PORT=587'
+            echo 'SMTP_USER=contato@rangeltech.net'
+            echo 'POSTAAI_SMTP_FROM=Posta AI <contato@rangeltech.net>'
+            printf 'SMTP_PASSWORD=%s\n' "$PW"
+            printf 'POSTAAI_LLM_KEY=%s\n' "$K"
+            printf 'POSTAAI_SEGREDO_SESSAO=%s\n' "$SS"
+            printf 'POSTAAI_CAKTO_SEGREDO=%s\n' "$CK"
+            printf 'POSTAAI_PN_TOKEN=%s\n' "$CT"
+            printf 'POSTAAI_ADMIN_KEY=%s\n' "$AK"
+            printf 'POSTAAI_DEMO_SENHA=%s\n' "$DS"
+          } > "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          mkdir -p /opt/platform/data/postaai
+          chown 10001:10001 /opt/platform/data/postaai
+          printf 'linhas: '; grep -c '=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CT; read -r AK; read -r DS; export PW K SS CK CT AK DS; sh -s'"
