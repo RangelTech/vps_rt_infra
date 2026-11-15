@@ -1,0 +1,46 @@
+name: llm-access produtos
+# Grava NA VPS a lista de produtos do ecossistema (Cortai, Rendai...) que o painel do llm-access agrega: PRODUTOS_ADMIN em
+# /opt/platform/secrets/llm-access.env, JSON [{"id","nome","url","chave"}] vindo do secret PRODUTOS_ADMIN (nunca no Git nem no log).
+# Nao reinicia o servico: vale no proximo deploy do llm-access.
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: llm-access-produtos
+  cancel-in-progress: false
+jobs:
+  produtos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar PRODUTOS_ADMIN
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          PRODUTOS_ADMIN: ${{ secrets.PRODUTOS_ADMIN }}
+        run: |
+          test -n "$PRODUTOS_ADMIN"
+          V=$(printf '%s' "$PRODUTOS_ADMIN" | tr -d '\n')
+          {
+            printf '%s\n' "$V"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/llm-access.env
+          umask 077
+          touch "$f"
+          grep -v '^PRODUTOS_ADMIN=' "$f" > "$f.tmp" || true
+          printf "PRODUTOS_ADMIN='%s'\n" "$PA" >> "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          printf 'PRODUTOS_ADMIN gravado: '; grep -c '^PRODUTOS_ADMIN=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PA; export PA; sh -s'"
