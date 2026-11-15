@@ -1,0 +1,17 @@
+service=rt-gateway
+stack=rt-canais
+compose_service=rt-gateway
+image_only=
+layer=B
+repo=RangelTech/rt-canais
+version=v0.1.0
+commit=a574a5f
+artifact_url=https://github.com/RangelTech/rt-canais/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=38a55376c62129ea50665f48110259da9caf27a60e815cad340137d1c5ff0925
+image_id=sha256:0d0a224ace8b55ee810c3895d324decb0c6c4773c6b9a5241f648b3b92614fb4
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=DATABASE_URL,CHANNELS_GATEWAY_TOKEN,ENCRYPTION_KEY
+previous_version=
+previous_image_id=
