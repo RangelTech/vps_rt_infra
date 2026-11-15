@@ -1,0 +1,54 @@
+name: perfil-navegador segredos
+# Grava NA VPS /opt/platform/secrets/perfil-navegador.env (token interno, chave Fernet das sessoes, proxy SP) e cria a pasta de dados.
+# Valores vem de secrets do ambiente `production` (nunca no Git nem no log). Depois rodar o Deploy (service=perfil-navegador).
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: perfil-navegador-segredos
+  cancel-in-progress: false
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar perfil-navegador.env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          PN_TOKEN: ${{ secrets.PN_TOKEN }}
+          PN_CHAVE: ${{ secrets.PN_CHAVE }}
+          PN_PROXY: ${{ secrets.PN_PROXY }}
+        run: |
+          test -n "$PN_TOKEN" && test -n "$PN_CHAVE" && test -n "$PN_PROXY"
+          {
+            printf '%s
+' "$PN_TOKEN" "$PN_CHAVE" "$PN_PROXY"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/perfil-navegador.env
+          umask 077
+          {
+            printf 'PN_TOKEN=%s
+' "$T"
+            printf 'PN_CHAVE=%s
+' "$C"
+            printf 'PN_PROXY=%s
+' "$P"
+          } > "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          mkdir -p /opt/platform/data/perfil-navegador
+          chown 10001:10001 /opt/platform/data/perfil-navegador
+          printf 'linhas: '; grep -c '=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r T; read -r C; read -r P; export T C P; sh -s'"

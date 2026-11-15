@@ -251,6 +251,14 @@
       "manifest_asset": "release-manifest.json"
     },
     {
+      "service": "perfil-navegador",
+      "repo": "RangelTech/perfil-navegador",
+      "stack": "perfil-navegador",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
+    },
+    {
       "service": "atendeai",
       "repo": "RangelTech/atendeai",
       "stack": "atendeai",

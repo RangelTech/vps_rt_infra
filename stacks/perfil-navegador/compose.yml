@@ -1,0 +1,36 @@
+# perfil-navegador (spec 44 3.3.4): entra nas redes pelo servidor (instagrapi + Playwright), sempre pelo proxy SP (KingHost).
+# Interno: só na rede `internal` (perfilai e postaai chamam http://perfil-navegador:8000 com PN_TOKEN). Sem Traefik.
+# Sessões cifradas (Fernet, PN_CHAVE) em /opt/platform/data/perfil-navegador. Segredos em /opt/platform/secrets/perfil-navegador.env
+# (PN_TOKEN, PN_CHAVE, PN_PROXY), gravados pelo workflow perfil-navegador-segredos.yml. Camada B. Deploy: deploy.yml (service=perfil-navegador).
+name: perfil-navegador
+services:
+  web:
+    image: ${PERFIL_NAVEGADOR_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/perfil-navegador.lock}
+    container_name: perfil-navegador
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    shm_size: 512m
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/perfil-navegador.env
+    environment:
+      PN_DADOS: /data
+    volumes:
+      - /opt/platform/data/perfil-navegador:/data
+    mem_limit: 2g
+    cpus: 2
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [internal, egress]
+    labels:
+      - rt.service=perfil-navegador
+      - rt.layer=B
+networks:
+  internal:
+    external: true
+  egress:
+    name: perfil-navegador_egress
