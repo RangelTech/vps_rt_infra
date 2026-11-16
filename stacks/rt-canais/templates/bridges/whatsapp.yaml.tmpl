@@ -6,6 +6,9 @@ network:
   proxy: '${SP_PROXY_URL}'
   proxy_only_login: false
   displayname_template: '{{or .BusinessName .PushName .JID}}'
+  # como o aparelho aparece em 'Dispositivos conectados' no celular do cliente (era 'Outro dispositivo')
+  os_name: 'Windows'
+  browser_name: 'chrome'
   history_sync:
     request_full_sync: false
     # janela do historico: ultimos ${BACKFILL_DAYS} dias (CH-0f valida)
