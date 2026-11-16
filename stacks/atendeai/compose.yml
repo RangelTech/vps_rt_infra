@@ -16,6 +16,7 @@ services:
       ATENDEAI_DADOS: /data
       ATENDEAI_DEMO_EMAIL: demo@rangeltech.net
       ATENDEAI_LLM_MODELO: hermes-produtos
+      ATENDEAI_VOZ_BASE: http://rt-voz:18010   # servidor de voz na GPU própria, pela rede interna (spec 44, 8.5)
       ATENDEAI_BASE_URL: https://atende-ai.rangeltech.net
       ATENDEAI_CANAIS_URL: http://rt-gateway:8100
       ATENDEAI_WEBHOOK_BASE: http://atendeai:8000
