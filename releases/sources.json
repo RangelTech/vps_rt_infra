@@ -321,6 +321,14 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "casaai",
+      "repo": "RangelTech/casaai",
+      "stack": "casaai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }

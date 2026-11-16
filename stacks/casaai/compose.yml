@@ -1,0 +1,49 @@
+# Casa AI: vídeo do imóvel vira site cinematográfico (quadros com ffmpeg + textos pelo Hermes). Vídeo original não é guardado.
+# Estado em /opt/platform/data/casaai (SQLite). Segredos em /opt/platform/secrets/casaai.env (workflow casaai-segredos.yml).
+# Camada B. Deploy: deploy.yml (service=casaai).
+name: casaai
+services:
+  web:
+    image: ${CASAAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/casaai.lock}
+    container_name: casaai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/casaai.env
+    environment:
+      CASAAI_DADOS: /data
+      CASAAI_DEMO_EMAIL: demo@rangeltech.net
+      CASAAI_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
+      CASAAI_LLM_MODELO: hermes-produtos
+      CASAAI_BASE_URL: https://casa-ai.rangeltech.net
+      CASAAI_CHECKOUTS: '{"corretor": "https://pay.cakto.com.br/q726rve", "imobiliaria": "https://pay.cakto.com.br/mpwmrsd"}'
+      CASAAI_PLANOS_CAKTO: '{"c29883e0-f554-4191-b445-61538fea815a": "corretor", "036165ef-f0b0-4799-a968-cf5650110400": "imobiliaria"}'
+      CASAAI_LANCAMENTO_ATE: '2026-12-15'
+    volumes:
+      - /opt/platform/data/casaai:/data
+    mem_limit: 1024m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public, internal]
+    labels:
+      - rt.service=casaai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.casaai.loadbalancer.server.port=8000
+      - traefik.http.routers.casaai.rule=Host(`casa-ai.rangeltech.net`)
+      - traefik.http.routers.casaai.entrypoints=websecure
+      - traefik.http.routers.casaai.tls.certresolver=letsencrypt
+      - traefik.http.routers.casaai.service=casaai
+networks:
+  public:
+    external: true
+  internal:
+    external: true
