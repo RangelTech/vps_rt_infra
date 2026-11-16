@@ -313,6 +313,14 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "shapeai",
+      "repo": "RangelTech/shapeai",
+      "stack": "shapeai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
