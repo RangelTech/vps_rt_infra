@@ -305,6 +305,14 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "astralai",
+      "repo": "RangelTech/astralai",
+      "stack": "astralai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }

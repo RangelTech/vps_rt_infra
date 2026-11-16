@@ -1,0 +1,47 @@
+# Astral AI: tarô, numerologia e mapa astral com IA (Hermes dos produtos). Efemérides DE421 dentro da imagem.
+# Estado em /opt/platform/data/astralai (SQLite). Segredos em /opt/platform/secrets/astralai.env (workflow astralai-segredos.yml).
+# Camada B. Deploy: deploy.yml (service=astralai).
+name: astralai
+services:
+  web:
+    image: ${ASTRALAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/astralai.lock}
+    container_name: astralai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file: /opt/platform/secrets/astralai.env
+    environment:
+      ASTRALAI_DADOS: /data
+      ASTRALAI_DEMO_EMAIL: demo@rangeltech.net
+      ASTRALAI_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
+      ASTRALAI_LLM_MODELO: hermes-produtos
+      ASTRALAI_BASE_URL: https://astral-ai.rangeltech.net
+      ASTRALAI_LANCAMENTO_ATE: '2026-12-15'
+    volumes:
+      - /opt/platform/data/astralai:/data
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public, internal]
+    labels:
+      - rt.service=astralai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.astralai.loadbalancer.server.port=8000
+      - traefik.http.routers.astralai.rule=Host(`astral-ai.rangeltech.net`)
+      - traefik.http.routers.astralai.entrypoints=websecure
+      - traefik.http.routers.astralai.tls.certresolver=letsencrypt
+      - traefik.http.routers.astralai.service=astralai
+networks:
+  public:
+    external: true
+  internal:
+    external: true

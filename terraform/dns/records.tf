@@ -27,6 +27,7 @@ locals {
     "posta-face|A" = { name = "posta-face", type = "A", ttl = 300, value = var.vps_ip }
     "posta-tiktok|A" = { name = "posta-tiktok", type = "A", ttl = 300, value = var.vps_ip }
     "posta-linkdn|A" = { name = "posta-linkdn", type = "A", ttl = 300, value = var.vps_ip }
+    "astral-ai|A" = { name = "astral-ai", type = "A", ttl = 300, value = var.vps_ip }
     "atende-whats|A" = { name = "atende-whats", type = "A", ttl = 300, value = var.vps_ip }
     "atende-insta|A" = { name = "atende-insta", type = "A", ttl = 300, value = var.vps_ip }
     "atende-tiktok|A" = { name = "atende-tiktok", type = "A", ttl = 300, value = var.vps_ip }
