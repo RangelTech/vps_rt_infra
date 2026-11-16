@@ -1,0 +1,35 @@
+# Túnel até o servidor de voz (rt-voz) na GPU da Vast. Os produtos falam com http://rt-voz:18010 pela rede interna;
+# a GPU só escuta em 127.0.0.1 lá e nunca fica exposta. Trocar de máquina = mudar VOZ_SSH_HOST/PORT no segredo e recriar.
+services:
+  rt-voz:
+    image: alpine:3.20
+    container_name: rt-voz
+    restart: unless-stopped
+    env_file: /opt/platform/secrets/rt-voz.env
+    command:
+      - sh
+      - -c
+      - |
+        apk add --no-cache openssh-client >/dev/null
+        mkdir -p /root/.ssh && echo "$$VOZ_SSH_KEY_B64" | base64 -d > /root/.ssh/id && chmod 600 /root/.ssh/id
+        while true; do
+          ssh -N -i /root/.ssh/id -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
+            -L 0.0.0.0:18010:127.0.0.1:18010 -p "$$VOZ_SSH_PORT" "root@$$VOZ_SSH_HOST"
+          echo "tunel caiu $$(date -u +%T); nova tentativa em 5 s"; sleep 5
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:18010/saude | grep -q ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks: [internal, egress]
+    deploy:
+      resources:
+        limits: { memory: 64m }
+
+networks:
+  internal:
+    external: true
+  egress:
+    name: rt_voz_egress
