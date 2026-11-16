@@ -11,7 +11,9 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
-    env_file: /opt/platform/secrets/perfilai.env
+    env_file:
+      - /opt/platform/secrets/perfilai.env
+      - /opt/platform/secrets/rt-admin.env   # login do painel /admin (igual em todos os produtos)
     environment:
       PERFILAI_PN_URL: http://perfil-navegador:8000
       PERFILAI_DADOS: /data
