@@ -26,7 +26,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          ATENDEAI_LLM_KEY: ${{ secrets.ATENDEAI_LLM_KEY }}
+          ATENDEAI_LLM_KEY: ${{ secrets.HERMES_PRODUTOS_KEY }}   # a IA do Atende passa pelo Hermes dos produtos (16/11)
           ATENDEAI_SEGREDO_SESSAO: ${{ secrets.ATENDEAI_SEGREDO_SESSAO }}
           ATENDEAI_CAKTO_SEGREDO: ${{ secrets.ATENDEAI_CAKTO_SEGREDO }}
           ATENDEAI_CANAIS_TOKEN: ${{ secrets.ATENDEAI_CANAIS_TOKEN }}
@@ -46,6 +46,8 @@ jobs:
             echo 'SMTP_USER=contato@rangeltech.net'
             echo 'ATENDEAI_SMTP_FROM=Atende AI <contato@rangeltech.net>'
             printf 'SMTP_PASSWORD=%s\n' "$PW"
+            echo 'ATENDEAI_LLM_BASE=http://rt-hermes-produtos:8642/v1'
+            echo 'ATENDEAI_LLM_MODELO=hermes-produtos'
             printf 'ATENDEAI_LLM_KEY=%s\n' "$K"
             printf 'ATENDEAI_SEGREDO_SESSAO=%s\n' "$SS"
             printf 'ATENDEAI_CAKTO_SEGREDO=%s\n' "$CK"
