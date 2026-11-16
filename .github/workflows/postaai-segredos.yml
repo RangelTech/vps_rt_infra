@@ -26,7 +26,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          POSTAAI_LLM_KEY: ${{ secrets.POSTAAI_LLM_KEY }}
+          POSTAAI_LLM_KEY: ${{ secrets.HERMES_PRODUTOS_KEY }}   # IA pelo Hermes dos produtos (16/11)
           POSTAAI_SEGREDO_SESSAO: ${{ secrets.POSTAAI_SEGREDO_SESSAO }}
           POSTAAI_CAKTO_SEGREDO: ${{ secrets.POSTAAI_CAKTO_SEGREDO }}
           POSTAAI_PN_TOKEN: ${{ secrets.POSTAAI_PN_TOKEN }}

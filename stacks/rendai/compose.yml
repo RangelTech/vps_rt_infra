@@ -15,7 +15,8 @@ services:
     environment:
       RENDAI_DADOS: /data
       RENDAI_DEMO_EMAIL: demo@rangeltech.net
-      RENDAI_LLM_MODELO: rt-geral
+      RENDAI_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
+      RENDAI_LLM_MODELO: hermes-produtos
       RENDAI_BASE_URL: https://rendai.rangeltech.net
       RENDAI_CHECKOUTS: '{"start": "https://pay.cakto.com.br/ixtgvto", "pro": "https://pay.cakto.com.br/39k4fqj", "elite": "https://pay.cakto.com.br/g8m52k9"}'
       RENDAI_PLANOS_CAKTO: '{"e4d0d3a8-7933-49a7-8ce1-7e70f7c7a4b8": "start", "b116a124-ff5f-43c6-9235-e740a29067ad": "pro", "a8ea5fec-c622-43a0-90d9-b01b47ea0d92": "elite"}'
@@ -32,7 +33,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    networks: [public]
+    networks: [public, internal]
     labels:
       - rt.service=rendai
       - rt.layer=B
@@ -45,4 +46,6 @@ services:
       - traefik.http.routers.rendai.service=rendai
 networks:
   public:
+    external: true
+  internal:
     external: true

@@ -26,7 +26,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          RENDAI_LLM_KEY: ${{ secrets.RENDAI_LLM_KEY }}
+          RENDAI_LLM_KEY: ${{ secrets.HERMES_PRODUTOS_KEY }}   # IA pelo Hermes dos produtos (16/11)
           RENDAI_SEGREDO_SESSAO: ${{ secrets.RENDAI_SEGREDO_SESSAO }}
           RENDAI_CAKTO_SEGREDO: ${{ secrets.RENDAI_CAKTO_SEGREDO }}
           RENDAI_CHECKOUT_MENSAL: ${{ vars.RENDAI_CHECKOUT_MENSAL }}

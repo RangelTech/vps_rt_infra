@@ -15,7 +15,8 @@ services:
     environment:
       POSTAAI_DADOS: /data
       POSTAAI_DEMO_EMAIL: demo@rangeltech.net
-      POSTAAI_LLM_MODELO: rt-planejar
+      POSTAAI_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
+      POSTAAI_LLM_MODELO: hermes-produtos
       POSTAAI_BASE_URL: https://posta-ai.rangeltech.net
       POSTAAI_PN_URL: http://perfil-navegador:8000
       POSTAAI_CHECKOUTS: '{"insta:start": "https://pay.cakto.com.br/aqxvtw8", "insta:pro": "https://pay.cakto.com.br/ykzfv3c", "insta:turbo": "https://pay.cakto.com.br/5hmuvs9", "face:start": "https://pay.cakto.com.br/mg5c8jh", "face:pro": "https://pay.cakto.com.br/zssrf6n", "face:turbo": "https://pay.cakto.com.br/38rwfiw", "tiktok:start": "https://pay.cakto.com.br/34jdynq", "tiktok:pro": "https://pay.cakto.com.br/n9emy3n", "tiktok:turbo": "https://pay.cakto.com.br/8g2ectm", "linkdn:start": "https://pay.cakto.com.br/wroj3gz", "linkdn:pro": "https://pay.cakto.com.br/iqvquku", "linkdn:turbo": "https://pay.cakto.com.br/3fccq4y"}'
