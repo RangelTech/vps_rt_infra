@@ -15,7 +15,7 @@ services:
     environment:
       ATENDEAI_DADOS: /data
       ATENDEAI_DEMO_EMAIL: demo@rangeltech.net
-      ATENDEAI_LLM_MODELO: rt-planejar
+      ATENDEAI_LLM_MODELO: hermes-produtos
       ATENDEAI_BASE_URL: https://atende-ai.rangeltech.net
       ATENDEAI_CANAIS_URL: http://rt-gateway:8100
       ATENDEAI_WEBHOOK_BASE: http://atendeai:8000

@@ -2,7 +2,7 @@
 model:
   provider: custom
   base_url: https://qwen.rangeltech.net/v1
-  default: qwen-abliterated
+  default: rt-geral          # apelido do llm-access: Qwen primeiro, GPT de reserva (regra do Lucas)
   api_key: __CHAVE_LLM__   # trocado na subida pelo OPENAI_API_KEY do segredo (nunca no repositório)
   context_length: 131072
 auxiliary:
