@@ -1,0 +1,43 @@
+name: Admin dos produtos segredos
+# Grava NA VPS /opt/platform/secrets/rt-admin.env: usuário e senha do painel /admin, iguais em todos os produtos
+# (Astral, Shape, Casa e os demais). Cada stack carrega este arquivo como segundo env_file. Valor no cofre pessoal
+# (secrets/rt-admin.env). Depois rodar o Deploy de cada produto para o contêiner reler.
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: rt-admin-segredos
+  cancel-in-progress: false
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave so deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar rt-admin.env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          RT_ADMIN_SENHA: ${{ secrets.RT_ADMIN_SENHA }}
+        run: |
+          test -n "$RT_ADMIN_SENHA"
+          {
+            printf '%s\n' "$RT_ADMIN_SENHA"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/rt-admin.env
+          umask 077
+          { echo 'RT_ADMIN_USUARIO=lucas'; printf 'RT_ADMIN_SENHA=%s\n' "$AS"; } > "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          printf 'linhas: '; grep -c '=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r AS; export AS; sh -s'"

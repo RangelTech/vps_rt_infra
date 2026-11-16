@@ -30,6 +30,9 @@ locals {
     "astral-ai|A" = { name = "astral-ai", type = "A", ttl = 300, value = var.vps_ip }
     "shape-ai|A" = { name = "shape-ai", type = "A", ttl = 300, value = var.vps_ip }
     "casa-ai|A" = { name = "casa-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "astral|A" = { name = "astral", type = "A", ttl = 300, value = var.vps_ip }   # endereço novo (16/11); o -ai continua respondendo
+    "shape|A" = { name = "shape", type = "A", ttl = 300, value = var.vps_ip }
+    "casa|A" = { name = "casa", type = "A", ttl = 300, value = var.vps_ip }
     "atende-whats|A" = { name = "atende-whats", type = "A", ttl = 300, value = var.vps_ip }
     "atende-insta|A" = { name = "atende-insta", type = "A", ttl = 300, value = var.vps_ip }
     "atende-tiktok|A" = { name = "atende-tiktok", type = "A", ttl = 300, value = var.vps_ip }
