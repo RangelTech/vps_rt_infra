@@ -46,7 +46,7 @@ jobs:
             echo 'SMTP_HOST=smtp.hostinger.com'
             echo 'SMTP_PORT=587'
             echo 'SMTP_USER=contato@rangeltech.net'
-            echo 'PERFILAI_SMTP_FROM=Perfilaí <contato@rangeltech.net>'
+            echo 'PERFILAI_SMTP_FROM=Perfil AI <contato@rangeltech.net>'
             printf 'SMTP_PASSWORD=%s\n' "$PW"
             printf 'PERFILAI_LLM_KEY=%s\n' "$K"
             printf 'PERFILAI_SEGREDO_SESSAO=%s\n' "$SS"
