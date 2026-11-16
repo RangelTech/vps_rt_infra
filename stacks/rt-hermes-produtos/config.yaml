@@ -1,0 +1,35 @@
+# Hermes dos produtos: conversa + skills. Modelo = Qwen pelo llm-access (chave em OPENAI_API_KEY no segredo).
+model:
+  provider: custom
+  base_url: https://qwen.rangeltech.net/v1
+  default: qwen-abliterated
+  api_key: __CHAVE_LLM__   # trocado na subida pelo OPENAI_API_KEY do segredo (nunca no repositório)
+  context_length: 131072
+auxiliary:
+  compression:
+    provider: custom
+  title_generation:
+    enabled: false
+  background_review:
+    enabled: false
+platform_toolsets:
+  api_server: [skills]
+skills:
+  project_discovery: false
+  write_approval: true
+  inline_shell: false
+  creation_nudge_interval: 0
+memory:
+  write_approval: true
+  nudge_interval: 0
+curator:
+  enabled: false
+compression:
+  enabled: true
+  threshold: 0.60
+security:
+  redact_secrets: true
+  allow_lazy_installs: false
+  allow_private_urls: false
+agent:
+  max_turns: 6

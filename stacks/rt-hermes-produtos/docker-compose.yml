@@ -1,0 +1,47 @@
+# Hermes dos PRODUTOS (Atende AI, Posta AI, Perfil AI, Cortaí, Anima AI, Rendaí). Separado do LUAR (stack kernel-harness, não tocar).
+# Decisão do Lucas (16/11/2026): toda IA dos produtos passa pelo Hermes (agente com skills), nunca o Qwen direto.
+# Os produtos chamam http://rt-hermes-produtos:8642/v1/chat/completions (OpenAI) na rede interna, com HERMES_PRODUTOS_KEY.
+# O Hermes usa o Qwen (llm-access) por baixo e só tem a ferramenta de skills: sem terminal, arquivos, navegador ou código.
+services:
+  rt-hermes-produtos:
+    image: rt/rt-hermes:bb62b3439f9a
+    container_name: rt-hermes-produtos
+    restart: unless-stopped
+    init: true
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /opt/data/skills
+        sed "s|__CHAVE_LLM__|$$OPENAI_API_KEY|" /config/config.yaml > /opt/data/config.yaml && chmod 600 /opt/data/config.yaml
+        cp -rf /skills-produtos/. /opt/data/skills/
+        exec /opt/hermes/.venv/bin/hermes gateway run
+    env_file: /opt/platform/secrets/rt-hermes-produtos.env
+    environment:
+      HERMES_HOME: /opt/data
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_PORT: "8642"
+      API_SERVER_MODEL_NAME: hermes-produtos
+    volumes:
+      - dados:/opt/data
+      - ./config.yaml:/config/config.yaml:ro
+      - ./skills:/skills-produtos:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8642/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks: [internal, egress]
+    deploy:
+      resources:
+        limits: { memory: 2g, cpus: "2" }
+
+volumes:
+  dados:
+
+networks:
+  internal:
+    external: true
+  egress:
+    name: rt_hermes_produtos_egress
