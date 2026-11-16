@@ -51,6 +51,8 @@ jobs:
             printf 'SHAPEAI_CAKTO_SEGREDO=%s\n' "$CK"
             printf 'SHAPEAI_ADMIN_KEY=%s\n' "$AK"
             printf 'SHAPEAI_DEMO_SENHA=%s\n' "$DS"
+            printf 'SHAPEAI_VISAO_KEY=%s
+' "$VK"
           } > "$f.tmp"
           mv "$f.tmp" "$f"
           chmod 600 "$f"
