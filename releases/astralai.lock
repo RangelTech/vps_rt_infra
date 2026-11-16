@@ -1,0 +1,17 @@
+service=astralai
+stack=astralai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/astralai
+version=v0.1.0
+commit=f891184
+artifact_url=https://github.com/RangelTech/astralai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=e5ce8de69f8b213e962cbf363eee56650054f1a24563c108a65d929e092e1b15
+image_id=sha256:cec82d3c1c3d760fa686e8684c4c4841c8bf73b878ed1fd3207ed32f01624957
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=ASTRALAI_LLM_KEY,ASTRALAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
