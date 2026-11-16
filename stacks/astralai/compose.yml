@@ -17,6 +17,8 @@ services:
       ASTRALAI_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
       ASTRALAI_LLM_MODELO: hermes-produtos
       ASTRALAI_BASE_URL: https://astral-ai.rangeltech.net
+      ASTRALAI_CHECKOUTS: '{"plus": "https://pay.cakto.com.br/qrgua2p", "premium": "https://pay.cakto.com.br/kh7ixd2"}'
+      ASTRALAI_PLANOS_CAKTO: '{"50140a70-3c36-4410-bff7-9799db1300fa": "plus", "fed0e754-d8b8-4b75-b9b2-9135e713c7d0": "premium"}'
       ASTRALAI_LANCAMENTO_ATE: '2026-12-15'
     volumes:
       - /opt/platform/data/astralai:/data
