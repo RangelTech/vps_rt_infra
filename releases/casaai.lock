@@ -1,0 +1,17 @@
+service=casaai
+stack=casaai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/casaai
+version=v0.1.1
+commit=03b3bfd
+artifact_url=https://github.com/RangelTech/casaai/releases/download/v0.1.1/image.tar.gz
+artifact_sha256=8bf9931375724827b6e69edc76e11b4667ee102b3707e9d4f25acc074001f6d9
+image_id=sha256:e2fd13eff559f5ff66f2dc689a83f352921a5ea55e4dd2ae092c5292fd5fd020
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=CASAAI_LLM_KEY,CASAAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
