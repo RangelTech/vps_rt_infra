@@ -1,0 +1,17 @@
+service=shapeai
+stack=shapeai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/shapeai
+version=v0.1.0
+commit=3cf8550
+artifact_url=https://github.com/RangelTech/shapeai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=9ade0bcb5783a8ab6eef764e04e5e4a8b030f11fc05d5f7582cc9f1572a7485d
+image_id=sha256:dd3cbd81925ff0da221f1c573985e61cbdddaf6fdd8486ef420517f2c39db6a8
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=SHAPEAI_LLM_KEY,SHAPEAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
