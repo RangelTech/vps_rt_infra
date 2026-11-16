@@ -33,3 +33,4 @@ security:
   allow_private_urls: false
 agent:
   max_turns: 6
+  reasoning_effort: "none"   # produtos precisam de resposta rápida; o pensamento do Qwen triplicava o tempo
