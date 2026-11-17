@@ -1,0 +1,34 @@
+/* Colab Fael: troca a foto do topo pela cena temática do Fael e põe a faixa "Colab Fael - Adriano Camargo" no fim. */
+(() => {
+  const IG = 'https://www.instagram.com/faelgomeess/', ARROBA = '@faelgomeess'
+  const sub = location.hostname.split('.')[0]
+  const img = `/__fael/img/${sub}.webp`
+  document.documentElement.style.setProperty('--fael-img', `url("${img}")`)
+  document.title = 'Colab Fael · ' + document.title
+  const ac = (() => { const e = document.querySelector('h1 em, h1 span, .btn-pri, .btn.pri, .btn'); const c = e && getComputedStyle(e)[e.tagName === 'EM' || e.tagName === 'SPAN' ? 'color' : 'backgroundColor']; return c && !/rgba?\(0, 0, 0(, 0)?\)/.test(c) ? c : '#e2c27e' })()
+  document.documentElement.style.setProperty('--fael-ac', ac)
+
+  // topo
+  const fundo = document.querySelector('.cine-fundo, .cine-heroi .kb, .heroi-azul .fundo, .heroi .fundo')
+  let heroi
+  if (fundo) { fundo.classList.add('fael-alvo'); fundo.removeAttribute('aria-label'); heroi = fundo.parentElement }
+  else {
+    heroi = document.querySelector('main section, body > section, .heroi, .hero')
+    if (heroi) { const bg = document.createElement('div'); bg.className = 'fael-bg fael-alvo'; heroi.prepend(bg) }
+  }
+  if (heroi) {
+    heroi.classList.add('fael-heroi')
+    const h1 = heroi.querySelector('h1')
+    if (h1) { const s = document.createElement('span'); s.className = 'fael-selo'; s.innerHTML = `<img src="/__fael/avatar.jpg" alt="">Colab Fael`; h1.parentElement.insertBefore(s, h1.previousElementSibling && /selo|chip|sobre/.test(h1.previousElementSibling.className) ? h1.previousElementSibling : h1) }
+  }
+
+  // fim
+  const sec = document.createElement('section')
+  sec.className = 'fael-colab'
+  sec.innerHTML = `<div class="c"><img class="av" src="/__fael/avatar.jpg" alt="Fael">
+    <div><small>Parceria</small><h2>Colab Fael - Adriano Camargo</h2>
+    <p>Uma parceria do Fael com o Adriano Camargo. Acompanhe o Fael no Instagram.</p>
+    <a class="ig" href="${IG}" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>${ARROBA}</a></div></div>`
+  const pe = document.querySelector('footer')
+  pe ? pe.parentElement.insertBefore(sec, pe) : document.body.appendChild(sec)
+})()

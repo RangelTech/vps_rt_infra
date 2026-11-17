@@ -1,0 +1,21 @@
+/* Colab Fael: foto temática no topo + faixa de parceria no fim (injetado pelo stack fael-sites) */
+.fael-alvo{background-image:linear-gradient(90deg,rgba(6,6,8,.92) 0%,rgba(6,6,8,.7) 36%,rgba(6,6,8,.15) 62%,rgba(6,6,8,0) 80%),linear-gradient(0deg,rgba(6,6,8,.6),rgba(6,6,8,0) 30%),var(--fael-img)!important;
+  background-size:cover!important;background-position:70% center!important;background-repeat:no-repeat!important;opacity:1!important;filter:none!important}
+.fael-heroi{isolation:isolate}
+.fael-heroi:has(.fael-bg){position:relative}
+.fael-bg{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.fael-selo{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);font:600 13px/1 system-ui,sans-serif;color:#fff;letter-spacing:.02em}
+.fael-selo img{width:24px;height:24px;border-radius:50%;object-fit:cover}
+.fael-colab{position:relative;z-index:2;padding:72px 16px;background:#0b0b0d;border-top:1px solid rgba(255,255,255,.08)}
+.fael-colab .c{max-width:960px;margin:0 auto;display:flex;align-items:center;gap:32px;padding:32px;border-radius:24px;
+  background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12)}
+.fael-colab .av{width:120px;height:120px;flex:none;border-radius:50%;object-fit:cover;border:3px solid var(--fael-ac,#e2c27e);box-shadow:0 0 0 6px rgba(255,255,255,.04)}
+.fael-colab small{display:block;font:600 12px/1 system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--fael-ac,#e2c27e);margin-bottom:10px}
+.fael-colab h2{margin:0 0 8px;font:800 clamp(26px,3.4vw,38px)/1.1 system-ui,sans-serif;color:#fff}
+.fael-colab p{margin:0 0 18px;font:400 16px/1.5 system-ui,sans-serif;color:rgba(255,255,255,.72)}
+.fael-colab a.ig{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;font:700 15px/1 system-ui,sans-serif;text-decoration:none;color:#fff;
+  background:linear-gradient(45deg,#f9a825,#e1306c 45%,#833ab4);transition:transform .25s,box-shadow .25s}
+.fael-colab a.ig:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(225,48,108,.35)}
+@media (max-width:720px){.fael-colab .c{flex-direction:column;text-align:center;padding:24px}
+  .fael-alvo{background-image:linear-gradient(0deg,rgba(6,6,8,.95) 0%,rgba(6,6,8,.75) 45%,rgba(6,6,8,.3) 100%),var(--fael-img)!important;background-position:72% center!important}}
+.fael-heroi:has(.fael-bg) h1,.fael-heroi:has(.fael-bg) p,.fael-heroi:has(.fael-bg) .lead,.fael-heroi:has(.fael-bg) .selo{color:#fff}
