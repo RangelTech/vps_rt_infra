@@ -33,10 +33,11 @@ jobs:
           ATENDEAI_ADMIN_KEY: ${{ secrets.ATENDEAI_ADMIN_KEY }}
           ATENDEAI_DEMO_SENHA: ${{ secrets.ATENDEAI_DEMO_SENHA }}
           ATENDEAI_VOZ_TOKEN: ${{ secrets.RT_VOZ_TOKEN }}
+          ATENDEAI_IMAGEM_KEY: ${{ secrets.ATENDEAI_IMAGEM_KEY }}   # conta de servico 'Fala Fael' no llm-access (fotos da persona, 17/11)
         run: |
           test -n "$SMTP_PASSWORD" && test -n "$ATENDEAI_LLM_KEY" && test -n "$ATENDEAI_SEGREDO_SESSAO" && test -n "$ATENDEAI_CANAIS_TOKEN"
           {
-            printf '%s\n' "$SMTP_PASSWORD" "$ATENDEAI_LLM_KEY" "$ATENDEAI_SEGREDO_SESSAO" "${ATENDEAI_CAKTO_SEGREDO:-}" "$ATENDEAI_CANAIS_TOKEN" "${ATENDEAI_ADMIN_KEY:-}" "${ATENDEAI_DEMO_SENHA:-}" "${ATENDEAI_VOZ_TOKEN:-}"
+            printf '%s\n' "$SMTP_PASSWORD" "$ATENDEAI_LLM_KEY" "$ATENDEAI_SEGREDO_SESSAO" "${ATENDEAI_CAKTO_SEGREDO:-}" "$ATENDEAI_CANAIS_TOKEN" "${ATENDEAI_ADMIN_KEY:-}" "${ATENDEAI_DEMO_SENHA:-}" "${ATENDEAI_VOZ_TOKEN:-}" "${ATENDEAI_IMAGEM_KEY:-}"
             cat <<'SH'
           set -e
           f=/opt/platform/secrets/atendeai.env
@@ -56,6 +57,8 @@ jobs:
             printf 'ATENDEAI_ADMIN_KEY=%s\n' "$AK"
             printf 'ATENDEAI_DEMO_SENHA=%s\n' "$DS"
             if [ -n "$VT" ]; then printf 'ATENDEAI_VOZ_TOKEN=%s\n' "$VT"; fi
+            echo 'ATENDEAI_IMAGEM_BASE=http://llm-access:8000/v1'
+            if [ -n "$IK" ]; then printf 'ATENDEAI_IMAGEM_KEY=%s\n' "$IK"; fi
           } > "$f.tmp"
           mv "$f.tmp" "$f"
           chmod 600 "$f"
@@ -63,4 +66,4 @@ jobs:
           chown 10001:10001 /opt/platform/data/atendeai
           printf 'linhas: '; grep -c '=' "$f"
           SH
-          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CT; read -r AK; read -r DS; read -r VT; export PW K SS CK CT AK DS VT; sh -s'"
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r CT; read -r AK; read -r DS; read -r VT; read -r IK; export PW K SS CK CT AK DS VT IK; sh -s'"
