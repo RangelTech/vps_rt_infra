@@ -19,3 +19,21 @@
 @media (max-width:720px){.fael-colab .c{flex-direction:column;text-align:center;padding:24px}
   .fael-alvo{background-image:linear-gradient(0deg,rgba(6,6,8,.95) 0%,rgba(6,6,8,.75) 45%,rgba(6,6,8,.3) 100%),var(--fael-img)!important;background-position:72% center!important}}
 .fael-heroi:has(.fael-bg) h1,.fael-heroi:has(.fael-bg) p,.fael-heroi:has(.fael-bg) .lead,.fael-heroi:has(.fael-bg) .selo{color:#fff}
+/* vidro líquido atrás do texto em topos centralizados (ex.: Cérebro Pro) */
+.fael-vidro{position:relative;max-width:880px;margin:0 auto 40px;padding:36px 44px 32px;border-radius:32px;isolation:isolate;overflow:hidden;
+  background:linear-gradient(135deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.05) 45%,rgba(255,255,255,.09) 100%);
+  -webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);
+  border:1px solid rgba(255,255,255,.24);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(255,255,255,.1),inset 0 0 40px rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.45)}
+.fael-vidro::before{content:"";position:absolute;inset:-40% -10% auto -10%;height:80%;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse at 30% 100%,rgba(255,255,255,.22),rgba(255,255,255,0) 60%);transform:rotate(-6deg)}
+.fael-vidro::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
+  background:linear-gradient(115deg,rgba(255,255,255,0) 40%,rgba(255,255,255,.08) 50%,rgba(255,255,255,0) 60%)}
+.fael-vidro h1,.fael-vidro p,.fael-vidro .sub,.fael-vidro .nota{color:#fff!important;text-shadow:0 1px 18px rgba(0,0,0,.35)}
+.fael-vidro .btn.sec,.fael-vidro .btn-sec{color:#fff!important;background:rgba(255,255,255,.1)!important;border:1px solid rgba(255,255,255,.45)!important;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:background .25s,transform .25s}
+.fael-vidro .btn.sec:hover,.fael-vidro .btn-sec:hover{background:rgba(255,255,255,.2)!important;transform:translateY(-1px)}
+.fael-vidro .superf a{color:rgba(255,255,255,.85)!important;border-color:rgba(255,255,255,.35)!important}
+.fael-vidro .fael-selo{margin-bottom:18px}
+@media (max-width:720px){.fael-vidro{padding:24px 20px;border-radius:24px;margin-bottom:24px}}
+@media (min-width:1000px){.fael-vidro{max-width:720px;margin-left:max(16px,calc(50% - 640px));margin-right:auto}}
