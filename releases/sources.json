@@ -329,6 +329,22 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "boateazul",
+      "repo": "RangelTech/boateazul",
+      "stack": "boateazul",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "arenabruta",
+      "repo": "RangelTech/arenabruta",
+      "stack": "arenabruta",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }

@@ -1,0 +1,50 @@
+# Boate Azul: IA de desejo e intimidade para casais +18 (Hermes dos produtos). Spec 45 G.
+# Estado em /opt/platform/data/boateazul (SQLite). Segredos em /opt/platform/secrets/boateazul.env (workflow boateazul-segredos.yml).
+# Camada B. Deploy: deploy.yml (service=boateazul).
+name: boateazul
+services:
+  web:
+    image: ${BOATEAZUL_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/boateazul.lock}
+    container_name: boateazul
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file:
+      - /opt/platform/secrets/boateazul.env
+      - /opt/platform/secrets/rt-admin.env   # login do painel /admin (igual em todos os produtos)
+    environment:
+      BOATE_DADOS: /data
+      BOATE_DEMO_EMAIL: demo@rangeltech.net
+      BOATE_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
+      BOATE_LLM_MODELO: hermes-produtos
+      BOATE_BASE_URL: https://azul.rangeltech.net
+      BOATE_CHECKOUTS: '{"essencial": "https://pay.cakto.com.br/33bty2e", "conexao": "https://pay.cakto.com.br/38ndg6y", "intimo": "https://pay.cakto.com.br/jrno9v2"}'
+      BOATE_PLANOS_CAKTO: '{"542a6a2b-cc84-4ba4-8fa8-b3c528d0cd45": "essencial", "095e9897-d11e-4c58-807f-989405a8be93": "conexao", "1fe700c0-a82c-4de5-b6ff-8065c57ef74d": "intimo"}'
+    volumes:
+      - /opt/platform/data/boateazul:/data
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public, internal]
+    labels:
+      - rt.service=boateazul
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.boateazul.loadbalancer.server.port=8000
+      - traefik.http.routers.boateazul.rule=Host(`azul.rangeltech.net`)
+      - traefik.http.routers.boateazul.entrypoints=websecure
+      - traefik.http.routers.boateazul.tls.certresolver=letsencrypt
+      - traefik.http.routers.boateazul.service=boateazul
+networks:
+  public:
+    external: true
+  internal:
+    external: true
