@@ -1,0 +1,17 @@
+service=arenabruta
+stack=arenabruta
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/arenabruta
+version=v0.1.1
+commit=b32ee21
+artifact_url=https://github.com/RangelTech/arenabruta/releases/download/v0.1.1/image.tar.gz
+artifact_sha256=2d724907cc269855d9393e7f77b6f6711a6c31283babb97cde6e5204c487da00
+image_id=sha256:ea78dc655535e7ebf16764265adead6a2c5dae951185203be9093c18393feed0
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=ARENA_LLM_KEY,ARENA_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
