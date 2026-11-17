@@ -1,0 +1,46 @@
+# Arena Bruta: duelos de habilidade (caminhonetes 3D) valendo dinheiro; carteira com razão contábil; WebSocket do jogo. Spec 45 H.
+# Estado em /opt/platform/data/arenabruta (SQLite). Segredos em /opt/platform/secrets/arenabruta.env (workflow arenabruta-segredos.yml).
+# Camada B. Deploy: deploy.yml (service=arenabruta).
+name: arenabruta
+services:
+  web:
+    image: ${ARENABRUTA_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/arenabruta.lock}
+    container_name: arenabruta
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file:
+      - /opt/platform/secrets/arenabruta.env
+      - /opt/platform/secrets/rt-admin.env   # login do painel /admin (igual em todos os produtos)
+    environment:
+      ARENA_DADOS: /data
+      ARENA_DEMO_EMAIL: demo@rangeltech.net
+      ARENA_BASE_URL: https://arena.rangeltech.net
+    volumes:
+      - /opt/platform/data/arenabruta:/data
+    mem_limit: 512m
+    cpus: 1
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [public, internal]
+    labels:
+      - rt.service=arenabruta
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.arenabruta.loadbalancer.server.port=8000
+      - traefik.http.routers.arenabruta.rule=Host(`arena.rangeltech.net`)
+      - traefik.http.routers.arenabruta.entrypoints=websecure
+      - traefik.http.routers.arenabruta.tls.certresolver=letsencrypt
+      - traefik.http.routers.arenabruta.service=arenabruta
+networks:
+  public:
+    external: true
+  internal:
+    external: true
