@@ -1,0 +1,17 @@
+service=boateazul
+stack=boateazul
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/boateazul
+version=v0.1.0
+commit=beaf452
+artifact_url=https://github.com/RangelTech/boateazul/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=14752d53980390472250297eef465241ef1d5cf96fe12db9db7a30cb989ddc22
+image_id=sha256:98bea547fe376338dc5a2209a87baf0890b820673d7abfe9d7173e0129178408
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=BOATE_LLM_KEY,BOATE_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
