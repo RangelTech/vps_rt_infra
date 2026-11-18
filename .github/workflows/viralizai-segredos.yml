@@ -58,7 +58,7 @@ jobs:
             printf 'VIRALIZAI_DEMO_SENHA=%s\n' "$DS"
             printf 'VIRALIZAI_CHECKOUTS=%s\n' "$CO"
             printf 'VIRALIZAI_PLANOS_CAKTO=%s\n' "$PC"
-            printf 'VIRALIZAI_PEXELS_KEY=%s\n' "$PX"
+            printf 'VIRALIZAI_PIXABAY_KEY=%s\n' "$PX"
           } > "$f.tmp"
           mv "$f.tmp" "$f"
           chmod 600 "$f"
