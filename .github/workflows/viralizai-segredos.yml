@@ -34,13 +34,14 @@ jobs:
           VZ_CHECKOUTS: ${{ vars.VIRALIZAI_CHECKOUTS }}
           VZ_PLANOS_CAKTO: ${{ vars.VIRALIZAI_PLANOS_CAKTO }}
           VZ_PIXABAY_KEY: ${{ secrets.VIRALIZAI_PIXABAY_KEY }}
+          VZ_PN_TOKEN: ${{ secrets.POSTAAI_PN_TOKEN }}
         run: |
           test -n "$SMTP_PASSWORD" && test -n "$VZ_LLM_KEY" && test -n "$VZ_SEGREDO_SESSAO"
           CO="$VZ_CHECKOUTS"; [ -n "$CO" ] || CO='{}'
           PC="$VZ_PLANOS_CAKTO"; [ -n "$PC" ] || PC='{}'
           {
             printf '%s\n' "$SMTP_PASSWORD" "$VZ_LLM_KEY" "$VZ_SEGREDO_SESSAO" "${VZ_CAKTO_SEGREDO:-}" "${VZ_ADMIN_KEY:-}" "${VZ_DEMO_SENHA:-}" \
-              "$CO" "$PC" "${VZ_PIXABAY_KEY:-}"
+              "$CO" "$PC" "${VZ_PIXABAY_KEY:-}" "${VZ_PN_TOKEN:-}"
             cat <<'SH'
           set -e
           f=/opt/platform/secrets/viralizai.env
@@ -59,6 +60,7 @@ jobs:
             printf 'VIRALIZAI_CHECKOUTS=%s\n' "$CO"
             printf 'VIRALIZAI_PLANOS_CAKTO=%s\n' "$PC"
             printf 'VIRALIZAI_PIXABAY_KEY=%s\n' "$PX"
+            printf 'VIRALIZAI_PN_TOKEN=%s\n' "$PT"
           } > "$f.tmp"
           mv "$f.tmp" "$f"
           chmod 600 "$f"
@@ -66,4 +68,4 @@ jobs:
           chown 10001:10001 /opt/platform/data/viralizai
           printf 'linhas: '; grep -c '=' "$f"
           SH
-          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r AK; read -r DS; read -r CO; read -r PC; read -r PX; export PW K SS CK AK DS CO PC PX; sh -s'"
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r AK; read -r DS; read -r CO; read -r PC; read -r PX; read -r PT; export PW K SS CK AK DS CO PC PX PT; sh -s'"
