@@ -38,7 +38,7 @@ services:
       VIRALIZAI_DEMO_EMAIL: demo@rangeltech.net
       VIRALIZAI_PROXY: socks5://viralizai-warp:1080
       VIRALIZAI_WORKERS: "3"
-      VIRALIZAI_RENDER_CONC: "2"
+      VIRALIZAI_RENDER_CONC: "4"
       VIRALIZAI_WHISPER_THREADS: "4"
       VIRALIZAI_ESTUDIO_EFEITO: video-rapido
       VIRALIZAI_LANCAMENTO_ATE: '2026-12-31'
