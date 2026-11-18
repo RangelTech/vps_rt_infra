@@ -33,14 +33,14 @@ jobs:
           VZ_DEMO_SENHA: ${{ secrets.VIRALIZAI_DEMO_SENHA }}
           VZ_CHECKOUTS: ${{ vars.VIRALIZAI_CHECKOUTS }}
           VZ_PLANOS_CAKTO: ${{ vars.VIRALIZAI_PLANOS_CAKTO }}
-          VZ_PEXELS_KEY: ${{ secrets.VIRALIZAI_PEXELS_KEY }}
+          VZ_PIXABAY_KEY: ${{ secrets.VIRALIZAI_PIXABAY_KEY }}
         run: |
           test -n "$SMTP_PASSWORD" && test -n "$VZ_LLM_KEY" && test -n "$VZ_SEGREDO_SESSAO"
           CO="$VZ_CHECKOUTS"; [ -n "$CO" ] || CO='{}'
           PC="$VZ_PLANOS_CAKTO"; [ -n "$PC" ] || PC='{}'
           {
             printf '%s\n' "$SMTP_PASSWORD" "$VZ_LLM_KEY" "$VZ_SEGREDO_SESSAO" "${VZ_CAKTO_SEGREDO:-}" "${VZ_ADMIN_KEY:-}" "${VZ_DEMO_SENHA:-}" \
-              "$CO" "$PC" "${VZ_PEXELS_KEY:-}"
+              "$CO" "$PC" "${VZ_PIXABAY_KEY:-}"
             cat <<'SH'
           set -e
           f=/opt/platform/secrets/viralizai.env
