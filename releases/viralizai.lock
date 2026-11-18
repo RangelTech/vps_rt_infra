@@ -1,0 +1,17 @@
+service=viralizai
+stack=viralizai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/viralizai
+version=v0.1.1
+commit=a4ff1dc
+artifact_url=https://github.com/RangelTech/viralizai/releases/download/v0.1.1/image.tar.gz
+artifact_sha256=4982baed8795393da50017684995d40648c27b6a12475e6a214da1a270460345
+image_id=sha256:d638d97e3dc0fa3cd352fc29593c64b0d14be2ea43935979b6f78111df88e0cf
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=60
+env_required=VIRALIZAI_LLM_KEY,VIRALIZAI_SEGREDO_SESSAO
+previous_version=
+previous_image_id=
