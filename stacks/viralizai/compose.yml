@@ -1,0 +1,72 @@
+# Viralizaí (spec 47): cortes de live + animação + vídeo com IA + editor. Imagem por release do repo RangelTech/viralizai.
+# Estado em /opt/platform/data/viralizai (SQLite, cache das fontes = vitrine, vídeos dos clientes por 30 dias; entra no backup).
+# Segredos em /opt/platform/secrets/viralizai.env (gravados pelo workflow viralizai-segredos.yml).
+# Saída para o YouTube pelo WARP (IP da Cloudflare, sem pagar tráfego): o contêiner `warp` expõe proxy HTTP/SOCKS na rede interna.
+# Camada B. Deploy: workflow deploy.yml (service=viralizai).
+name: viralizai
+services:
+  warp:
+    image: caomingjun/warp:2026.8.2115.0-2.12.0
+    container_name: viralizai-warp
+    restart: unless-stopped
+    device_cgroup_rules: ["c 10:200 rwm"]
+    cap_add: [NET_ADMIN, MKNOD, AUDIT_WRITE]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+      net.ipv4.conf.all.src_valid_mark: "1"
+    environment:
+      WARP_SLEEP: "2"
+    volumes:
+      - /opt/platform/data/viralizai-warp:/var/lib/cloudflare-warp
+    networks: [interna]
+    logging: { driver: json-file, options: { max-size: 5m, max-file: "2" } }
+  web:
+    image: ${VIRALIZAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/viralizai.lock}
+    container_name: viralizai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    shm_size: 1g   # Chrome headless dos moldes de animação
+    env_file:
+      - /opt/platform/secrets/viralizai.env
+      - /opt/platform/secrets/rt-admin.env
+    environment:
+      VIRALIZAI_DADOS: /data
+      VIRALIZAI_BASE_URL: https://viralizai.rangeltech.net
+      VIRALIZAI_LLM_MODELO: rt-geral
+      VIRALIZAI_DEMO_EMAIL: demo@rangeltech.net
+      VIRALIZAI_PROXY: socks5://viralizai-warp:1080
+      VIRALIZAI_WORKERS: "3"
+      VIRALIZAI_RENDER_CONC: "2"
+      VIRALIZAI_WHISPER_THREADS: "4"
+      VIRALIZAI_ESTUDIO_EFEITO: video-rapido
+      VIRALIZAI_LANCAMENTO_ATE: '2026-12-31'
+    volumes:
+      - /opt/platform/data/viralizai:/data
+    depends_on: [warp]
+    mem_limit: 6g
+    cpus: 6
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [public, interna]
+    labels:
+      - rt.service=viralizai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.viralizai.loadbalancer.server.port=8000
+      - traefik.http.routers.viralizai.rule=Host(`viralizai.rangeltech.net`) || Host(`viralizai.fael.rangeltech.net`)
+      - traefik.http.routers.viralizai.entrypoints=websecure
+      - traefik.http.routers.viralizai.tls.certresolver=letsencrypt
+      - traefik.http.routers.viralizai.service=viralizai
+networks:
+  public:
+    external: true
+  interna:
+    driver: bridge

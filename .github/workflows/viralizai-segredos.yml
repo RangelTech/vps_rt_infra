@@ -1,0 +1,69 @@
+name: Viralizai segredos
+# Grava NA VPS /opt/platform/secrets/viralizai.env (chave do llm-access, sessão, SMTP, Cakto, admin, demo) e cria as pastas de dados.
+# Valores vêm de secrets do ambiente `production` (nunca no Git nem no log). Depois rodar o Deploy (service=viralizai).
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: viralizai-segredos
+  cancel-in-progress: false
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH (chave só deste repo, host fixado)
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          cp host/known_hosts ~/.ssh/known_hosts
+      - name: Gravar viralizai.env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          VZ_LLM_KEY: ${{ secrets.VIRALIZAI_LLM_KEY }}
+          VZ_SEGREDO_SESSAO: ${{ secrets.VIRALIZAI_SEGREDO_SESSAO }}
+          VZ_CAKTO_SEGREDO: ${{ secrets.VIRALIZAI_CAKTO_SEGREDO }}
+          VZ_ADMIN_KEY: ${{ secrets.VIRALIZAI_ADMIN_KEY }}
+          VZ_DEMO_SENHA: ${{ secrets.VIRALIZAI_DEMO_SENHA }}
+          VZ_CHECKOUTS: ${{ vars.VIRALIZAI_CHECKOUTS }}
+          VZ_PLANOS_CAKTO: ${{ vars.VIRALIZAI_PLANOS_CAKTO }}
+          VZ_PEXELS_KEY: ${{ secrets.VIRALIZAI_PEXELS_KEY }}
+        run: |
+          test -n "$SMTP_PASSWORD" && test -n "$VZ_LLM_KEY" && test -n "$VZ_SEGREDO_SESSAO"
+          CO="$VZ_CHECKOUTS"; [ -n "$CO" ] || CO='{}'
+          PC="$VZ_PLANOS_CAKTO"; [ -n "$PC" ] || PC='{}'
+          {
+            printf '%s\n' "$SMTP_PASSWORD" "$VZ_LLM_KEY" "$VZ_SEGREDO_SESSAO" "${VZ_CAKTO_SEGREDO:-}" "${VZ_ADMIN_KEY:-}" "${VZ_DEMO_SENHA:-}" \
+              "$CO" "$PC" "${VZ_PEXELS_KEY:-}"
+            cat <<'SH'
+          set -e
+          f=/opt/platform/secrets/viralizai.env
+          umask 077
+          {
+            echo 'SMTP_HOST=smtp.hostinger.com'
+            echo 'SMTP_PORT=587'
+            echo 'SMTP_USER=contato@rangeltech.net'
+            echo 'VIRALIZAI_SMTP_FROM=Viralizaí <contato@rangeltech.net>'
+            printf 'SMTP_PASSWORD=%s\n' "$PW"
+            printf 'VIRALIZAI_LLM_KEY=%s\n' "$K"
+            printf 'VIRALIZAI_SEGREDO_SESSAO=%s\n' "$SS"
+            printf 'VIRALIZAI_CAKTO_SEGREDO=%s\n' "$CK"
+            printf 'VIRALIZAI_ADMIN_KEY=%s\n' "$AK"
+            printf 'VIRALIZAI_DEMO_SENHA=%s\n' "$DS"
+            printf 'VIRALIZAI_CHECKOUTS=%s\n' "$CO"
+            printf 'VIRALIZAI_PLANOS_CAKTO=%s\n' "$PC"
+            printf 'VIRALIZAI_PEXELS_KEY=%s\n' "$PX"
+          } > "$f.tmp"
+          mv "$f.tmp" "$f"
+          chmod 600 "$f"
+          mkdir -p /opt/platform/data/viralizai /opt/platform/data/viralizai-warp
+          chown 10001:10001 /opt/platform/data/viralizai
+          printf 'linhas: '; grep -c '=' "$f"
+          SH
+          } | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n sh -c 'read -r PW; read -r K; read -r SS; read -r CK; read -r AK; read -r DS; read -r CO; read -r PC; read -r PX; export PW K SS CK AK DS CO PC PX; sh -s'"

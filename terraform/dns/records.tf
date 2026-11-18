@@ -24,6 +24,7 @@ locals {
     "atende-ai|A" = { name = "atende-ai", type = "A", ttl = 300, value = var.vps_ip }
     "posta-ai|A" = { name = "posta-ai", type = "A", ttl = 300, value = var.vps_ip }
     "*.fael|A" = { name = "*.fael", type = "A", ttl = 300, value = var.vps_ip }
+    "viralizai|A" = { name = "viralizai", type = "A", ttl = 300, value = var.vps_ip }
     "fala-fael|A" = { name = "fala-fael", type = "A", ttl = 300, value = var.vps_ip }
     "posta-insta|A" = { name = "posta-insta", type = "A", ttl = 300, value = var.vps_ip }
     "posta-face|A" = { name = "posta-face", type = "A", ttl = 300, value = var.vps_ip }

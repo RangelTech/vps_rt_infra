@@ -251,6 +251,14 @@
       "manifest_asset": "release-manifest.json"
     },
     {
+      "service": "viralizai",
+      "repo": "RangelTech/viralizai",
+      "stack": "viralizai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
+    },
+    {
       "service": "perfil-navegador",
       "repo": "RangelTech/perfil-navegador",
       "stack": "perfil-navegador",
