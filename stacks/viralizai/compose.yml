@@ -46,7 +46,7 @@ services:
       - /opt/platform/data/viralizai:/data
     depends_on: [warp]
     mem_limit: 6g
-    cpus: 6
+    cpus: 8
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4)"]
