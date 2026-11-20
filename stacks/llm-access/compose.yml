@@ -13,6 +13,7 @@ services:
       UPSTREAM_URL: http://llm-queue.rt:8000
       ACCESS_DB_PATH: /data/access.db
       PORT: "8000"
+      SITE_ORIGINS: https://segundocerebro.pro,https://www.segundocerebro.pro,https://app.segundocerebro.pro,https://brain.rangeltech.net,https://remoto.rangeltech.net
     volumes:
       - /opt/platform/data/llm-access:/data
     read_only: true
