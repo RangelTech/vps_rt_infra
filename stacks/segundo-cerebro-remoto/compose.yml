@@ -34,6 +34,11 @@ services:
       - traefik.http.routers.segundo-cerebro-remoto.entrypoints=websecure
       - traefik.http.routers.segundo-cerebro-remoto.tls.certresolver=letsencrypt
       - traefik.http.routers.segundo-cerebro-remoto.service=segundo-cerebro-remoto
+      # dominio novo do Cerebro Pro (19/11/2026); o antigo continua respondendo
+      - traefik.http.routers.segundo-cerebro-remoto-pro.rule=Host(`app.segundocerebro.pro`)
+      - traefik.http.routers.segundo-cerebro-remoto-pro.entrypoints=websecure
+      - traefik.http.routers.segundo-cerebro-remoto-pro.tls.certresolver=letsencrypt
+      - traefik.http.routers.segundo-cerebro-remoto-pro.service=segundo-cerebro-remoto
 networks:
   public:
     external: true

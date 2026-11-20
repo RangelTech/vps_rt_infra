@@ -46,6 +46,12 @@ services:
       - traefik.http.routers.llm-access.tls.certresolver=letsencrypt
       - traefik.http.routers.llm-access.middlewares=security-headers@file
       - traefik.http.routers.llm-access.service=llm-access
+      # dominio novo do Cerebro Pro (19/11/2026); o antigo continua respondendo
+      - traefik.http.routers.llm-access-pro.rule=Host(`api.segundocerebro.pro`)
+      - traefik.http.routers.llm-access-pro.entrypoints=websecure
+      - traefik.http.routers.llm-access-pro.tls.certresolver=letsencrypt
+      - traefik.http.routers.llm-access-pro.middlewares=security-headers@file
+      - traefik.http.routers.llm-access-pro.service=llm-access
 networks:
   internal:
     external: true

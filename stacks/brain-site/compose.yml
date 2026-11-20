@@ -31,6 +31,12 @@ services:
       - traefik.http.routers.brain-site.tls.certresolver=letsencrypt
       - traefik.http.routers.brain-site.middlewares=security-headers@file
       - traefik.http.routers.brain-site.service=brain-site
+      # dominio novo do Cerebro Pro (19/11/2026); o antigo continua respondendo
+      - traefik.http.routers.brain-site-pro.rule=Host(`segundocerebro.pro`) || Host(`www.segundocerebro.pro`)
+      - traefik.http.routers.brain-site-pro.entrypoints=websecure
+      - traefik.http.routers.brain-site-pro.tls.certresolver=letsencrypt
+      - traefik.http.routers.brain-site-pro.middlewares=security-headers@file
+      - traefik.http.routers.brain-site-pro.service=brain-site
 networks:
   public:
     external: true
