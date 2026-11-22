@@ -219,7 +219,11 @@ def cuidar(c: dict, insts: dict, est: dict) -> None:
                 c["fase"], c["prep_em"] = "preparando", time.time()
                 log("candidata %d ligou; preparo iniciado" % c["instancia"])
             else:
+                c.setdefault("ssh_falha_desde", time.time())
                 log("candidata %d: SSH ainda não entrou (%s)" % (c["instancia"], (r.stderr or r2.stderr)[:120]))
+                # host que não instala a nossa chave (Permission denied) não melhora sozinho: 8 min ligada sem SSH = descarta
+                if time.time() - c["ssh_falha_desde"] > 8 * 60 and not c.get("volta") and c["instancia"] != ANTIGA:
+                    return falhou(c, est, "ligada mas o SSH não entra há 8 min: " + (r.stderr or r2.stderr)[:120])
         if c["fase"] == "ligando" and not c.get("volta") and c["instancia"] != ANTIGA and (time.time() - c["em"] > PRAZO_LIGAR or "no space" in msg):
             falhou(c, est, "não ligou: " + msg[:120])
     elif c["fase"] == "preparando":
@@ -306,6 +310,7 @@ def main() -> None:
             log("EMERGÊNCIA: fixa %d fora há %.0f min; trocando já pela %d" % (fixa, (time.time() - est["fixa_off_desde"]) / 60, c["instancia"]))
         if trocar(c, fixa, ref, insts):
             est.pop("fixa_off_desde", None)
+            emergencia = False  # a fixa nova está no ar: nada de alugar mais nesta rodada
             # as outras candidatas mais caras que a nova fixa não servem mais
             for o in est["candidatas"]:
                 if o is not c and o["preco"] >= c["preco"]:
@@ -316,6 +321,14 @@ def main() -> None:
                 est["candidatas"].append(c.pop("_reserva"))
             fixa, ref = c["instancia"], c["preco"]
         ESTADO.write_text(json.dumps(est))
+
+    # fora da emergência, candidata mais cara que a fixa não serve para nada: destrói (a que caiu e a antiga do Brasil ficam)
+    if not emergencia:
+        for o in est["candidatas"]:
+            if o["preco"] >= ref - 0.001 and not o.get("volta") and o["instancia"] != ANTIGA:
+                destruir(o["instancia"], "mais cara que a fixa (%.3f >= %.3f)" % (o["preco"], ref))
+                o["fase"] = "fim"
+        est["candidatas"] = [o for o in est["candidatas"] if o.get("fase") != "fim"]
 
     # procura sempre: mais barata que a mais barata que já temos
     vivas = [c for c in est["candidatas"] if c["instancia"] != ANTIGA]
@@ -334,7 +347,7 @@ def main() -> None:
     log("melhor %.3f (%d %s) | fixa %d %.3f | candidatas %s" % (p, o["id"], o.get("geolocation"), fixa, ref,
         ",".join("%d:%s:%.3f" % (c["instancia"], c["fase"], c["preco"]) for c in est["candidatas"]) or "-"))
     em_teste = [c for c in est["candidatas"] if not c.get("volta") and c["instancia"] != ANTIGA]
-    urgente = emergencia and not em_teste  # fixa caiu e ninguém sendo preparado: aluga a mais barata que existir
+    urgente = emergencia and len(em_teste) < 2  # fixa caiu: até 2 em teste ao mesmo tempo (host ruim é comum), a 1ª que passar vira a fixa
     if urgente:
         log("EMERGÊNCIA: alugando a mais barata disponível (%.3f) mesmo acima da fixa" % p)
     if urgente or (p <= teto and len(vivas) < MAX_CAND):

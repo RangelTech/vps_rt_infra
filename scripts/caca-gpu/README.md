@@ -18,13 +18,15 @@ qwen-abliterated-api), `chave` (SSH das instâncias da Vast, 600), `config.json`
    na hora. No máximo `max_candidatas` em teste ao mesmo tempo.
 2. **Testa sozinho** cada candidata: quando liga, entra por SSH, baixa o modelo, sobe o vLLM com o `start_vllm.sh` da produção e
    faz as provas (saúde, resposta curta, chamada de ferramenta e velocidade de pelo menos `min_tok_s`). Se não ligar em 35 min,
-   der "no space" ou falhar numa prova, a candidata é destruída e a máquina vai para a lista negra.
+   der "no space", ficar ligada 8 min sem aceitar a nossa chave SSH ou falhar numa prova, a candidata é destruída e a máquina
+   vai para a lista negra. Fora da emergência, candidata mais cara que a fixa é destruída.
 3. **Troca só de madrugada** (00h às 06h de Brasília): a candidata pronta mais barata vira a fixa (`GPU_STATIC_INSTANCE_ID` +
    recriar o `llm-queue`). Uma conversa real pela fila é conferida e **só então** a fixa anterior é destruída. Se a conversa
    não passar em 10 min, ele volta para a anterior.
 4. **Emergência** (a qualquer hora): se a fixa ficar offline ou parada por mais de 5 min, ele troca na hora pela candidata
-   pronta mais barata. Se não houver nenhuma, aluga a mais barata que existir, mesmo mais cara, e troca assim que ela passar
-   nas provas. A fixa que caiu **não é destruída**: fica guardada como candidata e, se voltar e for mais barata, é testada e
+   pronta mais barata. Se não houver, aluga as 2 mais baratas que existirem (mesmo mais caras), testa as duas ao mesmo tempo e
+   troca pela primeira que passar; a outra, mais cara, é destruída. Medido em 22/11/2026: Quebec caiu às 01:30, a troca de
+   emergência terminou às 02:52, e os clientes foram atendidos pelo Claude/GPT nesse meio tempo. A fixa que caiu **não é destruída**: fica guardada como candidata e, se voltar e for mais barata, é testada e
    volta na madrugada.
 5. A máquina antiga do Brasil (`antiga`) nunca é destruída. Se voltar a rodar, vira candidata.
 
