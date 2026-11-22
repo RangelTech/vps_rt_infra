@@ -127,8 +127,10 @@ A **marca vem do domínio** (um código, vários produtos): `app/marcas.py` em c
 
 ## 9. Operação (procedimentos)
 
-- **Trocar a GPU do Qwen**: alugar (imagem `ghcr.io/lucasrangelssouza/qwen-vllm:v0.30.0-cu13-slim1`, env `CONTAINER_RUNTIME=runc`),
-  baixar o modelo com `/workspace/dl_qwen.sh`, copiar `start_vllm.sh`, trocar `GPU_STATIC_INSTANCE_ID`, recriar `llm-queue`.
+- **Trocar a GPU do Qwen**: é automático pelo caça-GPU (`scripts/caca-gpu/README.md`): ele procura, aluga, testa e troca de
+  madrugada, e na hora se a fixa cair. À mão: alugar (imagem `ghcr.io/lucasrangelssouza/qwen-vllm:v0.30.0-cu13-slim1`, env
+  `CONTAINER_RUNTIME=runc`), baixar o modelo (`hf download twolven/Qwen3.8-27B-abliterated-AWQ-MTP --local-dir /workspace/models/awq`),
+  trocar `GPU_STATIC_INSTANCE_ID`, recriar `llm-queue`.
 - **Trocar a GPU de voz**: alugar 1x3090, `scripts/instalar.sh` e `scripts/subir.sh` do rt-voz, atualizar `VOZ_SSH_HOST/PORT` em
   `/opt/platform/secrets/rt-voz.env` e recriar a stack `rt-voz`.
 - **WhatsApp caiu**: o cliente toca em Reconectar no painel; o gateway recupera sozinho login concluído que não viu.
