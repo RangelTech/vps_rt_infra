@@ -11,7 +11,7 @@ proj, caminho, pasta = sys.argv[1], sys.argv[2], sys.argv[3]
 modo = sys.argv[4] if len(sys.argv) > 4 else 'env'
 PID = projetos[proj]; ENV = 'prod'
 ssh = ['ssh', '-i', os.path.expanduser('~/.ssh/vps_rt_infra_deploy_v3'), 'deploy@66.94.101.153']
-raw = subprocess.run(ssh + ['sudo -n cat ' + caminho], capture_output=True, text=True, timeout=60)
+raw = subprocess.run(ssh + ['sudo -n cat ' + caminho], capture_output=True, text=True, encoding='utf-8', timeout=60)
 assert raw.returncode == 0, 'falha ao ler ' + caminho
 vars_ = {}; ordem = []
 if modo == 'bloco':

@@ -23,7 +23,7 @@ for proj, pasta, caminho, modo in ITENS:
     r = subprocess.run([sys.executable, 'render_env.py', proj, pasta, dest, modo], capture_output=True, text=True)
     if r.returncode != 0:
         res.append((proj, pasta, 'ERRO ao gerar: ' + r.stdout.strip()[:80])); falhas += 1; continue
-    orig = subprocess.run(ssh + ['sudo -n cat ' + caminho], capture_output=True, text=True).stdout
+    orig = subprocess.run(ssh + ['sudo -n cat ' + caminho], capture_output=True, text=True, encoding='utf-8').stdout
     novo = open(dest, encoding='utf-8').read()
     igual = (orig.rstrip() == novo.rstrip()) if modo == 'bloco' else (parse(orig) == parse(novo))
     res.append((proj, pasta, 'igual' if igual else 'DIFERENTE'))
