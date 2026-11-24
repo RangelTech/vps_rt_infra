@@ -87,7 +87,8 @@ while IFS= read -r -u 3 f; do
   ndumps=$((ndumps+1)); b="$(basename "$f" .dump)"; db="${b#*.}"; n=$((n+1)); t="v$n"
   PSQL -d postgres -Atc "create database $t" >/dev/null
   toc="$(PGRESTORE -l < "$f" 2>/dev/null | grep -E '^[0-9]+; [0-9]+ [0-9]+ TABLE ' | grep -v -c -E ' TABLE (DATA|ATTACH) ')" || true
-  err="$(PGRESTORE --no-owner --no-privileges -d "$t" < "$f" 2>&1 >/dev/null | grep -v -i -E 'already exists|extension' | head -3)"
+  # dumps do pg_dump novo trazem 'SET transaction_timeout' (parametro do Postgres 17): inofensivo no pg16 de verificacao
+  err="$(PGRESTORE --no-owner --no-privileges -d "$t" < "$f" 2>&1 >/dev/null | grep -v -i -E 'already exists|extension|transaction_timeout|errors ignored on restore' | head -3)"
   nt="$(PSQL -d "$t" -Atc "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema')")"
   badidx="$(PSQL -d "$t" -Atc "select count(*) from pg_index where not indisvalid")"
   PSQL -d "$t" -Atc "create extension if not exists amcheck" >/dev/null 2>&1
