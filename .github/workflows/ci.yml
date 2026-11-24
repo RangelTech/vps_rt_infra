@@ -16,6 +16,12 @@ jobs:
           shellcheck -S warning -x scripts/*.sh host/*.sh
       - name: python (resolve_release)
         run: python3 -m py_compile scripts/resolve_release.py
+      - name: python (ferramentas do Infisical e do registro)
+        run: python3 -m py_compile scripts/infisical/*.py scripts/registro/validar.py
+      - name: registro de produtos (spec 57, 10A.1)
+        run: |
+          pip install -q pyyaml
+          python3 scripts/registro/validar.py
       - name: compose config por stack
         run: |
           sudo mkdir -p /opt/platform/secrets
