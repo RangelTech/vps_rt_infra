@@ -77,6 +77,51 @@ jobs:
           rsync -az -e "$SSH" "releases/$SERVICE.lock" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/releases/"
           rsync -az -e "$SSH" scripts/deploy.sh scripts/lib.sh "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/scripts/"
           rsync -az --exclude .release.env -e "$SSH" "stacks/$STACK/" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/stacks/$STACK/"
+      - name: Gerar os .env a partir do Infisical (spec 57, 0A.2 item 4)
+        # Fonte oficial dos segredos: Infisical (identidade SOMENTE LEITURA). Gera aqui no runner, envia e instala na VPS
+        # (root:root 600). Se o Infisical falhar, o job para ANTES do deploy e nada muda na VPS. Guarda 1 copia anterior.
+        if: ${{ !inputs.dry_run }}
+        env:
+          SERVICE: ${{ inputs.service }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_LEITURA_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_LEITURA_CLIENT_SECRET }}
+        run: |
+          SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          STACK="$(grep '^stack=' "releases/$SERVICE.lock" | cut -d= -f2)"
+          if [ -z "$INFISICAL_CLIENT_ID" ]; then echo "sem credencial do Infisical: .env mantidos como estao"; exit 0; fi
+          umask 077
+          {
+            echo "INFISICAL_URL=https://infisical.rangeltech.net"
+            echo "INFISICAL_CLIENT_ID=$INFISICAL_CLIENT_ID"
+            echo "INFISICAL_CLIENT_SECRET=$INFISICAL_CLIENT_SECRET"
+          } > "$RUNNER_TEMP/inf.env"
+          export INFISICAL_ENV_FILE="$RUNNER_TEMP/inf.env"
+          mkdir -p "$RUNNER_TEMP/envs"
+          for f in $(grep -ohE '/opt/platform/secrets/[A-Za-z0-9_.-]+[.]env' "stacks/$STACK/compose.yml" | sort -u); do
+            b="$(basename "$f")"
+            m="$(python3 -c 'import json,sys; print(" ".join(json.load(open("scripts/infisical/mapa_envs.json")).get(sys.argv[1], [])))' "$b")"
+            if [ -z "$m" ]; then echo "sem mapa no Infisical: $b (mantido como esta)"; continue; fi
+            # shellcheck disable=SC2086
+            python3 scripts/infisical/render_env.py $m "$RUNNER_TEMP/envs/$b"
+          done
+          rm -f "$RUNNER_TEMP/inf.env"
+          if [ -z "$(ls -A "$RUNNER_TEMP/envs")" ]; then echo "nenhum .env mapeado nesta stack"; exit 0; fi
+          rsync -az -e "$SSH" "$RUNNER_TEMP/envs/" "$VPS_DEPLOY_USER@$VPS_HOST:/tmp/rt-envs-$SERVICE/"
+          rm -rf "$RUNNER_TEMP/envs"
+          $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n /bin/sh -s" <<REMOTO
+          set -e
+          mkdir -p /opt/platform/secrets/.anterior
+          chmod 700 /opt/platform/secrets/.anterior
+          for f in /tmp/rt-envs-$SERVICE/*.env; do
+            b=\$(basename "\$f")
+            if [ -f "/opt/platform/secrets/\$b" ]; then cp -p "/opt/platform/secrets/\$b" "/opt/platform/secrets/.anterior/\$b"; fi
+            install -m 600 -o root -g root "\$f" "/opt/platform/secrets/\$b"
+            echo "instalado \$b"
+          done
+          rm -rf /tmp/rt-envs-$SERVICE
+          REMOTO
       - name: Deploy (falha o job se o healthcheck falhar)
         if: ${{ !inputs.dry_run }}
         env:

@@ -1,0 +1,138 @@
+{
+ "agent-platform-backend.env": [
+  "luar",
+  "agent-platform-backend"
+ ],
+ "ai-aluno-turn.env": [
+  "plataforma",
+  "ai-aluno-turn"
+ ],
+ "animaai.env": [
+  "rt-produtos",
+  "animaai"
+ ],
+ "arenabruta.env": [
+  "rt-produtos",
+  "arenabruta"
+ ],
+ "astralai.env": [
+  "rt-produtos",
+  "astralai"
+ ],
+ "atendeai.env": [
+  "rt-produtos",
+  "atendeai"
+ ],
+ "boateazul.env": [
+  "rt-produtos",
+  "boateazul"
+ ],
+ "canais.env": [
+  "luar",
+  "canais"
+ ],
+ "casaai.env": [
+  "rt-produtos",
+  "casaai"
+ ],
+ "chatwoot-bridge.env": [
+  "luar",
+  "chatwoot-bridge"
+ ],
+ "chatwoot-rails.env": [
+  "luar",
+  "chatwoot-rails"
+ ],
+ "cortai.env": [
+  "rt-produtos",
+  "cortai"
+ ],
+ "gateway-keys.env": [
+  "qwen",
+  "gateway-keys"
+ ],
+ "kernel-harness.env": [
+  "luar",
+  "kernel-harness"
+ ],
+ "llm-access.env": [
+  "qwen",
+  "llm-access"
+ ],
+ "llm-gateway.env": [
+  "qwen",
+  "llm-gateway"
+ ],
+ "llm-queue.env": [
+  "qwen",
+  "llm-queue"
+ ],
+ "luar-conector-hub.env": [
+  "luar",
+  "luar-conector-hub"
+ ],
+ "perfil-navegador.env": [
+  "rt-produtos",
+  "perfil-navegador"
+ ],
+ "perfilai.env": [
+  "rt-produtos",
+  "perfilai"
+ ],
+ "portfolio-api.env": [
+  "plataforma",
+  "portfolio-api"
+ ],
+ "postaai.env": [
+  "rt-produtos",
+  "postaai"
+ ],
+ "proxy-sp.env": [
+  "plataforma",
+  "proxy-sp"
+ ],
+ "rendai.env": [
+  "rt-produtos",
+  "rendai"
+ ],
+ "restic.env": [
+  "plataforma",
+  "restic"
+ ],
+ "rt-admin.env": [
+  "rt-produtos",
+  "_admin"
+ ],
+ "rt-canais.env": [
+  "luar",
+  "rt-canais"
+ ],
+ "rt-gateway.env": [
+  "luar",
+  "rt-gateway"
+ ],
+ "rt-hermes-produtos.env": [
+  "luar",
+  "rt-hermes-produtos"
+ ],
+ "rt-hermes.env": [
+  "luar",
+  "rt-hermes"
+ ],
+ "runtime-manager.env": [
+  "luar",
+  "runtime-manager"
+ ],
+ "segundo-cerebro-remoto.env": [
+  "segundo-cerebro",
+  "segundo-cerebro-remoto"
+ ],
+ "shapeai.env": [
+  "rt-produtos",
+  "shapeai"
+ ],
+ "viralizai.env": [
+  "rt-produtos",
+  "viralizai"
+ ]
+}
