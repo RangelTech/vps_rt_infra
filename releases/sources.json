@@ -45,20 +45,6 @@
       ]
     },
     {
-      "service": "kernel-llm",
-      "repo": "RangelTech/kernel-llm",
-      "stack": "kernel-llm",
-      "compose_service": "kernel",
-      "layer": "B"
-    },
-    {
-      "service": "litellm",
-      "repo": "RangelTech/litellm-router",
-      "stack": "litellm",
-      "compose_service": "litellm",
-      "layer": "B"
-    },
-    {
       "service": "llm-gateway",
       "repo": "RangelTech/luar_ai_gateway",
       "stack": "llm-gateway",
