@@ -28,7 +28,7 @@ jobs:
           for f in stacks/*/compose.yml; do
             echo "== $f"; d="$(dirname "$f")"
             # arquivos de segredo nao existem no runner: cria vazios so para o `config` validar o YAML
-            grep -oE 'env_file: */opt/platform/secrets/[A-Za-z0-9_.-]+' "$f" | awk '{print $NF}' | sort -u | while read -r e; do sudo touch "$e"; done
+            grep -oE '/opt/platform/secrets/[A-Za-z0-9_.-]+' "$f" | sort -u | while read -r e; do sudo touch "$e"; done
             grep -oE 'env_file: *\./[A-Za-z0-9_.-]+\.env' "$f" | awk '{print $NF}' | sort -u | while read -r e; do touch "$d/${e#./}"; done
             vars="$(grep -oE '\$\{[A-Z0-9_]+_IMAGE' "$f" | sed 's/^..//' | sort -u | sed 's/$/=x/' | tr '\n' ' ')"
             # shellcheck disable=SC2086
