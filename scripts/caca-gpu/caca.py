@@ -148,8 +148,32 @@ def fixa_atual() -> int:
     return int(env("llm-queue", "GPU_STATIC_INSTANCE_ID") or 0)
 
 
+def infisical_fixa(inst: int) -> bool:
+    """Mantem o Infisical (fonte oficial dos segredos, spec 57) com a GPU fixa nova; senao o proximo deploy voltaria a antiga."""
+    try:
+        cfg = {}
+        for l in (Path(__file__).parent / "infisical.env").read_text(encoding="utf-8").splitlines():
+            if "=" in l and not l.startswith("#"):
+                k, v = l.split("=", 1)
+                cfg[k] = v
+        h = {"User-Agent": "curl/8.5.0", "Content-Type": "application/json"}
+        def req(path, body, metodo, tok=None):
+            hh = dict(h, **({"Authorization": "Bearer " + tok} if tok else {}))
+            r = urllib.request.Request(cfg["INFISICAL_URL"] + path, data=json.dumps(body).encode(), headers=hh, method=metodo)
+            return json.load(urllib.request.urlopen(r, timeout=30))
+        tok = req("/api/v1/auth/universal-auth/login", {"clientId": cfg["INFISICAL_CLIENT_ID"], "clientSecret": cfg["INFISICAL_CLIENT_SECRET"]}, "POST")["accessToken"]
+        req("/api/v3/secrets/raw/GPU_STATIC_INSTANCE_ID", {"workspaceId": cfg["INFISICAL_PROJETO_QWEN"], "environment": "prod",
+            "secretPath": "/llm-queue", "secretValue": str(inst)}, "PATCH", tok)
+        log("Infisical atualizado: GPU_STATIC_INSTANCE_ID=%d" % inst)
+        return True
+    except Exception as e:
+        log("FALHA ao atualizar o Infisical com a GPU fixa %d: %r (o proximo deploy do llm-queue voltaria a anterior)" % (inst, e))
+        return False
+
+
 def apontar(inst: int) -> None:
     sh(["sudo", "sed", "-i", "s/^GPU_STATIC_INSTANCE_ID=.*/GPU_STATIC_INSTANCE_ID=%d/" % inst, SEGREDO], 30)
+    infisical_fixa(inst)
     r = subprocess.run("cd %s && sudo docker compose --env-file .release.env up -d --force-recreate" % STACK, shell=True,
                        capture_output=True, text=True, timeout=300)
     log("llm-queue recriado apontando para %d (rc %d)" % (inst, r.returncode))
