@@ -21,8 +21,6 @@ services:
       POSTAAI_LLM_MODELO: hermes-produtos
       POSTAAI_BASE_URL: https://posta-ai.rangeltech.net
       POSTAAI_PN_URL: http://perfil-navegador:8000
-      POSTAAI_CHECKOUTS: '{"insta:start": "https://pay.cakto.com.br/aqxvtw8", "insta:pro": "https://pay.cakto.com.br/ykzfv3c", "insta:turbo": "https://pay.cakto.com.br/5hmuvs9", "face:start": "https://pay.cakto.com.br/mg5c8jh", "face:pro": "https://pay.cakto.com.br/zssrf6n", "face:turbo": "https://pay.cakto.com.br/38rwfiw", "tiktok:start": "https://pay.cakto.com.br/34jdynq", "tiktok:pro": "https://pay.cakto.com.br/n9emy3n", "tiktok:turbo": "https://pay.cakto.com.br/8g2ectm", "linkdn:start": "https://pay.cakto.com.br/wroj3gz", "linkdn:pro": "https://pay.cakto.com.br/iqvquku", "linkdn:turbo": "https://pay.cakto.com.br/3fccq4y"}'
-      POSTAAI_PLANOS_CAKTO: '{"9f11087e-6d8e-4ad9-a7f1-4e5109ffca6a": "insta:start", "a0d270de-2e3f-4b9b-9ef2-5486fb6c8511": "insta:pro", "48f085d0-46b6-4ac9-9e85-33dd536d5bef": "insta:turbo", "bdd8f94f-3ff9-4cef-9efa-89e528b71ccb": "face:start", "a7922886-adb1-4c31-9eb3-dca5286edf16": "face:pro", "edaf74c0-47ae-4057-977d-7ba2e25e8a3e": "face:turbo", "783b3f0f-7f70-4608-8906-25247c48d38e": "tiktok:start", "f05ad317-461a-40e9-9355-da2deda1b553": "tiktok:pro", "a3fc2cde-cdc5-4564-8eba-35928892a1c8": "tiktok:turbo", "156984e3-ec94-4ac5-916c-4332f6a90469": "linkdn:start", "9fb1e9d5-ba2c-41ec-a936-1faf6067678f": "linkdn:pro", "6af422bc-f513-4f9f-8c28-8d40024b5063": "linkdn:turbo"}'
       POSTAAI_LANCAMENTO_ATE: '2026-12-15'
     volumes:
       - /opt/platform/data/postaai:/data

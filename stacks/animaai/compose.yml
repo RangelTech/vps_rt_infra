@@ -19,8 +19,6 @@ services:
       ANIMAAI_DEMO_EMAIL: demo@rangeltech.net
       ANIMAAI_LLM_MODELO: rt-geral
       ANIMAAI_BASE_URL: https://anima-ai.rangeltech.net
-      ANIMAAI_CHECKOUTS: '{"start": "https://pay.cakto.com.br/vtp5qog", "pro": "https://pay.cakto.com.br/yx6jv9o", "turbo": "https://pay.cakto.com.br/38esie3"}'
-      ANIMAAI_PLANOS_CAKTO: '{"b691ed21-4505-4642-af78-160b8534c883": "start", "0544849f-6687-4b35-bb15-7e4147479714": "pro", "109aea22-6d08-48ff-b39a-f583ba2f006e": "turbo"}'
       ANIMAAI_LANCAMENTO_ATE: '2026-11-30'
       ANIMAAI_WORKERS: "1"
     volumes:

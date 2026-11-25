@@ -19,8 +19,6 @@ services:
       CASAAI_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
       CASAAI_LLM_MODELO: hermes-produtos
       CASAAI_BASE_URL: https://casa.rangeltech.net
-      CASAAI_CHECKOUTS: '{"corretor": "https://pay.cakto.com.br/q726rve", "imobiliaria": "https://pay.cakto.com.br/mpwmrsd"}'
-      CASAAI_PLANOS_CAKTO: '{"c29883e0-f554-4191-b445-61538fea815a": "corretor", "036165ef-f0b0-4799-a968-cf5650110400": "imobiliaria"}'
       CASAAI_LANCAMENTO_ATE: '2026-12-15'
     volumes:
       - /opt/platform/data/casaai:/data

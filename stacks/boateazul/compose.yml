@@ -19,8 +19,6 @@ services:
       BOATE_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
       BOATE_LLM_MODELO: hermes-produtos
       BOATE_BASE_URL: https://azul.rangeltech.net
-      BOATE_CHECKOUTS: '{"essencial": "https://pay.cakto.com.br/33bty2e", "conexao": "https://pay.cakto.com.br/38ndg6y", "intimo": "https://pay.cakto.com.br/jrno9v2"}'
-      BOATE_PLANOS_CAKTO: '{"542a6a2b-cc84-4ba4-8fa8-b3c528d0cd45": "essencial", "095e9897-d11e-4c58-807f-989405a8be93": "conexao", "1fe700c0-a82c-4de5-b6ff-8065c57ef74d": "intimo"}'
     volumes:
       - /opt/platform/data/boateazul:/data
     mem_limit: 512m

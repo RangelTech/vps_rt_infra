@@ -20,8 +20,6 @@ services:
       SHAPEAI_LLM_MODELO: hermes-produtos
       SHAPEAI_VISAO_MODELO: visao   # leitura da foto da receita (llm-access)
       SHAPEAI_BASE_URL: https://shape.rangeltech.net
-      SHAPEAI_CHECKOUTS: '{"pro": "https://pay.cakto.com.br/3eahh5c", "elite": "https://pay.cakto.com.br/33uuugo"}'
-      SHAPEAI_PLANOS_CAKTO: '{"c68988d6-5f27-436c-befd-02bd09b39929": "pro", "d2e2804d-96fe-4af4-8a5c-17432cf1a60e": "elite"}'
       SHAPEAI_LANCAMENTO_ATE: '2026-12-15'
     volumes:
       - /opt/platform/data/shapeai:/data
