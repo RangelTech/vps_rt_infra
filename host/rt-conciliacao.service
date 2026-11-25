@@ -1,0 +1,7 @@
+[Unit]
+Description=Conciliacao diaria da Cakto (spec 57, 10A.2): pedidos das duas contas x o que os produtos liberaram
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/platform/scripts/conciliacao/conciliar.py
