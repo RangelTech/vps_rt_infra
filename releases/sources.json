@@ -222,11 +222,15 @@
     },
     {
       "service": "brain-site",
-      "repo": "RangelTech/segundo_cerebro_site",
+      "repo": "RangelTech/second-brain",
       "stack": "brain-site",
       "compose_service": "web",
       "layer": "B",
-      "manifest_asset": "release-manifest.json"
+      "manifest_asset": "release-manifest.site.json",
+      "aliases": [
+        "RangelTech/segundo_cerebro_site"
+      ],
+      "tag_prefix": "site-v"
     },
     {
       "service": "cortai",

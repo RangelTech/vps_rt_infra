@@ -63,10 +63,16 @@ def main():
     s = src[svc]
     repo = s["repo"]
     if args.version:
+        if s.get("tag_prefix") and not args.version.startswith(s["tag_prefix"]):
+            print(f"[{svc}] versao {args.version} sem o prefixo {s['tag_prefix']} do monorepo")
+            return 2
         rel = json.load(gh(f"https://api.github.com/repos/{repo}/releases/tags/{args.version}"))
     else:
-        lista = json.load(gh(f"https://api.github.com/repos/{repo}/releases?per_page=20"))
+        lista = json.load(gh(f"https://api.github.com/repos/{repo}/releases?per_page=50"))
         lista = [r for r in lista if not r.get("draft")]
+        # monorepo (spec 57 §3.3.4): varios componentes no mesmo repo; cada servico so enxerga as tags do seu prefixo
+        if s.get("tag_prefix"):
+            lista = [r for r in lista if r["tag_name"].startswith(s["tag_prefix"])]
         if not lista:
             print(f"[{svc}] sem release em {repo}")
             return 1
