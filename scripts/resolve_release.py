@@ -94,7 +94,7 @@ def main():
     if man_name not in assets:
         print(f"[{svc}] release {rel['tag_name']} sem {man_name}")
         return 1
-    m = json.load(gh(assets[man_name]["browser_download_url"], "application/octet-stream"))
+    m = json.load(gh(assets[man_name]["url"], "application/octet-stream"))  # URL da API: vale para repositório público e privado
     # --- validacao
     assert m.get("schema") == 1, "schema invalido"
     # "aliases": nomes anteriores do repositorio (renomeacao): manifestos de releases antigas ainda trazem o nome antigo.
