@@ -11,7 +11,9 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
-    env_file: /opt/platform/secrets/atendeai.env
+    env_file:
+      - /opt/platform/secrets/atendeai.env
+      - /opt/platform/secrets/rt-admin.env   # login do painel /admin (igual em todos os produtos)
     environment:
       ATENDEAI_DADOS: /data
       ATENDEAI_DEMO_EMAIL: demo@rangeltech.net
