@@ -34,7 +34,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    networks: [public]
+    networks: [public, internal]
     labels:
       - rt.service=animaai
       - rt.layer=B
@@ -47,4 +47,6 @@ services:
       - traefik.http.routers.animaai.service=animaai
 networks:
   public:
+    external: true
+  internal:
     external: true

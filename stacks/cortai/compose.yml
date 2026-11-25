@@ -34,7 +34,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    networks: [public]
+    networks: [public, internal]
     labels:
       - rt.service=cortai
       - rt.layer=B
@@ -47,4 +47,6 @@ services:
       - traefik.http.routers.cortai.service=cortai
 networks:
   public:
+    external: true
+  internal:
     external: true
