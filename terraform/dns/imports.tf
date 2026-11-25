@@ -2,5 +2,5 @@
 # tentando criar o "qwen" de novo). O import é idempotente: depois de importado, não faz mais nada.
 import {
   to = hostinger_dns_record.r["qwen|A"]
-  id = "qwen|A|66.94.101.153"
+  id = "rangeltech.net|qwen|A|66.94.101.153"
 }
