@@ -1,0 +1,10 @@
+[Unit]
+Description=rt-backup todo dia as 03:30 (horario de Brasilia)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 America/Sao_Paulo
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

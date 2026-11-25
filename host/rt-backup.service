@@ -1,0 +1,12 @@
+[Unit]
+Description=rt-backup: backup diario da VPS (dumps Postgres + estado) para o Google Drive com restic
+Wants=network-online.target
+After=network-online.target docker.service
+[Service]
+Type=oneshot
+Environment=BACKUP_TAG=daily
+ExecStart=/opt/platform/scripts/backup.sh
+TimeoutStartSec=3h
+Nice=10
+IOSchedulingClass=idle
+SyslogIdentifier=rt-backup
