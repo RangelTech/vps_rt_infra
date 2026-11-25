@@ -17,7 +17,7 @@ TAG="${BACKUP_TAG:-daily}"
 MIN_DUMP_BYTES="${MIN_DUMP_BYTES:-2000}"
 PG_INCLUDE='^(postgres|matrix-postgres|canais-matrix-postgres|evolution-pg-.*)$'
 # bancos grandes e reconstruiveis a partir da fonte: nao entram no dump logico diario (pncp = 15 GB, embeddings/OBTs do PNCP e SIOPE)
-SKIP_DBS="${BACKUP_SKIP_DBS:-pncp}"
+SKIP_DBS="${BACKUP_SKIP_DBS:-pncp produtos_teste}"   # produtos_teste: banco descartável das baterias de teste (spec 57)
 
 # guarda de host: so roda na VPS Contabo da Rangel Tech (nunca em outra maquina)
 [ "$(hostname)" = "vmi3468840" ] || { echo "host inesperado: $(hostname) - abortando" >&2; exit 2; }
