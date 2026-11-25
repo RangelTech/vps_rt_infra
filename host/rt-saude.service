@@ -1,0 +1,9 @@
+[Unit]
+Description=rt-saude: coletor de saude (disco, Postgres, MinIO, backup) a cada 5 min (spec 57 6.10.5)
+After=docker.service network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/platform/scripts/saude/coletor.py
+TimeoutStartSec=4min
+Nice=10
+SyslogIdentifier=rt-saude

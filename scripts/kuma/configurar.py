@@ -66,7 +66,7 @@ def monitores_desejados():
         ('Infraestrutura', 'pgbouncer', MonitorType.PORT, 'pgbouncer:5432'),
         ('Infraestrutura', 'Redis', MonitorType.PORT, 'redis:6379'),
     ]
-    for nome in ('disco', 'postgres-conexoes', 'postgres-cache', 'postgres-transacao-longa', 'pgbouncer-espera',
+    for nome in ('disco', 'postgres-conexoes', 'postgres-cache', 'postgres-transacao-longa',
                  'minio-pronto', 'minio-erros', 'backup-idade', 'coletor'):
         out.append(('Saúde', f'Saúde: {nome}', MonitorType.PUSH, nome))
     return out
@@ -84,7 +84,8 @@ def main():
     notif = {'name': 'E-mail do Lucas', 'type': NotificationType.SMTP, 'isDefault': True, 'applyExisting': True,
              'smtpHost': smtp['SMTP_HOST'], 'smtpPort': int(smtp['SMTP_PORT']), 'smtpSecure': False,
              'smtpUsername': smtp['SMTP_USER'], 'smtpPassword': smtp['SMTP_PASSWORD'],
-             'smtpFrom': f"Monitor Rangel Tech <{smtp['SMTP_USER']}>", 'smtpTo': DESTINO_EMAIL}
+             'smtpFrom': f"Monitor Rangel Tech <{smtp['SMTP_USER']}>", 'smtpTo': DESTINO_EMAIL,
+             'smtpBCC': smtp['SMTP_USER']}  # cópia na caixa da casa: o QA confere a chegada por IMAP
     atuais = {n['name']: n for n in api.get_notifications()}
     if notif['name'] in atuais:
         api.edit_notification(atuais[notif['name']]['id'], **notif)
