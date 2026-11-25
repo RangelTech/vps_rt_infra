@@ -17,12 +17,24 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
+# repositório privado (ex.: AutoAI, spec 57 §7): o token do próprio vps_rt_infra não lê; usa o token só de leitura do cofre
+TOKEN_LEITURA = os.environ.get("RELEASES_READ_TOKEN", "")
 
 
 def gh(url, accept="application/vnd.github+json"):
-    req = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": "rt-resolve-release"})
-    if TOKEN:
-        req.add_header("Authorization", "Bearer " + TOKEN)
+    for tok in [t for t in (TOKEN, TOKEN_LEITURA) if t] or [""]:
+        req = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": "rt-resolve-release"})
+        if tok:
+            req.add_header("Authorization", "Bearer " + tok)
+        try:
+            return _abrir(req)
+        except urllib.error.HTTPError as e:
+            if e.code != 404 or tok == (TOKEN_LEITURA or tok):
+                raise
+    raise RuntimeError("inalcançável")
+
+
+def _abrir(req):
     for tentativa in range(4):
         try:
             return urllib.request.urlopen(req, timeout=60)

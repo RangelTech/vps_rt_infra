@@ -46,6 +46,7 @@ jobs:
           SERVICE: ${{ inputs.service }}
           VERSION: ${{ inputs.version }}
           GITHUB_TOKEN: ${{ github.token }}
+          RELEASES_READ_TOKEN: ${{ secrets.RELEASES_READ_TOKEN }}
         run: |
           echo "$SERVICE" | grep -Eq '^[a-z0-9-]+$'
           if [ -n "$VERSION" ]; then python3 scripts/resolve_release.py "$SERVICE" --version "$VERSION"; else python3 scripts/resolve_release.py "$SERVICE"; fi
@@ -77,6 +78,22 @@ jobs:
           rsync -az -e "$SSH" "releases/$SERVICE.lock" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/releases/"
           rsync -az -e "$SSH" scripts/deploy.sh scripts/lib.sh "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/scripts/"
           rsync -az --exclude .release.env -e "$SSH" "stacks/$STACK/" "$VPS_DEPLOY_USER@$VPS_HOST:/opt/platform/stacks/$STACK/"
+      - name: Entregar o artefato de repositorio privado (a VPS baixa sem token; o deploy.sh confere o sha256)
+        if: ${{ !inputs.dry_run }}
+        env:
+          SERVICE: ${{ inputs.service }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_DEPLOY_USER: ${{ secrets.VPS_DEPLOY_USER }}
+          GH_TOKEN: ${{ secrets.RELEASES_READ_TOKEN }}
+        run: |
+          REPO="$(grep '^repo=' "releases/$SERVICE.lock" | cut -d= -f2)"
+          VER="$(grep '^version=' "releases/$SERVICE.lock" | cut -d= -f2)"
+          if [ "$(gh api "repos/$REPO" -q .private 2>/dev/null)" != "true" ]; then echo "$REPO e publico: a VPS baixa direto"; exit 0; fi
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=60"
+          gh release download "$VER" -R "$REPO" -p image.tar.gz -O "$RUNNER_TEMP/art.tar.gz"
+          rsync -az -e "$SSH" "$RUNNER_TEMP/art.tar.gz" "$VPS_DEPLOY_USER@$VPS_HOST:/tmp/rt-art-$SERVICE.tar.gz"
+          $SSH "$VPS_DEPLOY_USER@$VPS_HOST" "sudo -n mkdir -p /opt/platform/data/artifacts && sudo -n mv /tmp/rt-art-$SERVICE.tar.gz /opt/platform/data/artifacts/$SERVICE-$VER.tar.gz"
+          rm -f "$RUNNER_TEMP/art.tar.gz"
       - name: Gerar os .env a partir do Infisical (spec 57, 0A.2 item 4)
         # Fonte oficial dos segredos: Infisical (identidade SOMENTE LEITURA). Gera aqui no runner, envia e instala na VPS
         # (root:root 600). Se o Infisical falhar, o job para ANTES do deploy e nada muda na VPS. Guarda 1 copia anterior.
