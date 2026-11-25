@@ -78,7 +78,7 @@ produtos:
       infisical: { projeto: segundo-cerebro, pasta: segundo-cerebro-remoto }, kuma: segundo-cerebro }
   - { id: qwen, nome: "Qwen (LLM, fila, GPU e painel)", tipo: plataforma, servico: llm-access, repositorio: LucasRangelSSouza/qwen-abliterated-api,
       hosts: [qwen.rangeltech.net, api.segundocerebro.pro, painel.rangeltech.net], infisical: { projeto: qwen, pasta: llm-access }, kuma: qwen }
-  - { id: autoai, nome: "AutoAI", tipo: em_preparo, servico: autoos, repositorio: RangelTech/autoos,
+  - { id: autoai, nome: "AutoAI", tipo: em_teste, servico: autoai, repositorio: RangelTech/autoai,
       hosts: [autoai.rangeltech.net], infisical: { projeto: rt-produtos, pasta: autoai }, kuma: autoai }
   - { id: luar, nome: "LUAR", tipo: em_preparo, servico: chatwoot-rails, repositorio: RangelTech/luar_chatwoot,
       hosts: [ia.rangeltech.net, luar.rangeltech.net, chat.rangeltech.net, conector.rangeltech.net, bridge.rangeltech.net],

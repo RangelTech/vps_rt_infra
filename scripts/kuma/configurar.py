@@ -51,6 +51,8 @@ def monitores_desejados():
         if x['tipo'] == 'produto':
             out.append(('Produtos', x['nome'], MonitorType.HTTP, f"https://{x['hosts'][0]}/health"))
             out.append(('Produtos', x['nome'] + ' (arquivos)', MonitorType.HTTP, f"https://{x['hosts'][0]}/health/arquivos"))
+        elif x['tipo'] == 'em_teste':  # no ar para teste, ainda sem venda (ex.: AutoAI, spec 57 §7)
+            out.append(('Produtos', x['nome'] + ' (em teste)', MonitorType.HTTP, f"https://{x['hosts'][0]}/health"))
     out += [
         ('Plataformas', 'Segundo Cérebro: site', MonitorType.HTTP, 'https://segundocerebro.pro/'),
         ('Plataformas', 'Segundo Cérebro: app web', MonitorType.HTTP, 'https://app.segundocerebro.pro/'),

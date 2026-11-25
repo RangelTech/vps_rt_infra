@@ -18,7 +18,7 @@ for x in reg['produtos']:
         'servico': x.get('servico'), 'hosts': x.get('hosts') or [], 'cakto': x.get('cakto') or [],
         'links': {
             'produto': f'https://{host}/' if host else None,
-            'admin': f'https://{host}/admin' if host and x['tipo'] in ('produto', 'variante') else None,
+            'admin': f'https://{host}/admin' if host and x['tipo'] in ('produto', 'variante', 'em_teste') else None,
             'github': f'https://github.com/{repo}' if repo else None,
             'readme': f'https://github.com/{repo}#readme' if repo else None,
             'deploy': 'https://github.com/RangelTech/vps_rt_infra/actions/workflows/deploy.yml' if x.get('servico') in fontes else None,
