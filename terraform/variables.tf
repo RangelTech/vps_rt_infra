@@ -111,12 +111,6 @@ variable "pgadmin_version" {
   default     = "8.12"
 }
 
-variable "grafana_version" {
-  description = "Grafana image tag"
-  type        = string
-  default     = "11.2.0"
-}
-
 variable "uptime_kuma_version" {
   description = "Uptime Kuma image tag"
   type        = string
@@ -127,36 +121,6 @@ variable "code_server_version" {
   description = "linuxserver/code-server image tag"
   type        = string
   default     = "4.103.2"
-}
-
-variable "prometheus_version" {
-  description = "Prometheus image tag"
-  type        = string
-  default     = "v2.54.1"
-}
-
-variable "loki_version" {
-  description = "Grafana Loki image tag"
-  type        = string
-  default     = "3.1.1"
-}
-
-variable "promtail_version" {
-  description = "Grafana Promtail image tag"
-  type        = string
-  default     = "3.1.1"
-}
-
-variable "node_exporter_version" {
-  description = "Prometheus node-exporter image tag"
-  type        = string
-  default     = "v1.8.2"
-}
-
-variable "cadvisor_version" {
-  description = "cAdvisor image tag"
-  type        = string
-  default     = "v0.49.1"
 }
 
 # ---------------------------------------------------------------------------
@@ -209,16 +173,6 @@ variable "pgadmin_email" {
 }
 
 variable "pgadmin_password" {
-  type      = string
-  sensitive = true
-}
-
-variable "grafana_admin_user" {
-  type    = string
-  default = "admin"
-}
-
-variable "grafana_admin_password" {
   type      = string
   sensitive = true
 }

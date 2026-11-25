@@ -45,15 +45,12 @@ locals {
     # BI edge: public dashboards (own nginx in front of the existing Metabase), reusable for later dashboards.
     { name = "bi", type = "A", value = var.server_ip, ttl = 300 },
     { name = "9route", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "grafana", type = "A", value = var.server_ip, ttl = 300 },
     { name = "storage", type = "A", value = var.server_ip, ttl = 300 },
     { name = "minio-admin", type = "A", value = var.server_ip, ttl = 300 },
     { name = "pgadmin", type = "A", value = var.server_ip, ttl = 300 },
     { name = "uptime", type = "A", value = var.server_ip, ttl = 300 },
     { name = "traefik", type = "A", value = var.server_ip, ttl = 300 },
     { name = "code", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "prometheus", type = "A", value = var.server_ip, ttl = 300 },
-    { name = "logs", type = "A", value = var.server_ip, ttl = 300 },
     # agent-llm mega spec (infra-01): agent-platform (backend+frontend),
     # Chatwoot e a ponte migram do Cloud Run pra cá.
     { name = "ia", type = "A", value = var.server_ip, ttl = 300 },

@@ -63,7 +63,7 @@ terraform/   DNS e recursos declarados
 stacks/      um compose por serviço (platform, chatwoot, agent-platform, kernel-harness, ...)
 releases/    sources.json e <servico>.lock: repositório, versão, digest e sha256 do artefato
 scripts/     deploy.sh, resolve_release.py, backup.sh, restore-verify.sh, healthcheck.sh, qa/
-configs/     Traefik, Prometheus, Loki e Grafana
+configs/     Traefik e demais serviços da plataforma
 cloud-init/  bootstrap do host
 sites/       sites estáticos de clientes
 docs/        manual operacional de cada serviço da VPS
@@ -101,7 +101,7 @@ Só os nomes ficam em `.env.example`. Os valores vivem em `/opt/platform/secrets
 ## Runbooks e decisões
 
 - Recuperação de SSH e relatório do incidente da chave TLS do Postgres: ficam no `luar_docs` (privado), porque detalham o acesso ao host e este repositório é público.
-- [`docs/manual-operacional.md`](docs/manual-operacional.md): serviço por serviço (Traefik, Postgres, Redis, MinIO, Grafana, backups, workflows). Escrito antes do modelo de releases por digest: confirme o estado atual no compose antes de seguir.
+- [`docs/manual-operacional.md`](docs/manual-operacional.md): serviço por serviço (Traefik, Postgres, Redis, MinIO, backups, workflows). Escrito antes do modelo de releases por digest: confirme o estado atual no compose antes de seguir.
 - Decisões de arquitetura: `luar_docs` (spec 10, §0.8 e Fase R).
 
 ## Como contribuir

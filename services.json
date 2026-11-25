@@ -1,10 +1,4 @@
 {
-  "grafana": false,
-  "prometheus": false,
-  "loki": false,
-  "promtail": false,
-  "cadvisor": false,
-  "node-exporter": false,
   "pgadmin": false,
   "code-server": false
 }

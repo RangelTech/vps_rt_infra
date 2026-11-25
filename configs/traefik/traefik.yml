@@ -29,13 +29,6 @@ entryPoints:
   metrics:
     address: ":8080"
 
-metrics:
-  prometheus:
-    entryPoint: metrics
-    addEntryPointsLabels: true
-    addRoutersLabels: true
-    addServicesLabels: true
-
 providers:
   docker:
     exposedByDefault: false

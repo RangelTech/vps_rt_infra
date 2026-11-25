@@ -41,9 +41,6 @@ resource "local_file" "compose_env" {
     pgadmin_email    = var.pgadmin_email
     pgadmin_password = replace(var.pgadmin_password, "$", "$$")
 
-    grafana_version        = var.grafana_version
-    grafana_admin_user     = var.grafana_admin_user
-    grafana_admin_password = replace(var.grafana_admin_password, "$", "$$")
 
     uptime_kuma_version  = var.uptime_kuma_version
     uptime_kuma_user     = var.uptime_kuma_user
@@ -59,11 +56,6 @@ resource "local_file" "compose_env" {
     code_server_password      = replace(var.code_server_password, "$", "$$")
     code_server_sudo_password = replace(var.code_server_sudo_password, "$", "$$")
 
-    prometheus_version    = var.prometheus_version
-    loki_version          = var.loki_version
-    promtail_version      = var.promtail_version
-    node_exporter_version = var.node_exporter_version
-    cadvisor_version      = var.cadvisor_version
 
     ninerouter_package = var.ninerouter_package
     ninerouter_port    = var.ninerouter_port
@@ -132,12 +124,6 @@ resource "null_resource" "deploy_stack" {
     env_sha                 = local_file.compose_env.content_sha256
     traefik_static_sha      = filesha256("${path.module}/../configs/traefik/traefik.yml")
     traefik_dynamic_sha     = filesha256("${path.module}/../configs/traefik/dynamic.yml")
-    grafana_postgres_sha    = filesha256("${path.module}/../configs/grafana/provisioning/datasources/postgres.yml")
-    grafana_prometheus_sha  = filesha256("${path.module}/../configs/grafana/provisioning/datasources/prometheus.yml")
-    grafana_loki_sha        = filesha256("${path.module}/../configs/grafana/provisioning/datasources/loki.yml")
-    prometheus_config_sha   = filesha256("${path.module}/../configs/prometheus/prometheus.yml")
-    loki_config_sha         = filesha256("${path.module}/../configs/loki/config.yml")
-    promtail_config_sha     = filesha256("${path.module}/../configs/promtail/config.yml")
     ninerouter_dockerfile_sha = filesha256("${path.module}/../apps/9route/Dockerfile")
     backup_postgres_sha     = filesha256("${path.module}/../scripts/backup-postgres.sh")
     backup_minio_sha        = filesha256("${path.module}/../scripts/backup-minio.sh")
@@ -207,9 +193,9 @@ resource "null_resource" "deploy_stack" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x ${local.remote_base_dir}/scripts/*.sh",
-      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,grafana,uptime-kuma,code-server,prometheus,loki,promtail,backups,9router,infisical-postgres,infisical-redis}",
-      "chmod 700 ${local.remote_base_dir}/data/postgres ${local.remote_base_dir}/data/redis ${local.remote_base_dir}/data/minio ${local.remote_base_dir}/data/pgadmin ${local.remote_base_dir}/data/traefik ${local.remote_base_dir}/data/uptime-kuma ${local.remote_base_dir}/data/code-server ${local.remote_base_dir}/data/promtail ${local.remote_base_dir}/data/infisical-postgres ${local.remote_base_dir}/data/infisical-redis || true",
-      "chmod 755 ${local.remote_base_dir}/data/grafana ${local.remote_base_dir}/data/prometheus ${local.remote_base_dir}/data/loki ${local.remote_base_dir}/data/9router || true",
+      "mkdir -p ${local.remote_base_dir}/data/{traefik,postgres,redis,minio,pgadmin,uptime-kuma,code-server,backups,9router,infisical-postgres,infisical-redis}",
+      "chmod 700 ${local.remote_base_dir}/data/postgres ${local.remote_base_dir}/data/redis ${local.remote_base_dir}/data/minio ${local.remote_base_dir}/data/pgadmin ${local.remote_base_dir}/data/traefik ${local.remote_base_dir}/data/uptime-kuma ${local.remote_base_dir}/data/code-server ${local.remote_base_dir}/data/infisical-postgres ${local.remote_base_dir}/data/infisical-redis || true",
+      "chmod 755 ${local.remote_base_dir}/data/9router || true",
       "sudo chown -R 999:999 ${local.remote_base_dir}/data/postgres || true",
       "sudo chown -R 999:999 ${local.remote_base_dir}/data/redis || true",
       "sudo chown -R 999:999 ${local.remote_base_dir}/data/infisical-postgres || true",
@@ -218,18 +204,6 @@ resource "null_resource" "deploy_stack" {
       "sudo chmod 750 ${local.remote_base_dir}/data/pgadmin || true",
       "sudo find ${local.remote_base_dir}/data/pgadmin -mindepth 1 -type d -exec chmod 750 {} \\; || true",
       "sudo find ${local.remote_base_dir}/data/pgadmin -type f -exec chmod 640 {} \\; || true",
-      "sudo chown -R 472:472 ${local.remote_base_dir}/data/grafana || true",
-      "sudo chmod 755 ${local.remote_base_dir}/data/grafana || true",
-      "sudo find ${local.remote_base_dir}/data/grafana -mindepth 1 -type d -exec chmod 755 {} \\; || true",
-      "sudo find ${local.remote_base_dir}/data/grafana -type f -exec chmod 644 {} \\; || true",
-      "sudo chown -R nobody:nogroup ${local.remote_base_dir}/data/prometheus || true",
-      "sudo chmod 755 ${local.remote_base_dir}/data/prometheus || true",
-      "sudo find ${local.remote_base_dir}/data/prometheus -mindepth 1 -type d -exec chmod 755 {} \\; || true",
-      "sudo find ${local.remote_base_dir}/data/prometheus -type f -exec chmod 644 {} \\; || true",
-      "sudo chown -R 10001:10001 ${local.remote_base_dir}/data/loki || true",
-      "sudo chmod 755 ${local.remote_base_dir}/data/loki || true",
-      "sudo find ${local.remote_base_dir}/data/loki -mindepth 1 -type d -exec chmod 755 {} \\; || true",
-      "sudo find ${local.remote_base_dir}/data/loki -type f -exec chmod 644 {} \\; || true",
       "cd ${local.remote_base_dir}/compose && docker compose build ninerouter",
       "cd ${local.remote_base_dir}/compose && docker compose pull --ignore-buildable",
       "cd ${local.remote_base_dir}/compose && docker compose up -d --remove-orphans",

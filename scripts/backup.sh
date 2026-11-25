@@ -108,7 +108,7 @@ EXISTING=(); for p in "${PATHS[@]}"; do [ -e "$p" ] && EXISTING+=("$p"); done
 
 echo "==> restic backup (${#EXISTING[@]} caminhos, tag $TAG)"
 restic backup --tag "$TAG" --host rt-vps --exclude '**/node_modules' --exclude '**/.cache' \
-  --exclude "$BASE/data/prometheus" --exclude "$BASE/data/loki" --exclude "$BASE/data/code-server" "${EXISTING[@]}" | tail -6
+  --exclude "$BASE/data/code-server" "${EXISTING[@]}" | tail -6
 
 if [ "$fail" -ne 0 ]; then echo "BACKUP COM FALHA: veja as linhas FALHA/AVISO acima" >&2; exit 1; fi
 
