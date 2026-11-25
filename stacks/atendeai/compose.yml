@@ -41,7 +41,7 @@ services:
       - traefik.enable=true
       - traefik.docker.network=public
       - traefik.http.services.atendeai.loadbalancer.server.port=8000
-      - traefik.http.routers.atendeai.rule=Host(`atende-ai.rangeltech.net`) || Host(`atende-whats.rangeltech.net`) || Host(`atende-insta.rangeltech.net`) || Host(`atende-tiktok.rangeltech.net`) || Host(`atende-face.rangeltech.net`) || Host(`fala-fael.rangeltech.net`)
+      - traefik.http.routers.atendeai.rule=Host(`atende-ai.rangeltech.net`) || Host(`atende-whats.rangeltech.net`) || Host(`atende-insta.rangeltech.net`) || Host(`atende-tiktok.rangeltech.net`) || Host(`atende-face.rangeltech.net`)
       - traefik.http.routers.atendeai.entrypoints=websecure
       - traefik.http.routers.atendeai.tls.certresolver=letsencrypt
       - traefik.http.routers.atendeai.service=atendeai
