@@ -169,8 +169,10 @@ services:
       - ../data/uptime-kuma:/app/data
     networks:
       - public
+      - internal   # monitora Postgres, Redis e MinIO por dentro (spec 57 §6.7), sem abrir porta
     labels:
       - traefik.enable=true
+      - traefik.docker.network=public
       - traefik.http.routers.uptime.rule=Host(`uptime.${ROOT_DOMAIN}`)
       - traefik.http.routers.uptime.entrypoints=websecure
       - traefik.http.routers.uptime.tls.certresolver=letsencrypt
