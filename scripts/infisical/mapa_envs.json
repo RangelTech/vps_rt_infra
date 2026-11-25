@@ -134,5 +134,9 @@
  "viralizai.env": [
   "rt-produtos",
   "viralizai"
+ ],
+ "autoai.env": [
+  "rt-produtos",
+  "autoai"
  ]
 }

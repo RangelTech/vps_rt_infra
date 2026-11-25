@@ -94,6 +94,7 @@ PATHS=(
   "$BASE/data/canais/synapse" "$BASE/data/canais/mautrix-meta" "$BASE/data/canais/mautrix-instagram" "$BASE/data/canais/mautrix-whatsapp" "$BASE/data/canais/tiktok-sessions" "$BASE/data/canais/tiktok-sessions-gw" "$BASE/stacks/canais"
   "$BASE/data/infisical-redis" "$BASE/data/redis" "$BASE/data/redis-chatwoot" "$BASE/data/uptime-kuma"
   /opt/airflow-infra /opt/airflow /var/lib/docker/volumes/airflow_airflow-state/_data
+  /opt/platform/data/autoai   # AutoAI: uploads e backups locais do app (spec 57 §7; o banco autoai vai no pg_dump)
   /opt/platform/stacks /opt/platform/releases /opt/platform/data/ninerouter /opt/platform/data/llm-gateway /opt/platform/data/redis/users.acl /opt/portfolio-feedback/data
   /etc/cron.d/platform-backups /etc/systemd/system/rt-backup.service /etc/systemd/system/rt-backup.timer
   # agentes por skills (spec 04/10): perfis Hermes (state.db), skills da empresa/usuario, estado do runtime-manager e workspaces das empresas

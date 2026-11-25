@@ -1,0 +1,51 @@
+# AutoAI (antes AutoOS): ERP de oficina com IA, base Torqvoice (Next.js). EM TESTE, não está à venda (spec 57 §7).
+# Banco `autoai` no Postgres central (rede internal). Uploads e backups locais do app em /opt/platform/data/autoai.
+# Segredos em /opt/platform/secrets/autoai.env (Infisical rt-produtos/autoai). Camada B. Deploy: deploy.yml (service=autoai).
+# auto.rangeltech.net (endereço antigo) redireciona para autoai.rangeltech.net.
+name: autoai
+services:
+  app:
+    image: ${AUTOAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/autoai.lock}
+    container_name: autoai
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    env_file: /opt/platform/secrets/autoai.env
+    environment:
+      TRUST_CF_CONNECTING_IP: "false"
+    volumes:
+      - /opt/platform/data/autoai/uploads:/app/data/uploads
+      - /opt/platform/data/autoai/backups:/app/data/backups
+    mem_limit: 2g
+    cpus: 2
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    networks: [public, internal]
+    labels:
+      - rt.service=autoai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.autoai.loadbalancer.server.port=3000
+      - traefik.http.routers.autoai.rule=Host(`autoai.rangeltech.net`)
+      - traefik.http.routers.autoai.entrypoints=websecure
+      - traefik.http.routers.autoai.tls.certresolver=letsencrypt
+      - traefik.http.routers.autoai.service=autoai
+      # endereço antigo: redireciona mantendo o caminho
+      - traefik.http.routers.autoai-antigo.rule=Host(`auto.rangeltech.net`)
+      - traefik.http.routers.autoai-antigo.entrypoints=websecure
+      - traefik.http.routers.autoai-antigo.tls.certresolver=letsencrypt
+      - traefik.http.routers.autoai-antigo.middlewares=autoai-antigo
+      - traefik.http.routers.autoai-antigo.service=autoai
+      - traefik.http.middlewares.autoai-antigo.redirectregex.regex=^https://auto\.rangeltech\.net/(.*)
+      - traefik.http.middlewares.autoai-antigo.redirectregex.replacement=https://autoai.rangeltech.net/$${1}
+      - traefik.http.middlewares.autoai-antigo.redirectregex.permanent=true
+networks:
+  public:
+    external: true
+  internal:
+    external: true

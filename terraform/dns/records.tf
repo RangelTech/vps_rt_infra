@@ -32,6 +32,7 @@ locals {
     "astral-ai|A" = { name = "astral-ai", type = "A", ttl = 300, value = var.vps_ip }
     "shape-ai|A" = { name = "shape-ai", type = "A", ttl = 300, value = var.vps_ip }
     "casa-ai|A" = { name = "casa-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "autoai|A" = { name = "autoai", type = "A", ttl = 300, value = var.vps_ip }   # AutoAI (spec 57 §7); auto. segue fora do Terraform e redireciona
     "astral|A" = { name = "astral", type = "A", ttl = 300, value = var.vps_ip }   # endereço novo (16/11); o -ai continua respondendo
     "shape|A" = { name = "shape", type = "A", ttl = 300, value = var.vps_ip }
     "casa|A" = { name = "casa", type = "A", ttl = 300, value = var.vps_ip }

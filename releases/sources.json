@@ -347,6 +347,14 @@
       "compose_service": "web",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "autoai",
+      "repo": "RangelTech/autoai",
+      "stack": "autoai",
+      "compose_service": "app",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
