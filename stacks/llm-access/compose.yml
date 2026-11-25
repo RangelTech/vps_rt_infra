@@ -61,6 +61,35 @@ services:
       - traefik.http.routers.llm-access-painel.service=llm-access
       - traefik.http.middlewares.painel-raiz.redirectregex.regex=^https://painel\.rangeltech\.net/?$$
       - traefik.http.middlewares.painel-raiz.redirectregex.replacement=https://painel.rangeltech.net/admin/
+  # Leitura dos contêineres para a tela "Infraestrutura" do painel (spec 57 §6.4). SÓ LEITURA: lista contêineres e mais nada
+  # (POST, EXEC, START, STOP, DELETE desligados). Separado do rt-docker-proxy, que tem escrita para o gerenciador de recursos.
+  docker-leitura:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: rt-docker-leitura
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      PING: "1"
+      POST: "0"
+      EXEC: "0"
+      INFO: "0"
+      IMAGES: "0"
+      NETWORKS: "0"
+      VOLUMES: "0"
+      ALLOW_START: "0"
+      ALLOW_STOP: "0"
+      ALLOW_RESTARTS: "0"
+      DELETE: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    mem_limit: 64m   # sem read_only: o proxy grava a própria configuração ao subir; a proteção são as permissões acima
+    networks:
+      internal:
+        aliases: [docker-leitura.rt]
+    labels:
+      - rt.service=llm-access
+      - rt.layer=B
+
 networks:
   internal:
     external: true
