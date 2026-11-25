@@ -1,0 +1,17 @@
+service=autoai
+stack=autoai
+compose_service=app
+image_only=
+layer=B
+repo=RangelTech/autoai
+version=v0.1.0
+commit=c16ee39
+artifact_url=https://github.com/RangelTech/autoai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=78eea9fff8fbba0a47e77e5cea8580fc55eb0bb836703ec5b6df9dac74dcd123
+image_id=sha256:b5e7f50c01b3e8d4439958ad190253734c2d3a2b2f0d52172f220020e66fa9d2
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=180
+env_required=DATABASE_URL,BETTER_AUTH_SECRET
+previous_version=
+previous_image_id=
