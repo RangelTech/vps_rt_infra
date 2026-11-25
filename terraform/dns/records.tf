@@ -48,6 +48,7 @@ locals {
     "linkdn-ai|A"     = { name = "linkdn-ai", type = "A", ttl = 300, value = var.vps_ip }
     "gw|A"           = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }
     "qwen|A"         = { name = "qwen", type = "A", ttl = 300, value = var.vps_ip }
+    "painel|A"       = { name = "painel", type = "A", ttl = 300, value = var.vps_ip }  # painel unico (spec 57 6.5)
     "conector|A"     = { name = "conector", type = "A", ttl = 300, value = var.vps_ip }
     "lucas|A"        = { name = "lucas", type = "A", ttl = 300, value = var.vps_ip }
     "minio-admin|A"  = { name = "minio-admin", type = "A", ttl = 300, value = var.vps_ip }

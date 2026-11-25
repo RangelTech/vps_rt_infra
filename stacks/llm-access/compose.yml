@@ -53,6 +53,14 @@ services:
       - traefik.http.routers.llm-access-pro.tls.certresolver=letsencrypt
       - traefik.http.routers.llm-access-pro.middlewares=security-headers@file
       - traefik.http.routers.llm-access-pro.service=llm-access
+      # painel unico (spec 57 6.5): painel.rangeltech.net; a raiz leva para /admin/ (qwen.rangeltech.net continua igual)
+      - traefik.http.routers.llm-access-painel.rule=Host(`painel.rangeltech.net`)
+      - traefik.http.routers.llm-access-painel.entrypoints=websecure
+      - traefik.http.routers.llm-access-painel.tls.certresolver=letsencrypt
+      - traefik.http.routers.llm-access-painel.middlewares=painel-raiz,security-headers@file
+      - traefik.http.routers.llm-access-painel.service=llm-access
+      - traefik.http.middlewares.painel-raiz.redirectregex.regex=^https://painel\.rangeltech\.net/?$$
+      - traefik.http.middlewares.painel-raiz.redirectregex.replacement=https://painel.rangeltech.net/admin/
 networks:
   internal:
     external: true
