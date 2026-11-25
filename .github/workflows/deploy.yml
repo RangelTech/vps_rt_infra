@@ -160,3 +160,22 @@ jobs:
           git commit -m "deploy: $SERVICE $(grep '^version=' "releases/$SERVICE.lock" | cut -d= -f2)"
           for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 3; done
           exit 1
+      - name: Atualizar os prints do README (spec 57 §3.2 b; não bloqueia o deploy)
+        if: ${{ !inputs.dry_run && success() }}
+        continue-on-error: true
+        env:
+          SERVICE: ${{ inputs.service }}
+          GH_TOKEN: ${{ secrets.README_PRINTS_TOKEN }}
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "sem README_PRINTS_TOKEN: prints não atualizados"; exit 0; }
+          pip install -q playwright pillow pyyaml && python3 -m playwright install --with-deps chromium >/dev/null
+          r="$(python3 scripts/readme/prints.py "$SERVICE" "$RUNNER_TEMP/prints")"; echo "$r"
+          REPO="$(echo "$r" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("repo") or "")')"
+          [ -n "$REPO" ] && ls "$RUNNER_TEMP/prints"/*.webp >/dev/null 2>&1 || { echo "nada a atualizar"; exit 0; }
+          V="$(grep '^version=' "releases/$SERVICE.lock" | cut -d= -f2)"
+          git clone -q --depth 1 "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" "$RUNNER_TEMP/repo"
+          mkdir -p "$RUNNER_TEMP/repo/docs/img" && cp "$RUNNER_TEMP/prints"/*.webp "$RUNNER_TEMP/repo/docs/img/"
+          cd "$RUNNER_TEMP/repo"
+          git config user.name "rt-deploy"; git config user.email "deploy@rangeltech.net"
+          git add docs/img/*.webp; git diff --cached --quiet && { echo "prints iguais"; exit 0; }
+          git commit -qm "docs: prints de produção ($SERVICE $V)" && git push -q && echo "prints atualizados em $REPO"
