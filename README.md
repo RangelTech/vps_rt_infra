@@ -1,3 +1,37 @@
+<!-- readme-padrao -->
+# Infraestrutura da VPS (vps_rt_infra)
+
+> Infraestrutura da VPS principal (Contabo): Traefik, Postgres, compose dos serviços, DNS (Terraform), backup, caça-GPU, registro único de produtos e o **único caminho de deploy** de todos os serviços (busca a release na hora, gera os `.env` do Infisical, healthcheck e rollback).
+
+![Página do repositório](docs/img/principal.webp)
+
+## O que é
+Infraestrutura da VPS principal (Contabo): Traefik, Postgres, compose dos serviços, DNS (Terraform), backup, caça-GPU, registro único de produtos e o **único caminho de deploy** de todos os serviços (busca a release na hora, gera os `.env` do Infisical, healthcheck e rollback).
+
+Estado: **no ar**.
+
+## Onde está no ar
+- Sem endereço público próprio.
+
+## Onde faz o deploy
+É o próprio caminho de deploy: `gh workflow run deploy.yml -f service=<servico>` (ver `releases/sources.json` e `registro/produtos.yml`). Mudanças de infraestrutura (stacks, Traefik, DNS) entram por este repositório, nunca à mão na VPS.
+
+## Como funciona por dentro
+Resumo acima; os detalhes estão nas notas técnicas (README anterior) abaixo e na spec 57.
+
+## Segredos
+Nenhum valor de segredo fica neste repositório. Os segredos dos serviços ficam no Infisical (mapa em `vps_rt_infra/scripts/infisical/mapa_envs.json`) e chegam à VPS gerados no deploy.
+
+## Rodar e testar localmente
+Ver as notas técnicas abaixo (cada repositório tem o seu jeito); os testes de QA em produção são por cliques reais, com evidência em `new_ragente/qa/evidencias`.
+
+## Links
+- Repositório: https://github.com/RangelTech/vps_rt_infra
+- Painel único: https://painel.rangeltech.net
+- Spec de organização geral: `new_ragente/specs/57_ORGANIZACAO_GERAL_PRODUTOS_E_PAINEL.md`
+
+## Notas técnicas (README anterior)
+
 # vps_rt_infra
 
 A infraestrutura da VPS da empresa: Terraform, Compose, releases por digest, deploy, backup e scripts do host. Atende o Luar e outros projetos, por isso o nome não leva o prefixo `luar_`. É o único repositório com credencial da VPS e o único que implanta.
