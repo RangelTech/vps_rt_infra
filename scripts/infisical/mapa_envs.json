@@ -138,5 +138,9 @@
  "autoai.env": [
   "rt-produtos",
   "autoai"
+ ],
+ "contabo.env": [
+  "qwen",
+  "contabo"
  ]
 }

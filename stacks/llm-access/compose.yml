@@ -8,7 +8,9 @@ services:
     image: ${LLM_ACCESS_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/llm-access.lock}
     container_name: llm-access
     restart: unless-stopped
-    env_file: /opt/platform/secrets/llm-access.env
+    env_file:
+      - /opt/platform/secrets/llm-access.env
+      - /opt/platform/secrets/contabo.env   # credenciais da API da Contabo (Infisical qwen/contabo, spec 57 §6.6)
     environment:
       UPSTREAM_URL: http://llm-queue.rt:8000
       ACCESS_DB_PATH: /data/access.db
