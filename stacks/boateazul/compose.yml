@@ -19,6 +19,8 @@ services:
       BOATE_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
       BOATE_LLM_MODELO: hermes-produtos
       BOATE_BASE_URL: https://azul.rangeltech.net
+      BOATE_CANAIS_URL: http://rt-gateway:8100            # gateway de canais (spec 59); token em BOATE_CANAIS_TOKEN (Infisical)
+      BOATE_WEBHOOK_BASE: http://boateazul:8000
     volumes:
       - /opt/platform/data/boateazul:/data
     mem_limit: 512m
