@@ -1,4 +1,4 @@
-# Boate Azul: IA de desejo e intimidade para casais +18 (Hermes dos produtos). Spec 45 G.
+# VolupIA (ex-Boate Azul): IA de desejo e intimidade para casais +18 (Hermes dos produtos). Spec 45 G.
 # Estado em /opt/platform/data/boateazul (SQLite). Segredos em /opt/platform/secrets/boateazul.env (workflow boateazul-segredos.yml).
 # Camada B. Deploy: deploy.yml (service=boateazul).
 name: boateazul
@@ -18,7 +18,7 @@ services:
       BOATE_DEMO_EMAIL: demo@rangeltech.net
       BOATE_LLM_BASE: http://rt-hermes-produtos:8642/v1   # toda IA dos produtos passa pelo Hermes (Lucas, 16/11)
       BOATE_LLM_MODELO: hermes-produtos
-      BOATE_BASE_URL: https://azul.rangeltech.net
+      BOATE_BASE_URL: https://volupia.rangeltech.net
       BOATE_CANAIS_URL: http://rt-gateway:8100            # gateway de canais (spec 59); token em BOATE_CANAIS_TOKEN (Infisical)
       BOATE_WEBHOOK_BASE: http://boateazul:8000
     volumes:
@@ -39,7 +39,7 @@ services:
       - traefik.enable=true
       - traefik.docker.network=public
       - traefik.http.services.boateazul.loadbalancer.server.port=8000
-      - traefik.http.routers.boateazul.rule=Host(`azul.rangeltech.net`)
+      - traefik.http.routers.boateazul.rule=Host(`volupia.rangeltech.net`) || Host(`azul.rangeltech.net`)
       - traefik.http.routers.boateazul.entrypoints=websecure
       - traefik.http.routers.boateazul.tls.certresolver=letsencrypt
       - traefik.http.routers.boateazul.service=boateazul

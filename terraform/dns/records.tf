@@ -2,62 +2,63 @@
 # NAO gerenciados (e-mail, nunca tocar): MX, SPF (@ TXT), _dmarc, autoconfig, autodiscover, hostingermail-*._domainkey.
 locals {
   records = {
-    "*.evolution|A"  = { name = "*.evolution", type = "A", ttl = 300, value = var.vps_ip }
-    "*.apps|A"       = { name = "*.apps", type = "A", ttl = 300, value = var.vps_ip }
-    "@|A"            = { name = "@", type = "A", ttl = 300, value = var.vps_ip }
-    "ai|A"           = { name = "ai", type = "A", ttl = 300, value = var.vps_ip }
-    "airflow|A"      = { name = "airflow", type = "A", ttl = 300, value = var.vps_ip }
-    "bi|A"           = { name = "bi", type = "A", ttl = 300, value = var.vps_ip }
-    "bridge|A"       = { name = "bridge", type = "A", ttl = 300, value = var.vps_ip }
-    "chat|A"         = { name = "chat", type = "A", ttl = 300, value = var.vps_ip }
-    "demo|A"         = { name = "demo", type = "A", ttl = 300, value = var.vps_ip }
-    "ia|A"           = { name = "ia", type = "A", ttl = 300, value = var.vps_ip }
-    "infisical|A"    = { name = "infisical", type = "A", ttl = 300, value = var.vps_ip }
-    "metricas|A"     = { name = "metricas", type = "A", ttl = 300, value = var.vps_ip }
-    "user|A"         = { name = "user", type = "A", ttl = 300, value = var.vps_ip }
-    "turn|A"         = { name = "turn", type = "A", ttl = 300, value = var.vps_ip }
-    "luar|A"         = { name = "luar", type = "A", ttl = 300, value = var.vps_ip }
-    "brain|A"        = { name = "brain", type = "A", ttl = 300, value = var.vps_ip }
-    "remoto|A"       = { name = "remoto", type = "A", ttl = 300, value = var.vps_ip }
-    "cortai|A"       = { name = "cortai", type = "A", ttl = 300, value = var.vps_ip }
-    "anima-ai|A"     = { name = "anima-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "atende-ai|A" = { name = "atende-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "posta-ai|A" = { name = "posta-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "viralizai.fael|A" = { name = "viralizai.fael", type = "A", ttl = 300, value = var.vps_ip }  # so o Viralizai continua no dominio do Fael (spec 57 2.1)
-    "viralizai|A" = { name = "viralizai", type = "A", ttl = 300, value = var.vps_ip }
-    "posta-insta|A" = { name = "posta-insta", type = "A", ttl = 300, value = var.vps_ip }
-    "posta-face|A" = { name = "posta-face", type = "A", ttl = 300, value = var.vps_ip }
-    "posta-tiktok|A" = { name = "posta-tiktok", type = "A", ttl = 300, value = var.vps_ip }
-    "posta-linkdn|A" = { name = "posta-linkdn", type = "A", ttl = 300, value = var.vps_ip }
-    "astral-ai|A" = { name = "astral-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "shape-ai|A" = { name = "shape-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "casa-ai|A" = { name = "casa-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "autoai|A" = { name = "autoai", type = "A", ttl = 300, value = var.vps_ip }   # AutoAI (spec 57 §7); auto. segue fora do Terraform e redireciona
-    "astral|A" = { name = "astral", type = "A", ttl = 300, value = var.vps_ip }   # endereço novo (16/11); o -ai continua respondendo
-    "shape|A" = { name = "shape", type = "A", ttl = 300, value = var.vps_ip }
-    "casa|A" = { name = "casa", type = "A", ttl = 300, value = var.vps_ip }
-    "atende-whats|A" = { name = "atende-whats", type = "A", ttl = 300, value = var.vps_ip }
-    "atende-insta|A" = { name = "atende-insta", type = "A", ttl = 300, value = var.vps_ip }
-    "atende-tiktok|A" = { name = "atende-tiktok", type = "A", ttl = 300, value = var.vps_ip }
-    "atende-face|A" = { name = "atende-face", type = "A", ttl = 300, value = var.vps_ip }
-    "rendai|A"       = { name = "rendai", type = "A", ttl = 300, value = var.vps_ip }
-    "perfilai|A"     = { name = "perfilai", type = "A", ttl = 300, value = var.vps_ip }
-    "insta-ai|A"      = { name = "insta-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "face-ai|A"       = { name = "face-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "tittok-ai|A"     = { name = "tittok-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "linkdn-ai|A"     = { name = "linkdn-ai", type = "A", ttl = 300, value = var.vps_ip }
-    "gw|A"           = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }
-    "qwen|A"         = { name = "qwen", type = "A", ttl = 300, value = var.vps_ip }
-    "painel|A"       = { name = "painel", type = "A", ttl = 300, value = var.vps_ip }  # painel unico (spec 57 6.5)
-    "conector|A"     = { name = "conector", type = "A", ttl = 300, value = var.vps_ip }
-    "lucas|A"        = { name = "lucas", type = "A", ttl = 300, value = var.vps_ip }
-    "minio-admin|A"  = { name = "minio-admin", type = "A", ttl = 300, value = var.vps_ip }
-    "rag|A"          = { name = "rag", type = "A", ttl = 300, value = var.vps_ip }
-    "storage|A"      = { name = "storage", type = "A", ttl = 300, value = var.vps_ip }
-    "traefik|A"      = { name = "traefik", type = "A", ttl = 300, value = var.vps_ip }
-    "uptime|A"       = { name = "uptime", type = "A", ttl = 300, value = var.vps_ip }
-    "www|CNAME"      = { name = "www", type = "CNAME", ttl = 300, value = "rangeltech.net." }
-    "chat|TXT"       = { name = "chat", type = "TXT", ttl = 300, value = "\"tiktok-developers-site-verification=9VCnh82QgEEOLPsmWXeQREModQPcfma0\"" }
-    "ia|TXT"         = { name = "ia", type = "TXT", ttl = 300, value = "\"tiktok-developers-site-verification=IctaIyx7EzE65hXP66TM9xFIrXR7oDl9\"" }
+    "*.evolution|A"    = { name = "*.evolution", type = "A", ttl = 300, value = var.vps_ip }
+    "*.apps|A"         = { name = "*.apps", type = "A", ttl = 300, value = var.vps_ip }
+    "@|A"              = { name = "@", type = "A", ttl = 300, value = var.vps_ip }
+    "ai|A"             = { name = "ai", type = "A", ttl = 300, value = var.vps_ip }
+    "airflow|A"        = { name = "airflow", type = "A", ttl = 300, value = var.vps_ip }
+    "bi|A"             = { name = "bi", type = "A", ttl = 300, value = var.vps_ip }
+    "bridge|A"         = { name = "bridge", type = "A", ttl = 300, value = var.vps_ip }
+    "chat|A"           = { name = "chat", type = "A", ttl = 300, value = var.vps_ip }
+    "demo|A"           = { name = "demo", type = "A", ttl = 300, value = var.vps_ip }
+    "ia|A"             = { name = "ia", type = "A", ttl = 300, value = var.vps_ip }
+    "infisical|A"      = { name = "infisical", type = "A", ttl = 300, value = var.vps_ip }
+    "metricas|A"       = { name = "metricas", type = "A", ttl = 300, value = var.vps_ip }
+    "user|A"           = { name = "user", type = "A", ttl = 300, value = var.vps_ip }
+    "turn|A"           = { name = "turn", type = "A", ttl = 300, value = var.vps_ip }
+    "luar|A"           = { name = "luar", type = "A", ttl = 300, value = var.vps_ip }
+    "brain|A"          = { name = "brain", type = "A", ttl = 300, value = var.vps_ip }
+    "remoto|A"         = { name = "remoto", type = "A", ttl = 300, value = var.vps_ip }
+    "cortai|A"         = { name = "cortai", type = "A", ttl = 300, value = var.vps_ip }
+    "anima-ai|A"       = { name = "anima-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-ai|A"      = { name = "atende-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "posta-ai|A"       = { name = "posta-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "viralizai.fael|A" = { name = "viralizai.fael", type = "A", ttl = 300, value = var.vps_ip } # so o Viralizai continua no dominio do Fael (spec 57 2.1)
+    "viralizai|A"      = { name = "viralizai", type = "A", ttl = 300, value = var.vps_ip }
+    "posta-insta|A"    = { name = "posta-insta", type = "A", ttl = 300, value = var.vps_ip }
+    "posta-face|A"     = { name = "posta-face", type = "A", ttl = 300, value = var.vps_ip }
+    "posta-tiktok|A"   = { name = "posta-tiktok", type = "A", ttl = 300, value = var.vps_ip }
+    "posta-linkdn|A"   = { name = "posta-linkdn", type = "A", ttl = 300, value = var.vps_ip }
+    "astral-ai|A"      = { name = "astral-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "shape-ai|A"       = { name = "shape-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "casa-ai|A"        = { name = "casa-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "autoai|A"         = { name = "autoai", type = "A", ttl = 300, value = var.vps_ip }  # AutoAI (spec 57 §7); auto. segue fora do Terraform e redireciona
+    "volupia|A"        = { name = "volupia", type = "A", ttl = 300, value = var.vps_ip } # VolupIA (ex-Boate Azul, 25/11); azul. continua respondendo
+    "astral|A"         = { name = "astral", type = "A", ttl = 300, value = var.vps_ip }  # endereço novo (16/11); o -ai continua respondendo
+    "shape|A"          = { name = "shape", type = "A", ttl = 300, value = var.vps_ip }
+    "casa|A"           = { name = "casa", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-whats|A"   = { name = "atende-whats", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-insta|A"   = { name = "atende-insta", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-tiktok|A"  = { name = "atende-tiktok", type = "A", ttl = 300, value = var.vps_ip }
+    "atende-face|A"    = { name = "atende-face", type = "A", ttl = 300, value = var.vps_ip }
+    "rendai|A"         = { name = "rendai", type = "A", ttl = 300, value = var.vps_ip }
+    "perfilai|A"       = { name = "perfilai", type = "A", ttl = 300, value = var.vps_ip }
+    "insta-ai|A"       = { name = "insta-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "face-ai|A"        = { name = "face-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "tittok-ai|A"      = { name = "tittok-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "linkdn-ai|A"      = { name = "linkdn-ai", type = "A", ttl = 300, value = var.vps_ip }
+    "gw|A"             = { name = "gw", type = "A", ttl = 300, value = var.vps_ip }
+    "qwen|A"           = { name = "qwen", type = "A", ttl = 300, value = var.vps_ip }
+    "painel|A"         = { name = "painel", type = "A", ttl = 300, value = var.vps_ip } # painel unico (spec 57 6.5)
+    "conector|A"       = { name = "conector", type = "A", ttl = 300, value = var.vps_ip }
+    "lucas|A"          = { name = "lucas", type = "A", ttl = 300, value = var.vps_ip }
+    "minio-admin|A"    = { name = "minio-admin", type = "A", ttl = 300, value = var.vps_ip }
+    "rag|A"            = { name = "rag", type = "A", ttl = 300, value = var.vps_ip }
+    "storage|A"        = { name = "storage", type = "A", ttl = 300, value = var.vps_ip }
+    "traefik|A"        = { name = "traefik", type = "A", ttl = 300, value = var.vps_ip }
+    "uptime|A"         = { name = "uptime", type = "A", ttl = 300, value = var.vps_ip }
+    "www|CNAME"        = { name = "www", type = "CNAME", ttl = 300, value = "rangeltech.net." }
+    "chat|TXT"         = { name = "chat", type = "TXT", ttl = 300, value = "\"tiktok-developers-site-verification=9VCnh82QgEEOLPsmWXeQREModQPcfma0\"" }
+    "ia|TXT"           = { name = "ia", type = "TXT", ttl = 300, value = "\"tiktok-developers-site-verification=IctaIyx7EzE65hXP66TM9xFIrXR7oDl9\"" }
   }
 }
