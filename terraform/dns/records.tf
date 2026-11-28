@@ -42,6 +42,7 @@ locals {
     "atende-tiktok|A"  = { name = "atende-tiktok", type = "A", ttl = 300, value = var.vps_ip }
     "atende-face|A"    = { name = "atende-face", type = "A", ttl = 300, value = var.vps_ip }
     "rendai|A"         = { name = "rendai", type = "A", ttl = 300, value = var.vps_ip }
+    "caixai|A"         = { name = "caixai", type = "A", ttl = 300, value = var.vps_ip } # Caixai, ERP simples (spec 67)
     "perfilai|A"       = { name = "perfilai", type = "A", ttl = 300, value = var.vps_ip }
     "insta-ai|A"       = { name = "insta-ai", type = "A", ttl = 300, value = var.vps_ip }
     "face-ai|A"        = { name = "face-ai", type = "A", ttl = 300, value = var.vps_ip }

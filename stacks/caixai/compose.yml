@@ -1,0 +1,46 @@
+# Caixaí (spec 67): ERP simples para comércio (PDV, food, delivery, fiscal, Pix, canais com IA). Imagem por release do repo RangelTech/caixai.
+# Banco: Postgres unificado (banco `caixai`, usuário `caixai`, papel `caixai_app` do RLS). Segredos em /opt/platform/secrets/caixai.env
+# (PG_URL, CAIXAI_CHAVE_FISCAL, CAIXAI_CANAIS_TOKEN, CAIXAI_IA_CHAVE). Canais pelo rt-gateway e IA pelo Hermes dos produtos (rede `internal`).
+# Camada B. Deploy: workflow deploy.yml (service=caixai).
+name: caixai
+services:
+  web:
+    image: ${CAIXAI_IMAGE:?imagem definida pelo scripts/deploy.sh a partir de releases/caixai.lock}
+    container_name: caixai
+    restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    env_file:
+      - /opt/platform/secrets/caixai.env
+    environment:
+      CAIXAI_PORTA: "8080"
+      CAIXAI_URL_PUBLICA: https://caixai.rangeltech.net
+      CAIXAI_CANAIS_URL: http://rt-gateway:8100
+      CAIXAI_IA_URL: http://rt-hermes-produtos:8642/v1
+      CAIXAI_IA_MODELO: hermes-produtos
+    mem_limit: 2g
+    cpus: 2
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/v1/saude').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [public, internal]
+    labels:
+      - rt.service=caixai
+      - rt.layer=B
+      - traefik.enable=true
+      - traefik.docker.network=public
+      - traefik.http.services.caixai.loadbalancer.server.port=8080
+      - traefik.http.routers.caixai.rule=Host(`caixai.rangeltech.net`)
+      - traefik.http.routers.caixai.entrypoints=websecure
+      - traefik.http.routers.caixai.tls.certresolver=letsencrypt
+      - traefik.http.routers.caixai.service=caixai
+networks:
+  public:
+    external: true
+  internal:
+    external: true

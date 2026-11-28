@@ -355,6 +355,14 @@
       "compose_service": "app",
       "layer": "B",
       "manifest_asset": "release-manifest.json"
+    },
+    {
+      "service": "caixai",
+      "repo": "RangelTech/caixai",
+      "stack": "caixai",
+      "compose_service": "web",
+      "layer": "B",
+      "manifest_asset": "release-manifest.json"
     }
   ]
 }
