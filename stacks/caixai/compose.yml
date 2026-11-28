@@ -19,6 +19,9 @@ services:
       CAIXAI_CANAIS_URL: http://rt-gateway:8100
       CAIXAI_IA_URL: https://qwen.rangeltech.net/v1   # rt-geral com chamada de função (o Hermes não repassa ferramentas de fora)
       CAIXAI_IA_MODELO: rt-geral
+      CAIXAI_DOWNLOADS: /app/downloads   # instaladores do app (servidos em /baixar/)
+    volumes:
+      - /opt/platform/data/caixai/downloads:/app/downloads:ro
     mem_limit: 2g
     cpus: 2
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
