@@ -17,8 +17,8 @@ services:
       CAIXAI_PORTA: "8080"
       CAIXAI_URL_PUBLICA: https://caixai.rangeltech.net
       CAIXAI_CANAIS_URL: http://rt-gateway:8100
-      CAIXAI_IA_URL: http://rt-hermes-produtos:8642/v1
-      CAIXAI_IA_MODELO: hermes-produtos
+      CAIXAI_IA_URL: https://qwen.rangeltech.net/v1   # rt-geral com chamada de função (o Hermes não repassa ferramentas de fora)
+      CAIXAI_IA_MODELO: rt-geral
     mem_limit: 2g
     cpus: 2
     logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
