@@ -14,7 +14,7 @@ for x in reg['produtos']:
     host = (x.get('hosts') or [''])[0]
     repo = x.get('repositorio', '')
     out.append({
-        'id': x['id'], 'nome': x['nome'], 'tipo': x['tipo'], 'base': x.get('base'), 'schema': x.get('schema'),
+        'id': x['id'], 'nome': x['nome'], 'tipo': x['tipo'], 'base': x.get('base'), 'schema': x.get('schema'), 'banco': x.get('banco'),
         'servico': x.get('servico'), 'hosts': x.get('hosts') or [], 'cakto': x.get('cakto') or [],
         'links': {
             'produto': f'https://{host}/' if host else None,

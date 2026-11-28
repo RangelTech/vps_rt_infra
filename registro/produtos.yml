@@ -9,7 +9,7 @@ contas_cakto:
   adriano: { segredos: "cakto/adriano", obs: "Segundo Cérebro e o Viralizaí vendido pela landing do Fael" }
 
 # Campos: id, nome, tipo (produto | variante | plataforma | em_preparo), servico (nome em releases/sources.json = container),
-#         repositorio, hosts, cakto (conta), infisical (projeto/pasta), schema e bucket (alvo da migração, §8), kuma, qa (pasta do usuário de QA)
+#         repositorio, hosts, cakto (conta), infisical (projeto/pasta), schema e bucket (alvo da migração, §8), banco (produto com banco próprio, lido pelo painel_leitura), kuma, qa (pasta do usuário de QA)
 produtos:
   - { id: viralizai, nome: "Viralizaí", tipo: produto, servico: viralizai, repositorio: RangelTech/viralizai,
       hosts: [viralizai.rangeltech.net, viralizai.fael.rangeltech.net], cakto: [lucas, adriano],
@@ -73,6 +73,8 @@ produtos:
       infisical: { projeto: rt-produtos, pasta: boateazul }, schema: boateazul, bucket: boateazul, kuma: boateazul, qa: rt-produtos/boateazul/qa }
 
   # Plataforma e Segundo Cérebro (ficam fora do banco `produtos`, §8.4)
+  - { id: caixai, nome: "Caixaí", tipo: produto, servico: caixai, repositorio: RangelTech/caixai,
+      hosts: [caixai.rangeltech.net], cakto: [lucas], banco: caixai, schema: painel, kuma: caixai }
   - { id: segundo-cerebro, nome: "Segundo Cérebro", tipo: plataforma, servico: segundo-cerebro-remoto, repositorio: RangelTech/second-brain,
       hosts: [brain.rangeltech.net, segundocerebro.pro, app.segundocerebro.pro, remoto.rangeltech.net], cakto: [adriano],
       infisical: { projeto: segundo-cerebro, pasta: segundo-cerebro-remoto }, kuma: segundo-cerebro }
