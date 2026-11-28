@@ -19,6 +19,7 @@ services:
       CAIXAI_CANAIS_URL: http://rt-gateway:8100
       CAIXAI_IA_URL: https://qwen.rangeltech.net/v1   # rt-geral com chamada de função (o Hermes não repassa ferramentas de fora)
       CAIXAI_IA_MODELO: rt-geral
+      CAIXAI_COBRANCA: "1"
       CAIXAI_DOWNLOADS: /app/downloads   # instaladores do app (servidos em /baixar/)
     volumes:
       - /opt/platform/data/caixai/downloads:/app/downloads:ro
