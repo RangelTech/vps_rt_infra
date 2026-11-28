@@ -1,0 +1,17 @@
+service=caixai
+stack=caixai
+compose_service=web
+image_only=
+layer=B
+repo=RangelTech/caixai
+version=v0.1.0
+commit=7ee5620
+artifact_url=https://github.com/RangelTech/caixai/releases/download/v0.1.0/image.tar.gz
+artifact_sha256=c5b892ca3daae76a59c2bc882c9eaba54fab20d021adb2ad23fec910f03a850d
+image_id=sha256:c0a0344e737a330a1361e605bdc68fa2d55234e3b0faf576be1ef35fdde5546f
+manifest_version=1
+pre_deploy_service=
+healthcheck_timeout=90
+env_required=PG_URL,CAIXAI_CHAVE_FISCAL
+previous_version=
+previous_image_id=
